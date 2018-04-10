@@ -22,7 +22,6 @@ const char *SPIRV_SOURCE_LANGUAGES[] = {
 const char *spirv_source_language_name(SpvSourceLanguage e) {
 	return SPIRV_SOURCE_LANGUAGES[e];
 }
-extern const char *SPIRV_SOURCE_LANGUAGES[];
 
 const char *SPIRV_EXECUTION_MODELS[] = {
 	[SpvExecutionModelVertex] = "Vertex",
@@ -37,7 +36,6 @@ const char *SPIRV_EXECUTION_MODELS[] = {
 const char *spirv_execution_model_name(SpvExecutionModel e) {
 	return SPIRV_EXECUTION_MODELS[e];
 }
-extern const char *SPIRV_EXECUTION_MODELS[];
 
 const char *SPIRV_ADDRESSING_MODELS[] = {
 	[SpvAddressingModelLogical] = "Logical",
@@ -48,7 +46,6 @@ const char *SPIRV_ADDRESSING_MODELS[] = {
 const char *spirv_addressing_model_name(SpvAddressingModel e) {
 	return SPIRV_ADDRESSING_MODELS[e];
 }
-extern const char *SPIRV_ADDRESSING_MODELS[];
 
 const char *SPIRV_MEMORY_MODELS[] = {
 	[SpvMemoryModelSimple] = "Simple",
@@ -59,7 +56,6 @@ const char *SPIRV_MEMORY_MODELS[] = {
 const char *spirv_memory_model_name(SpvMemoryModel e) {
 	return SPIRV_MEMORY_MODELS[e];
 }
-extern const char *SPIRV_MEMORY_MODELS[];
 
 const char *SPIRV_EXECUTION_MODES[] = {
 	[SpvExecutionModeInvocations] = "Invocations",
@@ -107,7 +103,6 @@ const char *SPIRV_EXECUTION_MODES[] = {
 const char *spirv_execution_mode_name(SpvExecutionMode e) {
 	return SPIRV_EXECUTION_MODES[e];
 }
-extern const char *SPIRV_EXECUTION_MODES[];
 
 const char *SPIRV_DIMS[] = {
 	[SpvDim1D] = "Dim1D",
@@ -122,7 +117,6 @@ const char *SPIRV_DIMS[] = {
 const char *spirv_dim_name(SpvDim e) {
 	return SPIRV_DIMS[e];
 }
-extern const char *SPIRV_DIMS[];
 
 const char *SPIRV_STORAGE_CLASSES[] = {
 	[SpvStorageClassUniformConstant] = "UniformConstant",
@@ -143,7 +137,6 @@ const char *SPIRV_STORAGE_CLASSES[] = {
 const char *spirv_storage_class_name(SpvStorageClass e) {
 	return SPIRV_STORAGE_CLASSES[e];
 }
-extern const char *SPIRV_STORAGE_CLASSES[];
 
 const char *SPIRV_SAMPLER_ADDRESSING_MODES[] = {
 	[SpvSamplerAddressingModeNone] = "None",
@@ -156,7 +149,6 @@ const char *SPIRV_SAMPLER_ADDRESSING_MODES[] = {
 const char *spirv_sampler_addressing_mode_name(SpvSamplerAddressingMode e) {
 	return SPIRV_SAMPLER_ADDRESSING_MODES[e];
 }
-extern const char *SPIRV_SAMPLER_ADDRESSING_MODES[];
 
 const char *SPIRV_SAMPLER_FILTER_MODES[] = {
 	[SpvSamplerFilterModeNearest] = "Nearest",
@@ -166,7 +158,6 @@ const char *SPIRV_SAMPLER_FILTER_MODES[] = {
 const char *spirv_sampler_filter_mode_name(SpvSamplerFilterMode e) {
 	return SPIRV_SAMPLER_FILTER_MODES[e];
 }
-extern const char *SPIRV_SAMPLER_FILTER_MODES[];
 
 const char *SPIRV_IMAGE_FORMATS[] = {
 	[SpvImageFormatUnknown] = "Unknown",
@@ -214,7 +205,6 @@ const char *SPIRV_IMAGE_FORMATS[] = {
 const char *spirv_image_format_name(SpvImageFormat e) {
 	return SPIRV_IMAGE_FORMATS[e];
 }
-extern const char *SPIRV_IMAGE_FORMATS[];
 
 const char *SPIRV_IMAGE_CHANNEL_ORDERS[] = {
 	[SpvImageChannelOrderR] = "R",
@@ -242,7 +232,6 @@ const char *SPIRV_IMAGE_CHANNEL_ORDERS[] = {
 const char *spirv_image_channel_order_name(SpvImageChannelOrder e) {
 	return SPIRV_IMAGE_CHANNEL_ORDERS[e];
 }
-extern const char *SPIRV_IMAGE_CHANNEL_ORDERS[];
 
 const char *SPIRV_IMAGE_CHANNEL_DATATYPES[] = {
 	[SpvImageChannelDataTypeSnormInt8] = "SnormInt8",
@@ -267,7 +256,6 @@ const char *SPIRV_IMAGE_CHANNEL_DATATYPES[] = {
 const char *spirv_image_channel_datatype_name(SpvImageChannelDataType e) {
 	return SPIRV_IMAGE_CHANNEL_DATATYPES[e];
 }
-extern const char *SPIRV_IMAGE_CHANNEL_DATATYPES[];
 
 const char *SPIRV_IMAGE_OPERANDS[] = {
 	[SpvImageOperandsMaskNone] = "None",
@@ -284,7 +272,6 @@ const char *SPIRV_IMAGE_OPERANDS[] = {
 const char *spirv_image_operands_name(SpvImageOperandsMask e) {
 	return SPIRV_IMAGE_OPERANDS[e];
 }
-extern const char *SPIRV_IMAGE_OPERANDS[];
 
 const char *SPIRV_FP_FASTMATH_MODE[] = {
 	[SpvFPFastMathModeMaskNone] = "None",
@@ -298,7 +285,6 @@ const char *SPIRV_FP_FASTMATH_MODE[] = {
 const char *spirv_fp_fastmath_mode_name(SpvFPFastMathModeMask e) {
 	return SPIRV_FP_FASTMATH_MODE[e];
 }
-extern const char *SPIRV_FP_FASTMATH_MODE[];
 
 const char *SPIRV_FP_ROUNDING_MODES[] = {
 	[SpvFPRoundingModeRTE] = "RTE",
@@ -310,7 +296,6 @@ const char *SPIRV_FP_ROUNDING_MODES[] = {
 const char *spirv_fp_rounding_mode_name(SpvFPRoundingMode e) {
 	return SPIRV_FP_ROUNDING_MODES[e];
 }
-extern const char *SPIRV_FP_ROUNDING_MODES[];
 
 const char *SPIRV_LINKAGE_TYPES[] = {
 	[SpvLinkageTypeExport] = "Export",
@@ -320,7 +305,6 @@ const char *SPIRV_LINKAGE_TYPES[] = {
 const char *spirv_linkage_type_name(SpvLinkageType e) {
 	return SPIRV_LINKAGE_TYPES[e];
 }
-extern const char *SPIRV_LINKAGE_TYPES[];
 
 const char *SPIRV_ACCESS_QUALIFIERS[] = {
 	[SpvAccessQualifierReadOnly] = "ReadOnly",
@@ -331,7 +315,6 @@ const char *SPIRV_ACCESS_QUALIFIERS[] = {
 const char *spirv_access_qualifier_name(SpvAccessQualifier e) {
 	return SPIRV_ACCESS_QUALIFIERS[e];
 }
-extern const char *SPIRV_ACCESS_QUALIFIERS[];
 
 const char *SPIRV_FUNCTION_PARAMETER_ATTRIBUTE[] = {
 	[SpvFunctionParameterAttributeZext] = "Zext",
@@ -347,7 +330,6 @@ const char *SPIRV_FUNCTION_PARAMETER_ATTRIBUTE[] = {
 const char *spirv_function_parameter_attribute_name(SpvFunctionParameterAttribute e) {
 	return SPIRV_FUNCTION_PARAMETER_ATTRIBUTE[e];
 }
-extern const char *SPIRV_FUNCTION_PARAMETER_ATTRIBUTE[];
 
 const char *SPIRV_DECORATIONS[] = {
 	[SpvDecorationRelaxedPrecision] = "RelaxedPrecision",
@@ -408,7 +390,6 @@ const char *SPIRV_DECORATIONS[] = {
 const char *spirv_decoration_name(SpvDecoration e) {
 	return SPIRV_DECORATIONS[e];
 }
-extern const char *SPIRV_DECORATIONS[];
 
 const char *SPIRV_BUILT_INS[] = {
 	[SpvBuiltInPosition] = "Position",
@@ -480,7 +461,6 @@ const char *SPIRV_BUILT_INS[] = {
 const char *spirv_builtin_name(SpvBuiltIn e) {
 	return SPIRV_BUILT_INS[e];
 }
-extern const char *SPIRV_BUILT_INS[];
 
 const char *SPIRV_SELECTION_CONTROL[] = {
 	[SpvSelectionControlMaskNone] = "None",
@@ -491,7 +471,6 @@ const char *SPIRV_SELECTION_CONTROL[] = {
 const char *spirv_selection_control_name(SpvSelectionControlMask e) {
 	return SPIRV_SELECTION_CONTROL[e];
 }
-extern const char *SPIRV_SELECTION_CONTROL[];
 
 const char *SPIRV_LOOP_CONTROL[] = {
 	[SpvLoopControlMaskNone] = "None",
@@ -504,7 +483,6 @@ const char *SPIRV_LOOP_CONTROL[] = {
 const char *spirv_loop_control_name(SpvLoopControlMask e) {
 	return SPIRV_LOOP_CONTROL[e];
 }
-extern const char *SPIRV_LOOP_CONTROL[];
 
 const char *SPIRV_FUNCTION_CONTROL[] = {
 	[SpvFunctionControlMaskNone] = "None",
@@ -517,7 +495,6 @@ const char *SPIRV_FUNCTION_CONTROL[] = {
 const char *spirv_function_control_name(SpvFunctionControlMask e) {
 	return SPIRV_FUNCTION_CONTROL[e];
 }
-extern const char *SPIRV_FUNCTION_CONTROL[];
 
 const char *SPIRV_MEMORY_SEMANTICS[] = {
 	[SpvMemorySemanticsMaskNone] = "None",
@@ -536,7 +513,6 @@ const char *SPIRV_MEMORY_SEMANTICS[] = {
 const char *spirv_memory_semantics_name(SpvMemorySemanticsMask e) {
 	return SPIRV_MEMORY_SEMANTICS[e];
 }
-extern const char *SPIRV_MEMORY_SEMANTICS[];
 
 const char *SPIRV_MEMORY_ACCESS[] = {
 	[SpvMemoryAccessMaskNone] = "None",
@@ -548,7 +524,6 @@ const char *SPIRV_MEMORY_ACCESS[] = {
 const char *spirv_memory_access_name(SpvMemoryAccessMask e) {
 	return SPIRV_MEMORY_ACCESS[e];
 }
-extern const char *SPIRV_MEMORY_ACCESS[];
 
 const char *SPIRV_SCOPES[] = {
 	[SpvScopeCrossDevice] = "CrossDevice",
@@ -561,7 +536,6 @@ const char *SPIRV_SCOPES[] = {
 const char *spirv_scope_name(SpvScope e) {
 	return SPIRV_SCOPES[e];
 }
-extern const char *SPIRV_SCOPES[];
 
 const char *SPIRV_GROUP_OPERATIONS[] = {
 	[SpvGroupOperationReduce] = "Reduce",
@@ -572,7 +546,6 @@ const char *SPIRV_GROUP_OPERATIONS[] = {
 const char *spirv_group_operation_name(SpvGroupOperation e) {
 	return SPIRV_GROUP_OPERATIONS[e];
 }
-extern const char *SPIRV_GROUP_OPERATIONS[];
 
 const char *SPIRV_KERNEL_ENQUEUE_FLAGS[] = {
 	[SpvKernelEnqueueFlagsNoWait] = "NoWait",
@@ -583,7 +556,6 @@ const char *SPIRV_KERNEL_ENQUEUE_FLAGS[] = {
 const char *spirv_kernel_enqueue_flags_name(SpvKernelEnqueueFlags e) {
 	return SPIRV_KERNEL_ENQUEUE_FLAGS[e];
 }
-extern const char *SPIRV_KERNEL_ENQUEUE_FLAGS[];
 
 const char *SPIRV_KERNEL_PROFILING_INFO[] = {
 	[SpvKernelProfilingInfoMaskNone] = "None",
@@ -593,7 +565,6 @@ const char *SPIRV_KERNEL_PROFILING_INFO[] = {
 const char *spirv_kernel_profiling_info_name(SpvKernelProfilingInfoMask e) {
 	return SPIRV_KERNEL_PROFILING_INFO[e];
 }
-extern const char *SPIRV_KERNEL_PROFILING_INFO[];
 
 const char *SPIRV_CAPABILITIES[] = {
 	[SpvCapabilityMatrix] = "Matrix",
@@ -660,8 +631,8 @@ const char *SPIRV_CAPABILITIES[] = {
 	[SpvCapabilitySubgroupVoteKHR] = "SubgroupVoteKHR",
 	[SpvCapabilityStorageUniformBufferBlock16] = "StorageUniformBufferBlock16",
 	[SpvCapabilityStorageBuffer16BitAccess] = "StorageBuffer16BitAccess",
-	[SpvCapabilityStorageUniform16] = "StorageUniform16",
 	[SpvCapabilityUniformAndStorageBuffer16BitAccess] = "UniformAndStorageBuffer16BitAccess",
+	[SpvCapabilityStorageUniform16] = "StorageUniform16",
 	[SpvCapabilityStoragePushConstant16] = "StoragePushConstant16",
 	[SpvCapabilityStorageInputOutput16] = "StorageInputOutput16",
 	[SpvCapabilityDeviceGroup] = "DeviceGroup",
@@ -689,7 +660,6 @@ const char *SPIRV_CAPABILITIES[] = {
 const char *spirv_capability_name(SpvCapability e) {
 	return SPIRV_CAPABILITIES[e];
 }
-extern const char *SPIRV_CAPABILITIES[];
 
 const char *SPIRV_OPS[] = {
 	[SpvOpNop] = "OpNop",
@@ -1029,7 +999,6 @@ const char *SPIRV_OPS[] = {
 const char *spirv_op_name(SpvOp e) {
 	return SPIRV_OPS[e];
 }
-extern const char *SPIRV_OPS[];
 
 #endif // JS_SPIRV_NAMES_IMPLEMENTATION
 
@@ -1064,6 +1033,38 @@ const char *spirv_kernel_enqueue_flags_name(SpvKernelEnqueueFlags e);
 const char *spirv_kernel_profiling_info_name(SpvKernelProfilingInfoMask e);
 const char *spirv_capability_name(SpvCapability e);
 const char *spirv_op_name(SpvOp e);
+
+extern const char *SPIRV_SOURCE_LANGUAGES[];
+extern const char *SPIRV_EXECUTION_MODELS[];
+extern const char *SPIRV_ADDRESSING_MODELS[];
+extern const char *SPIRV_MEMORY_MODELS[];
+extern const char *SPIRV_EXECUTION_MODES[];
+extern const char *SPIRV_DIMS[];
+extern const char *SPIRV_STORAGE_CLASSES[];
+extern const char *SPIRV_SAMPLER_ADDRESSING_MODES[];
+extern const char *SPIRV_SAMPLER_FILTER_MODES[];
+extern const char *SPIRV_IMAGE_FORMATS[];
+extern const char *SPIRV_IMAGE_CHANNEL_ORDERS[];
+extern const char *SPIRV_IMAGE_CHANNEL_DATATYPES[];
+extern const char *SPIRV_IMAGE_OPERANDS[];
+extern const char *SPIRV_FP_FASTMATH_MODE[];
+extern const char *SPIRV_FP_ROUNDING_MODES[];
+extern const char *SPIRV_LINKAGE_TYPES[];
+extern const char *SPIRV_ACCESS_QUALIFIERS[];
+extern const char *SPIRV_FUNCTION_PARAMETER_ATTRIBUTE[];
+extern const char *SPIRV_DECORATIONS[];
+extern const char *SPIRV_BUILT_INS[];
+extern const char *SPIRV_SELECTION_CONTROL[];
+extern const char *SPIRV_LOOP_CONTROL[];
+extern const char *SPIRV_FUNCTION_CONTROL[];
+extern const char *SPIRV_MEMORY_SEMANTICS[];
+extern const char *SPIRV_MEMORY_ACCESS[];
+extern const char *SPIRV_SCOPES[];
+extern const char *SPIRV_GROUP_OPERATIONS[];
+extern const char *SPIRV_KERNEL_ENQUEUE_FLAGS[];
+extern const char *SPIRV_KERNEL_PROFILING_INFO[];
+extern const char *SPIRV_CAPABILITIES[];
+extern const char *SPIRV_OPS[];
 
 
 #endif // JS_SPIRV_NAMES_H

@@ -32,6 +32,9 @@ def generate_function_declarations():
     print("")
     for p in g_prototypes:
         print(p)
+    print("")
+    for a in g_arrays:
+        print(a)
 
 def generate_enum(enum, c_array, c_function, c_enum, c_prefix, c_postfix = ''):
     print("")
@@ -55,7 +58,7 @@ def generate_enum(enum, c_array, c_function, c_enum, c_prefix, c_postfix = ''):
     print("}")
 
     g_prototypes.append("const char *{0}({1} e);".format(c_function, c_enum))
-    print("extern const char *{0}[];".format(c_array))
+    g_arrays.append("extern const char *{0}[];".format(c_array))
 
 if __name__ == "__main__":
     generate_h_header()
