@@ -30,3 +30,32 @@ set(HEADERS
 
 add_executable(${APP_TARGET} ${SOURCES} ${HEADERS})
 
+#
+# Unit tests
+#
+
+enable_testing()
+
+set (TEST_SOURCES
+	"${CMAKE_CURRENT_SOURCE_DIR}/tests/test_main.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dyn_array.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/dyn_array.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tests/munit/munit.c"
+)
+
+set (TEST_HEADERS
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/dyn_array.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tests/munit/munit.h"
+)
+
+add_executable(test_runner ${TEST_SOURCES} ${TEST_HEADERS})
+target_include_directories(test_runner PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+add_test(NAME unittests COMMAND test_runner)
+
+add_custom_command(
+     TARGET test_runner
+     COMMENT "Run tests"
+     POST_BUILD 
+     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+     COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION> --output-on-failures
+)
