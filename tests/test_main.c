@@ -1,10 +1,17 @@
 #include "munit/munit.h"
 
 extern MunitTest dyn_array_tests[];
+extern MunitTest hash_map_tests[];
 
 static MunitSuite extern_suites[] = {
     { .prefix = "/dyn_array", 
       .tests = dyn_array_tests,
+      .suites = NULL,
+      .iterations = 1,
+      .options = MUNIT_SUITE_OPTION_NONE
+    },
+    { .prefix = "/hash_map", 
+      .tests = hash_map_tests,
       .suites = NULL,
       .iterations = 1,
       .options = MUNIT_SUITE_OPTION_NONE

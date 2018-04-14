@@ -12,6 +12,7 @@ set(APP_TARGET shader_sim)
 
 set(SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/dyn_array.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/hash_map.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/main.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_binary.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_text.c"
@@ -39,12 +40,15 @@ enable_testing()
 set (TEST_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/tests/test_main.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dyn_array.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/tests/test_hash_map.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/dyn_array.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/hash_map.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/tests/munit/munit.c"
 )
 
 set (TEST_HEADERS
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/dyn_array.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/hash_map.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/tests/munit/munit.h"
 )
 
