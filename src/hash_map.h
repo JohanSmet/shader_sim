@@ -5,6 +5,7 @@
 //  - limited operations: only add / lookup
 //  - NULL is used as a sentinel value to indicate an unused value, NULL / 0 key not supported
 //  - hashmap does not copy objects - keep them around long enough or bad things will happen
+//  - iterators can be invalidated by changing the container during iteration
 
 #ifndef JS_HASH_MAP_H
 #define JS_HASH_MAP_H
@@ -54,5 +55,19 @@ void *map_str_ptr_get(HashMap *map, const char *key);
 
 #define map_str_str_put(m, k, v)    map_str_ptr_put((map), (key), (value))
 #define map_str_str_get(m, k)       map_str_ptr_get((map), (key))
+
+// iteration over elements
+int map_begin(HashMap *map);
+int map_end(HashMap *map);
+int map_next(HashMap *map, int cur);
+
+#define map_key(map, idx)      ((map)->keys[(idx)])
+#define map_key_str(map, idx)  ((const char *) (map)->keys[(idx)])
+#define map_key_int(map, idx)  ((int64_t) (map)->keys[(idx)])
+#define map_val(map, idx)      ((map)->vals[(idx)])
+#define map_val_str(map, idx)  ((const char *) (map)->vals[(idx)])
+#define map_val_int(map, idx)  ((int64_t) (map)->vals[(idx)])
+
+
 
 #endif // JS_HASH_MAP

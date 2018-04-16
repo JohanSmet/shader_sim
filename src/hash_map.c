@@ -163,3 +163,27 @@ void *map_str_ptr_get(HashMap *map, const char *key) {
 
     return NULL;
 }
+
+int map_begin(HashMap *map) {
+    int result = 0;
+
+    while (map->keys[result] == NULL && result < map->cap) {
+        ++result;
+    }
+
+    return result;
+}
+
+int map_end(HashMap *map) {
+    return map->cap;
+}
+
+int map_next(HashMap *map, int cur) {
+    int result = cur + 1;
+
+    while (map->keys[result] == NULL && result < map->cap) {
+        ++result;
+    }
+
+    return result;
+}

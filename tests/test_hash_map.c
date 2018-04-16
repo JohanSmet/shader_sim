@@ -3,7 +3,7 @@
 #include "munit/munit.h"
 #include "hash_map.h"
 
-MunitResult test_pointer(const MunitParameter params[], void* user_data_or_fixture) {
+static MunitResult test_pointer(const MunitParameter params[], void* user_data_or_fixture) {
     char *key1 = strdup("key");
     char *val1 = strdup("val");
     char *key2 = strdup("another_key");
@@ -24,7 +24,7 @@ MunitResult test_pointer(const MunitParameter params[], void* user_data_or_fixtu
     return MUNIT_OK;
 }
 
-MunitResult test_integer(const MunitParameter params[], void* user_data_or_fixture) {
+static MunitResult test_integer(const MunitParameter params[], void* user_data_or_fixture) {
     HashMap map = {0};
 
     map_int_int_put(&map, 2, 2);
@@ -46,7 +46,7 @@ MunitResult test_integer(const MunitParameter params[], void* user_data_or_fixtu
     return MUNIT_OK;
 }
 
-MunitResult test_string(const MunitParameter params[], void* user_data_or_fixture) {
+static MunitResult test_string(const MunitParameter params[], void* user_data_or_fixture) {
     HashMap map = {0};
 
     map_str_int_put(&map, "first", 1);
@@ -63,9 +63,43 @@ MunitResult test_string(const MunitParameter params[], void* user_data_or_fixtur
     return MUNIT_OK;
 }
 
+static MunitResult test_iteration(const MunitParameter params[], void* user_data_or_fixture) {
+    HashMap map = {0};
+
+    map_str_int_put(&map, "one", 1);
+    map_str_int_put(&map, "two", 2);
+    map_str_int_put(&map, "three", 3);
+
+    int check[3] = {0};
+
+    for (int idx = map_begin(&map); idx != map_end(&map); idx = map_next(&map, idx)) {
+        const char *key = map_key_str(&map, idx);
+        int val = map_val_int(&map, idx);
+
+        if (strcmp(key, "one") == 0) {
+            ++check[0];
+        } else if (strcmp(key, "two") == 0) {
+            ++check[1];
+        } else if (strcmp(key, "three") == 0) {
+            ++check[2];
+        }
+
+        if (val >= 1 && val <= 3) {
+            ++check[val-1];
+        }
+    }
+
+    munit_assert_int(check[0], ==, 2);
+    munit_assert_int(check[1], ==, 2);
+    munit_assert_int(check[2], ==, 2);
+
+    return MUNIT_OK;
+}
+
 MunitTest hash_map_tests[] = {
     { "/pointer", test_pointer, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/integer", test_integer, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/string", test_string, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
+    { "/iteration", test_iteration, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
