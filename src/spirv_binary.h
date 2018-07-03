@@ -32,6 +32,7 @@ typedef struct SPIRV_binary {
     int8_t *binary_data;    // dynamic array
     size_t word_len;        // number of 32-bit words in the binary
 
+    uint32_t *fst_op;       // pointer to the first opcode
     uint32_t *cur_op;       // pointer to current opcode
     uint32_t *end_op;       // pointer just beyond last opcode
 
@@ -44,6 +45,7 @@ typedef struct SPIRV_binary {
 bool spirv_bin_load(SPIRV_binary *spirv, int8_t *data);
 
 SPIRV_header *spirv_bin_header(SPIRV_binary *spirv);
+SPIRV_opcode *spirv_bin_opcode_rewind(SPIRV_binary *spirv);
 SPIRV_opcode *spirv_bin_opcode_current(SPIRV_binary *spirv);
 SPIRV_opcode *spirv_bin_opcode_next(SPIRV_binary *spirv);
 SPIRV_opcode *spirv_bin_opcode_end(SPIRV_binary *spirv);

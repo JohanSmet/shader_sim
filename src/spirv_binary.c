@@ -51,12 +51,20 @@ bool spirv_bin_load(SPIRV_binary *spirv, int8_t *data) {
         return false;
     }
 
+    spirv->fst_op = spirv->cur_op;
+
     return true;
 }
 
 SPIRV_header *spirv_bin_header(SPIRV_binary *spirv) {
     assert(spirv != NULL);
     return &spirv->header;
+}
+
+SPIRV_opcode *spirv_bin_opcode_rewind(SPIRV_binary *spirv) {
+    assert(spirv != NULL);
+    spirv->cur_op = spirv->fst_op;
+    return (SPIRV_opcode *) spirv->cur_op;
 }
 
 SPIRV_opcode *spirv_bin_opcode_current(SPIRV_binary *spirv) {
