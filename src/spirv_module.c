@@ -39,6 +39,17 @@ static Variable *new_variable(Type *type) {
     return result;
 }
 
+static SPIRV_function *new_function(Type *type, uint32_t id) {
+    SPIRV_function *result = malloc(sizeof(SPIRV_function));
+
+    result->func.id = id;
+    result->func.type = type;
+    result->func.name = NULL;
+    result->fst_opcode = NULL;
+    result->lst_opcode = NULL;
+    return result;
+}
+
 static Type *type_by_id(SPIRV_module *module, uint32_t id) {
     return map_int_ptr_get(&module->types, id);
 }
@@ -53,6 +64,10 @@ static Constant *constant_by_id(SPIRV_module *module, uint32_t id) {
 
 static Variable *variable_by_id(SPIRV_module *module, uint32_t id) {
     return map_int_ptr_get(&module->variables, id);
+}
+
+static SPIRV_function *function_by_id(SPIRV_module *module, uint32_t id) {
+    return map_int_ptr_get(&module->functions, id);
 }
 
 static void define_name(SPIRV_module *module, uint32_t id, const char *name, int member_index) {
@@ -177,6 +192,64 @@ static void handle_opcode_variable(SPIRV_module *module, SPIRV_opcode *op) {
     map_int_ptr_put(&module->variables, var_id, var);
 }
 
+static void handle_opcode_function(SPIRV_module *module, SPIRV_opcode *op) {
+    assert(module);
+    assert(op);
+    assert(op->op.kind == SpvOpFunction);
+    assert(op->op.length == 5);
+
+    uint32_t result_type = op->optional[0];
+    uint32_t func_id = op->optional[1];
+    uint32_t func_control = op->optional[2];
+    uint32_t func_type = op->optional[3];
+
+    SPIRV_function *func = new_function(type_by_id(module, func_type), func_id);
+
+    // optional name that was defined earlier
+    IdName *name = name_by_id(module, func_id);
+    if (name) {
+        func->func.name = name->name;
+    }
+
+    // scan ahead to the first real instruction of the function
+    func->fst_opcode = spirv_bin_opcode_next(module->spirv_bin);
+
+    while (func->fst_opcode != NULL &&
+           (func->fst_opcode->op.kind == SpvOpLabel ||
+            func->fst_opcode->op.kind == SpvOpFunctionParameter)) {
+        func->fst_opcode = spirv_bin_opcode_next(module->spirv_bin);
+    }
+
+    // scan ahead to the last real instruction of the function
+    func->lst_opcode = func->fst_opcode;
+    SPIRV_opcode *next = spirv_bin_opcode_next(module->spirv_bin);
+
+    while (next && next->op.kind != SpvOpFunctionEnd) {
+        func->lst_opcode = next;
+        next = spirv_bin_opcode_next(module->spirv_bin);
+    }
+
+    spirv_bin_opcode_jump_to(module->spirv_bin, op);
+
+    map_int_ptr_put(&module->functions, func_id, func);
+}
+
+static void handle_opcode_entrypoint(SPIRV_module *module, SPIRV_opcode *op) {
+    assert(module);
+    assert(op);
+    assert(op->op.kind == SpvOpEntryPoint);
+    assert(op->op.length >= 4);
+
+    uint32_t execution_model = op->optional[0];
+    uint32_t func_id = op->optional[1];
+
+    EntryPoint ep = (EntryPoint) {
+        func_id: func_id,
+        kind: execution_model
+    };
+    arr_push(module->entry_points, ep);
+}
+
 void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary) {
     assert(module);
     assert(binary);
@@ -200,7 +273,15 @@ void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary) {
             handle_opcode_constant(module, op);
         } else if (op->op.kind == SpvOpVariable) {
             handle_opcode_variable(module, op);
+        } else if (op->op.kind == SpvOpFunction) {
+            handle_opcode_function(module, op);
+        } else if (op->op.kind == SpvOpEntryPoint) {
+            handle_opcode_entrypoint(module, op);
         }
+    }
+
+    for (EntryPoint *ep = module->entry_points; ep != arr_end(module->entry_points); ++ep) {
+        ep->function = function_by_id(module, ep->func_id);
     }
 }
 
@@ -208,9 +289,11 @@ void spirv_module_dump_info(SPIRV_module *module) {
     assert(module);
     assert(module->spirv_bin);
 
-    printf(" ********************************************* \n");
+    printf("********************************************* \n");
     printf("names: %ld\n", map_len(&module->names));
     printf("types: %ld\n", map_len(&module->types));
     printf("constants: %ld\n", map_len(&module->constants));
     printf("variables: %ld\n", map_len(&module->variables));
+    printf("functions: %ld\n", map_len(&module->functions));
+    printf("entry-points: %ld\n", arr_len(module->entry_points));
 }

@@ -46,6 +46,7 @@ bool spirv_bin_load(SPIRV_binary *spirv, int8_t *data);
 
 SPIRV_header *spirv_bin_header(SPIRV_binary *spirv);
 SPIRV_opcode *spirv_bin_opcode_rewind(SPIRV_binary *spirv);
+SPIRV_opcode *spirv_bin_opcode_jump_to(SPIRV_binary *spirv, SPIRV_opcode *op);
 SPIRV_opcode *spirv_bin_opcode_current(SPIRV_binary *spirv);
 SPIRV_opcode *spirv_bin_opcode_next(SPIRV_binary *spirv);
 SPIRV_opcode *spirv_bin_opcode_end(SPIRV_binary *spirv);

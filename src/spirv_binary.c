@@ -67,6 +67,14 @@ SPIRV_opcode *spirv_bin_opcode_rewind(SPIRV_binary *spirv) {
     return (SPIRV_opcode *) spirv->cur_op;
 }
 
+SPIRV_opcode *spirv_bin_opcode_jump_to(SPIRV_binary *spirv, SPIRV_opcode *op) {
+    assert(spirv != NULL);
+    assert((uint32_t *) op >= spirv->fst_op && (uint32_t *) op <= spirv->end_op);
+
+    spirv->cur_op = (uint32_t *) op;
+    return (SPIRV_opcode *) spirv->cur_op;
+}
+
 SPIRV_opcode *spirv_bin_opcode_current(SPIRV_binary *spirv) {
     assert(spirv != NULL);
     return (SPIRV_opcode *) spirv->cur_op;

@@ -72,6 +72,7 @@ typedef struct Variable {
 } Variable;
 
 typedef struct Function {
+    uint32_t id;
     Type *type;
     const char *name;
 } Function;
@@ -83,16 +84,18 @@ typedef enum ProgramKind {
     ComputeProgram
 } ProgramKind;
 
-typedef struct EntryPoint {
-    Function *function;
-    ProgramKind kind;
-} EntryPoint;
-
 typedef struct SPIRV_function {
     Function func;
     SPIRV_opcode *fst_opcode;
     SPIRV_opcode *lst_opcode;
 } SPIRV_function;
+
+typedef struct EntryPoint {
+    uint32_t func_id;
+    SPIRV_function *function;
+    ProgramKind kind;
+} EntryPoint;
+
 
 typedef struct SPIRV_module {
     SPIRV_binary *spirv_bin;
