@@ -16,6 +16,7 @@ set(SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/main.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_binary.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_text.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_module.c"
 )
 
 set(HEADERS
@@ -23,6 +24,7 @@ set(HEADERS
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/hash_map.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_binary.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_text.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_module.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/types.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv/GLSL.std.450.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv/spirv.h"

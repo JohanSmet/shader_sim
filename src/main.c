@@ -6,6 +6,7 @@
 #include "dyn_array.h"
 #include "spirv_binary.h"
 #include "spirv_text.h"
+#include "spirv_module.h"
 
 void fatal_error(const char *fmt, ...) {
     va_list args;
@@ -89,6 +90,12 @@ int main(int argc, char *argv[]) {
 
     // only supported action is disassemble for now
     disassemble_spirv_shader(shader_bin);
+
+    SPIRV_module shader_module;
+    SPIRV_binary shader_binary;
+    spirv_bin_load(&shader_binary, shader_bin);
+    spirv_module_load(&shader_module, &shader_binary);
+    spirv_module_dump_info(&shader_module);
 
     arr_free(shader_bin);
 
