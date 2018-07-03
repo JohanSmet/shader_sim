@@ -32,8 +32,8 @@ typedef struct SPIRV_binary {
     int8_t *binary_data;    // dynamic array
     size_t word_len;        // number of 32-bit words in the binary
 
-    uint32_t *cur_ops;      // pointer to current opcode
-    uint32_t *end_ops;      // pointer just beyond last opcode
+    uint32_t *cur_op;       // pointer to current opcode
+    uint32_t *end_op;       // pointer just beyond last opcode
 
     const char *error_msg;  // NULL if no error, static string otherwise
 

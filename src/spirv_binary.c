@@ -40,11 +40,11 @@ bool spirv_bin_load(SPIRV_binary *spirv, int8_t *data) {
 
     // SPIR-V opcodes are 32bit words
     spirv->word_len = arr_len(data) / 4;
-    spirv->cur_ops = (uint32_t *) data;
-    spirv->end_ops = spirv->cur_ops + spirv->word_len;
+    spirv->cur_op = (uint32_t *) data;
+    spirv->end_op = spirv->cur_op + spirv->word_len;
 
     // read header
-    spirv->cur_ops += spirv_parse_header(spirv->cur_ops, &spirv->header);
+    spirv->cur_op += spirv_parse_header(spirv->cur_op, &spirv->header);
 
     if (spirv->header.magic != SpvMagicNumber) {
         spirv->error_msg = "This is not a SPIR-V binary";
@@ -61,18 +61,18 @@ SPIRV_header *spirv_bin_header(SPIRV_binary *spirv) {
 
 SPIRV_opcode *spirv_bin_opcode_current(SPIRV_binary *spirv) {
     assert(spirv != NULL);
-    return (SPIRV_opcode *) spirv->cur_ops;
+    return (SPIRV_opcode *) spirv->cur_op;
 }
 
 SPIRV_opcode *spirv_bin_opcode_next(SPIRV_binary *spirv) {
     assert(spirv != NULL);
-    spirv->cur_ops += ((SPIRV_opcode *) spirv->cur_ops)->op.length;
-    return (SPIRV_opcode *) spirv->cur_ops;
+    spirv->cur_op += ((SPIRV_opcode *) spirv->cur_op)->op.length;
+    return (SPIRV_opcode *) spirv->cur_op;
 }
 
 SPIRV_opcode *spirv_bin_opcode_end(SPIRV_binary *spirv) {
     assert(spirv != NULL);
-    return (SPIRV_opcode *) spirv->end_ops;
+    return (SPIRV_opcode *) spirv->end_op;
 }
 
 const char *spriv_bin_error_msg(SPIRV_binary *spirv) {
