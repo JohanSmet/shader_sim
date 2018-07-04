@@ -95,7 +95,6 @@ int main(int argc, char *argv[]) {
     SPIRV_binary shader_binary;
     spirv_bin_load(&shader_binary, shader_bin);
     spirv_module_load(&shader_module, &shader_binary);
-    spirv_module_dump_info(&shader_module);
 
     arr_free(shader_bin);
 

@@ -9,8 +9,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include <stdio.h>
-
+/* allocation / initialization functions */
 static IdName *new_id_name(const char *name, int member_index) {
     IdName *result = malloc(sizeof(IdName));
     result->name = name;
@@ -50,6 +49,7 @@ static SPIRV_function *new_function(Type *type, uint32_t id) {
     return result;
 }
 
+/* lookup functions */
 static Type *type_by_id(SPIRV_module *module, uint32_t id) {
     return map_int_ptr_get(&module->types, id);
 }
@@ -283,17 +283,4 @@ void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary) {
     for (EntryPoint *ep = module->entry_points; ep != arr_end(module->entry_points); ++ep) {
         ep->function = function_by_id(module, ep->func_id);
     }
-}
-
-void spirv_module_dump_info(SPIRV_module *module) {
-    assert(module);
-    assert(module->spirv_bin);
-
-    printf("********************************************* \n");
-    printf("names: %ld\n", map_len(&module->names));
-    printf("types: %ld\n", map_len(&module->types));
-    printf("constants: %ld\n", map_len(&module->constants));
-    printf("variables: %ld\n", map_len(&module->variables));
-    printf("functions: %ld\n", map_len(&module->functions));
-    printf("entry-points: %ld\n", arr_len(module->entry_points));
 }
