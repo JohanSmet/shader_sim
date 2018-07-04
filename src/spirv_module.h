@@ -4,6 +4,7 @@
 #define JS_SHADER_SIM_SPIRV_MODULE_H
 
 #include "hash_map.h"
+#include "types.h"
 
 // required  forward declarations
 typedef struct SPIRV_binary SPIRV_binary;
@@ -31,7 +32,11 @@ typedef enum TypeKind {
 typedef struct Type {
     TypeKind kind;
     union {
-        int count;      // number of elements (vector), number of columns (matrix)
+        int count;          // number of elements (vector), number of columns (matrix)
+        struct {
+            int32_t size;   // in bytes
+            bool is_signed;
+        };
         struct {
             // XXX: storage class
             struct Type *base_type;
@@ -59,6 +64,27 @@ typedef enum VariableInitializerKind {
     InitializerVariable
 } VariableInitializerKind;
 
+typedef enum VariableKind {
+    VarKindUniformConstant = 0,
+    VarKindInput,
+    VarKindUniform,
+    VarKindOutput,
+    VarKindWorkgroup,
+    VarKindCrossWorkgroup,
+    VarKindPrivate,
+    VarKindFunction,
+    VarKindGeneric,
+    VarKindPushConstant,
+    VarKindAtomicCounter,
+    VarKindImage,
+    VarKindStorageBuffer,
+} VariableKind;
+
+typedef enum VariableInterface {
+    VarInterfaceBuiltIn = 0,
+    VarInterfaceLocation = 1,
+} VariableInterface;
+
 typedef struct Variable {
     Type *type;
     const char *name;
@@ -67,8 +93,15 @@ typedef struct Variable {
         Constant *initializer_constant;
         struct Variable *initializer_variable;
     };
-    // XXX: storage class
-    // XXX: decorations
+    VariableKind kind;      // spirv: storage class
+
+    union {
+        struct {
+            uint32_t index;
+            uint32_t type;
+        };
+        uint64_t key;
+    } interface;
 } Variable;
 
 typedef struct Function {
@@ -96,15 +129,16 @@ typedef struct EntryPoint {
     ProgramKind kind;
 } EntryPoint;
 
-
 typedef struct SPIRV_module {
     SPIRV_binary *spirv_bin;
 
-    HashMap names;      // id (int) -> IdName *
-    HashMap types;      // id (int) -> Type *
-    HashMap constants;  // id (int) -> Constant *
-    HashMap variables;  // id (int) -> Variable *
-    HashMap functions;  // id (int) -> SPIRV_function *
+    HashMap names;          // id (int) -> IdName *
+    HashMap decorations;    // id (int) -> SPIRV_opcode ** (dyn_array)
+    HashMap types;          // id (int) -> Type *
+    HashMap constants;      // id (int) -> Constant *
+    HashMap variables;      // id (int) -> Variable *
+    HashMap variables_kind; // kind (StorageClass) -> Variable ** (dyn_array)
+    HashMap functions;      // id (int) -> SPIRV_function *
 
     EntryPoint *entry_points;       // dyn_array
 } SPIRV_module;

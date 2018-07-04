@@ -19,7 +19,9 @@ static IdName *new_id_name(const char *name, int member_index) {
 
 static Type *new_type(TypeKind kind) {
     Type *result = malloc(sizeof(Type));
-    result->kind = kind;
+    *result = (Type) {
+        kind : kind
+    };
     return result;
 }
 
@@ -31,10 +33,10 @@ static Constant *new_constant(Type *type) {
 
 static Variable *new_variable(Type *type) {
     Variable *result = malloc(sizeof(Variable));
-    result->type = type;
-    result->name = NULL;
-    result->initializer_kind = InitializerNone;
-    result->initializer_variable = NULL;
+    *result = (Variable) {
+        type: type,
+        initializer_kind: InitializerNone
+    };
     return result;
 }
 
@@ -70,6 +72,13 @@ static SPIRV_function *function_by_id(SPIRV_module *module, uint32_t id) {
     return map_int_ptr_get(&module->functions, id);
 }
 
+static SPIRV_opcode **decoration_ops_by_id(SPIRV_module *module, uint32_t target, uint32_t member) {
+    uint64_t key = (uint64_t) target << 32 | member;
+    return map_int_ptr_get(&module->decorations, key);
+}
+
+
+
 static void define_name(SPIRV_module *module, uint32_t id, const char *name, int member_index) {
     map_int_ptr_put(&module->names, id, new_id_name(name, member_index));
 }
@@ -90,9 +99,12 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
             break;
         case SpvOpTypeInt:
             type = new_type(TypeInteger);
+            type->size = op->optional[1] / 8;
+            type->is_signed = op->optional[2] == 1;
             break;
         case SpvOpTypeFloat:
             type = new_type(TypeFloat);
+            type->size = op->optional[1] / 8;
             break;
         case SpvOpTypeVector: {
             Type *base_type = type_by_id(module, op->optional[1]);
@@ -159,20 +171,21 @@ static void handle_opcode_constant(SPIRV_module *module, SPIRV_opcode *op) {
     if (constant) {
         map_int_ptr_put(&module->constants, op->optional[1], constant);
     }
-
 }
 
 static void handle_opcode_variable(SPIRV_module *module, SPIRV_opcode *op) {
+    uint32_t var_type = op->optional[0];
     uint32_t var_id = op->optional[1];
-    Variable *var = new_variable(type_by_id(module, op->optional[0]));
+    uint32_t storage_class = op->optional[2];
+
+    Variable *var = new_variable(type_by_id(module, var_type));
+    var->kind = storage_class;
 
     // optional name that was defined earlier
     IdName *name = name_by_id(module, var_id);
     if (name) {
         var->name = name->name;
     }
-
-    // FIXME: handle storage class
 
     // initializer - can be a constant or a (global) variable
     if (op->op.length == 5) {
@@ -189,7 +202,29 @@ static void handle_opcode_variable(SPIRV_module *module, SPIRV_opcode *op) {
         }
     }
 
+    // decoration
+    SPIRV_opcode **decorations = decoration_ops_by_id(module, var_id, 0);
+
+    for (SPIRV_opcode **op = decorations; op != arr_end(decorations); ++op) {
+        uint32_t dec_offset = ((*op)->op.kind == SpvOpDecorate) ? 1 : 2;
+        uint32_t decoration = (*op)->optional[dec_offset];
+
+        if (decoration == SpvDecorationBuiltIn) {
+            var->interface.type = VarInterfaceBuiltIn;
+            var->interface.index = (*op)->optional[dec_offset+1];
+        } else if (decoration == SpvDecorationLocation) {
+            var->interface.type = VarInterfaceLocation;
+            var->interface.index = (*op)->optional[dec_offset+1];
+        }
+    }
+
+    // save to global id map
     map_int_ptr_put(&module->variables, var_id, var);
+
+    // save to kind (input, output, etc) specific array
+    Variable **kind_vars = map_int_ptr_get(&module->variables_kind, storage_class);
+    arr_push(kind_vars, var);
+    map_int_ptr_put(&module->variables_kind, storage_class, kind_vars);
 }
 
 static void handle_opcode_function(SPIRV_module *module, SPIRV_opcode *op) {
@@ -250,6 +285,21 @@ static void handle_opcode_entrypoint(SPIRV_module *module, SPIRV_opcode *op) {
     arr_push(module->entry_points, ep);
 }
 
+static inline bool is_opcode_decoration(SPIRV_opcode *op) {
+    return op->op.kind == SpvOpDecorate ||
+           op->op.kind == SpvOpMemberDecorate;
+}
+
+static void handle_opcode_decoration(SPIRV_module *module, SPIRV_opcode *op) {
+    uint32_t target = op->optional[0];
+    uint32_t member = (op->op.kind == SpvOpMemberDecorate) ? op->optional[1] : 0;
+    uint64_t key = ((uint64_t) target << 32) | member;
+
+    SPIRV_opcode **id_decs = map_int_ptr_get(&module->decorations, key);
+    arr_push(id_decs, op);
+    map_int_ptr_put(&module->decorations, key, id_decs);
+}
+
 void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary) {
     assert(module);
     assert(binary);
@@ -277,6 +327,8 @@ void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary) {
             handle_opcode_function(module, op);
         } else if (op->op.kind == SpvOpEntryPoint) {
             handle_opcode_entrypoint(module, op);
+        } else if (is_opcode_decoration(op)) {
+            handle_opcode_decoration(module, op);
         }
     }
 
