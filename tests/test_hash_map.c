@@ -96,10 +96,20 @@ static MunitResult test_iteration(const MunitParameter params[], void* user_data
     return MUNIT_OK;
 }
 
+static MunitResult test_empty(const MunitParameter params[], void* user_data_or_fixture) {
+    HashMap map = {0};
+
+    munit_assert_int(map_len(&map), ==, 0);
+    munit_assert_int(map_str_int_get(&map, "one"), ==, 0);
+
+    return MUNIT_OK;
+}
+
 MunitTest hash_map_tests[] = {
     { "/pointer", test_pointer, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/integer", test_integer, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/string", test_string, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/iteration", test_iteration, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
+    { "/empty", test_empty, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };

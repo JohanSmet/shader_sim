@@ -116,7 +116,12 @@ void map_ptr_ptr_put(HashMap *map, void *key, void *value) {
 }
 
 void *map_ptr_ptr_get(HashMap *map, void *key) {
+    assert(map);
     assert(key);
+
+    if (map->cap == 0) {
+        return NULL;
+    }
 
     uint64_t idx = hash_ptr(key) % map->cap;
 
@@ -146,7 +151,12 @@ void map_str_ptr_put(HashMap *map, const char *key, void *value) {
 }
 
 void *map_str_ptr_get(HashMap *map, const char *key) {
+    assert(map);
     assert(key);
+
+    if (map->cap == 0) {
+        return NULL;
+    }
 
     uint64_t idx = hash_str(key) % map->cap;
 
