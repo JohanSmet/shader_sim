@@ -219,11 +219,11 @@ static void handle_opcode_variable(SPIRV_module *module, SPIRV_opcode *op) {
         uint32_t decoration = (*op)->optional[dec_offset];
 
         if (decoration == SpvDecorationBuiltIn) {
-            var->interface.type = VarInterfaceBuiltIn;
-            var->interface.index = (*op)->optional[dec_offset+1];
+            var->if_type = VarInterfaceBuiltIn;
+            var->if_index = (*op)->optional[dec_offset+1];
         } else if (decoration == SpvDecorationLocation) {
-            var->interface.type = VarInterfaceLocation;
-            var->interface.index = (*op)->optional[dec_offset+1];
+            var->if_type = VarInterfaceLocation;
+            var->if_index = (*op)->optional[dec_offset+1];
         }
     }
 

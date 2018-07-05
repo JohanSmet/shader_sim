@@ -95,13 +95,8 @@ typedef struct Variable {
     };
     VariableKind kind;      // spirv: storage class
 
-    union {
-        struct {
-            uint32_t index;
-            uint32_t type;
-        };
-        uint64_t key;
-    } interface;
+    VariableInterface if_type;
+    uint32_t if_index;
 } Variable;
 
 typedef struct Function {
