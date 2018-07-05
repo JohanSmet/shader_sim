@@ -93,17 +93,22 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
     switch (op->op.kind) {                                  // FIXME: support all types
         case SpvOpTypeVoid:
             type = new_type(TypeVoid);
+            type->count = 1;
             break;
         case SpvOpTypeBool:
             type = new_type(TypeBool);
+            type->count = 1;
+            type->size = sizeof(bool);
             break;
         case SpvOpTypeInt:
             type = new_type(TypeInteger);
+            type->count = 1;
             type->size = op->optional[1] / 8;
             type->is_signed = op->optional[2] == 1;
             break;
         case SpvOpTypeFloat:
             type = new_type(TypeFloat);
+            type->count = 1;
             type->size = op->optional[1] / 8;
             break;
         case SpvOpTypeVector: {
@@ -111,9 +116,11 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
             if (base_type->kind == TypeInteger) {
                 type = new_type(TypeVectorInteger);
                 type->count = op->optional[2];
+                type->size = base_type->size;
             } else if (base_type->kind == TypeFloat) {
                 type = new_type(TypeVectorFloat);
                 type->count = op->optional[2];
+                type->size = base_type->size;
             }
             break;
         }
@@ -122,9 +129,11 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
             if (base_type->kind == TypeVectorInteger) {
                 type = new_type(TypeMatrixInteger);
                 type->count = op->optional[2];
+                type->size = base_type->size;
             } else if (base_type->kind == TypeVectorFloat) {
                 type = new_type(TypeMatrixFloat);
                 type->count = op->optional[2];
+                type->size = base_type->size;
             }
             break;
         }

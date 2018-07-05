@@ -31,8 +31,8 @@ typedef enum TypeKind {
 
 typedef struct Type {
     TypeKind kind;
+    int count;          // number of elements (vector), number of columns (matrix)
     union {
-        int count;          // number of elements (vector), number of columns (matrix)
         struct {
             int32_t size;   // in bytes
             bool is_signed;
