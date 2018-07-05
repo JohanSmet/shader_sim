@@ -7,6 +7,9 @@
 #include "spirv_binary.h"
 #include "spirv_text.h"
 #include "spirv_module.h"
+#include "spirv_simulator.h"
+
+#include "spirv/spirv.h"
 
 void fatal_error(const char *fmt, ...) {
     va_list args;
@@ -93,8 +96,46 @@ int main(int argc, char *argv[]) {
 
     SPIRV_module shader_module;
     SPIRV_binary shader_binary;
+    SPIRV_simulator sim;
+
     spirv_bin_load(&shader_binary, shader_bin);
     spirv_module_load(&shader_module, &shader_binary);
+    spirv_sim_init(&sim, &shader_module);
+
+    float input_position[] = {1.0f, 0.0f, 0.0f, 0.0f};
+    float input_color[] = {0.5f, 0.6f, 0.7f, 1.0f};
+    float output_position[] = {0.0f, 0.0f, 0.0f, 0.0f};
+    float output_color[] = {0.0f, 0.0f, 0.0f, 0.0f};
+
+    spirv_sim_variable_associate_data(
+        &sim, 
+        VarKindInput,
+        VarInterfaceLocation, 0, 
+        (uint8_t *) input_position, sizeof(input_position));
+    spirv_sim_variable_associate_data(
+        &sim, 
+        VarKindInput,
+        VarInterfaceLocation, 1, 
+        (uint8_t *) input_color, sizeof(input_color));
+    spirv_sim_variable_associate_data(
+        &sim, 
+        VarKindOutput,
+        VarInterfaceBuiltIn, SpvBuiltInPosition,  
+        (uint8_t *) output_position, sizeof(output_position));
+    spirv_sim_variable_associate_data(
+        &sim, 
+        VarKindOutput,
+        VarInterfaceLocation, 0, 
+        (uint8_t *) output_color, sizeof(output_color));
+
+
+    while (!sim.finished && !sim.error_msg) {
+        spirv_sim_step(&sim);
+    }
+
+    if (sim.error_msg) {
+        printf("%s\n", sim.error_msg);
+    }
 
     arr_free(shader_bin);
 
