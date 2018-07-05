@@ -52,7 +52,7 @@ static SPIRV_function *new_function(Type *type, uint32_t id) {
 }
 
 /* lookup functions */
-static Type *type_by_id(SPIRV_module *module, uint32_t id) {
+Type *spirv_module_type_by_id(SPIRV_module *module, uint32_t id) {
     return map_int_ptr_get(&module->types, id);
 }
 
@@ -107,7 +107,7 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
             type->size = op->optional[1] / 8;
             break;
         case SpvOpTypeVector: {
-            Type *base_type = type_by_id(module, op->optional[1]);
+            Type *base_type = spirv_module_type_by_id(module, op->optional[1]);
             if (base_type->kind == TypeInteger) {
                 type = new_type(TypeVectorInteger);
                 type->count = op->optional[2];
@@ -118,7 +118,7 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
             break;
         }
         case SpvOpTypeMatrix: {
-            Type *base_type = type_by_id(module, op->optional[1]);
+            Type *base_type = spirv_module_type_by_id(module, op->optional[1]);
             if (base_type->kind == TypeVectorInteger) {
                 type = new_type(TypeMatrixInteger);
                 type->count = op->optional[2];
@@ -130,14 +130,14 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
         }
         case SpvOpTypePointer: 
             type = new_type(TypePointer);
-            type->pointer.base_type = type_by_id(module, op->optional[2]);
+            type->pointer.base_type = spirv_module_type_by_id(module, op->optional[2]);
             break;
 
         case SpvOpTypeFunction:
             type = new_type(TypeFunction);
-            type->function.return_type = type_by_id(module, op->optional[1]);
+            type->function.return_type = spirv_module_type_by_id(module, op->optional[1]);
             for (int idx = 2; idx < op->op.length - 2; ++idx) {
-                arr_push(type->function.parameter_types, type_by_id(module, op->optional[idx]));
+                arr_push(type->function.parameter_types, spirv_module_type_by_id(module, op->optional[idx]));
             }
     }
 
@@ -155,15 +155,15 @@ static void handle_opcode_constant(SPIRV_module *module, SPIRV_opcode *op) {
 
     switch (op->op.kind) {                                  // FIXME: support all types
         case SpvOpConstantTrue:
-            constant = new_constant(type_by_id(module, op->optional[0]));
+            constant = new_constant(spirv_module_type_by_id(module, op->optional[0]));
             constant->value.as_int = true;
             break;
         case SpvOpConstantFalse:
-            constant = new_constant(type_by_id(module, op->optional[0]));
+            constant = new_constant(spirv_module_type_by_id(module, op->optional[0]));
             constant->value.as_int = true;
             break;
         case SpvOpConstant:
-            constant = new_constant(type_by_id(module, op->optional[0]));
+            constant = new_constant(spirv_module_type_by_id(module, op->optional[0]));
             constant->value.as_int = op->optional[2];       // FIXME: wider types
             break;
     }
@@ -178,7 +178,7 @@ static void handle_opcode_variable(SPIRV_module *module, SPIRV_opcode *op) {
     uint32_t var_id = op->optional[1];
     uint32_t storage_class = op->optional[2];
 
-    Variable *var = new_variable(type_by_id(module, var_type));
+    Variable *var = new_variable(spirv_module_type_by_id(module, var_type));
     var->kind = storage_class;
 
     // optional name that was defined earlier
@@ -238,7 +238,7 @@ static void handle_opcode_function(SPIRV_module *module, SPIRV_opcode *op) {
     uint32_t func_control = op->optional[2];
     uint32_t func_type = op->optional[3];
 
-    SPIRV_function *func = new_function(type_by_id(module, func_type), func_id);
+    SPIRV_function *func = new_function(spirv_module_type_by_id(module, func_type), func_id);
 
     // optional name that was defined earlier
     IdName *name = name_by_id(module, func_id);

@@ -146,5 +146,6 @@ typedef struct SPIRV_module {
 // interface functions
 void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary);
 
+Type *spirv_module_type_by_id(SPIRV_module *module, uint32_t id);
 
 #endif // JS_SHADER_SIM_SPIRV_MODULE_H
