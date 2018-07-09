@@ -23,6 +23,7 @@ set(SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_module.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_simulator.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/utils.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/libs/cJSON/cJSON.c"
 )
 
 set(HEADERS
@@ -37,9 +38,11 @@ set(HEADERS
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv/spirv.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv/spirv_names.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/utils.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/libs/cJSON/cJSON.h"
 )
 
 add_executable(${APP_TARGET} ${SOURCES} ${HEADERS})
+target_include_directories(${APP_TARGET} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs")
 target_compile_definitions(${APP_TARGET} PRIVATE ${PLATFORM_DEF})
 
 #
