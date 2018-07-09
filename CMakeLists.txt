@@ -22,6 +22,8 @@ set(SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_text.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_module.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_simulator.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/runner.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/runner_lut.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/utils.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/libs/cJSON/cJSON.c"
 )
@@ -37,6 +39,8 @@ set(HEADERS
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv/GLSL.std.450.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv/spirv.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv/spirv_names.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/runner.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/runner_lut.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/utils.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/libs/cJSON/cJSON.h"
 )

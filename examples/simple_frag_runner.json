@@ -1,0 +1,41 @@
+{
+    "language": "spirv",
+    "file": "frag.spv",
+    "commands": [ 
+        {
+            "command": "associate_input",
+            "if_type": "builtin",
+            "if_index": "FragCoord",
+            "data_type": "VectorFloat",
+            "elements": 4,
+            "value" : [1.0, 2.0, 3.0, 0.0]
+        },
+        {
+            "command": "associate_input",
+            "if_type": "location",
+            "if_index": 0,
+            "data_type": "VectorFloat",
+            "elements": 4,
+            "value" : [0.1, 0.2, 0.3, 1.0]
+        },
+        {
+            "command": "associate_output",
+            "if_type": "location",
+            "if_index": 0,
+            "data_type": "VectorFloat",
+            "elements": 4
+        },
+        {
+            "command": "run"
+        },
+        {
+            "command": "cmp_output",
+            "operator": "==",
+            "if_type": "location",
+            "if_index": 0,
+            "data_type": "VectorFloat",
+            "elements": 4,
+            "value" : [0.1, 0.2, 0.3, 1.0]
+        }
+    ]
+}

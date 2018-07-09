@@ -56,13 +56,19 @@ static inline Variable *spriv_sim_retrieve_var_desc(SPIRV_simulator *sim, uint32
     return result;
 }
 
+VariableData *spirv_sim_retrieve_var(SPIRV_simulator *sim, VariableKind kind, VariableInterface if_type, int32_t if_index) {
+    assert(sim);
+
+    uint64_t key = (uint64_t) kind << 48 | (uint64_t) if_type << 32 | if_index;
+    VariableData *result = map_int_ptr_get(&sim->variable_data, key);
+    return result;
+}
+
 static inline VariableData *spirv_sim_var_data(SPIRV_simulator *sim, Variable *var) {
     assert(sim);
     assert(var);
 
-    uint64_t key = (uint64_t) var->kind << 48 | (uint64_t) var->if_type << 32 | var->if_index;
-    VariableData *result = map_int_ptr_get(&sim->variable_data, key);
-    return result;
+    return spirv_sim_retrieve_var(sim, var->kind, var->if_type, var->if_index);
 }
 
 static inline uint32_t spirv_sim_assign_register(SPIRV_simulator *sim) {

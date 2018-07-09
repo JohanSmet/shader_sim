@@ -1,0 +1,57 @@
+{
+    "language": "spirv",
+    "file": "vert.spv",
+    "commands": [ 
+        {
+            "command": "associate_input",
+            "if_type": "location",
+            "if_index": 0,
+            "data_type": "VectorFloat",
+            "elements": 4,
+            "value" : [1.0, 0.0, 0.0, 0.0]
+        },
+        {
+            "command": "associate_input",
+            "if_type": "location",
+            "if_index": 1,
+            "data_type": "VectorFloat",
+            "elements": 4,
+            "value" : [0.5, 0.6, 0.7, 1.0]
+        },
+        {
+            "command": "associate_output",
+            "if_type": "builtin",
+            "if_index": "Position",
+            "data_type": "VectorFloat",
+            "elements": 4
+        },
+        {
+            "command": "associate_output",
+            "if_type": "location",
+            "if_index": 0,
+            "data_type": "VectorFloat",
+            "elements": 4
+        },
+        {
+            "command": "run"
+        },
+        {
+            "command": "cmp_output",
+            "operator": "==",
+            "if_type": "builtin",
+            "if_index": "Position",
+            "data_type": "VectorFloat",
+            "elements": 4,
+            "value" : [1.0, 0.0, 0.0, 0.0]
+        },
+        {
+            "command": "cmp_output",
+            "operator": "==",
+            "if_type": "location",
+            "if_index": 0,
+            "data_type": "VectorFloat",
+            "elements": 4,
+            "value" : [0.5, 0.6, 0.7, 1.0]
+        }
+    ]
+}

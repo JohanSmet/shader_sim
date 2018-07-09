@@ -52,5 +52,7 @@ void spirv_sim_variable_associate_data(
 void spirv_sim_select_entry_point(SPIRV_simulator *sim, uint32_t index);
 void spirv_sim_step(SPIRV_simulator *sim);
 
+VariableData *spirv_sim_retrieve_var(SPIRV_simulator *sim, VariableKind kind, VariableInterface if_type, int32_t if_index);
+
 
 #endif // JS_SHADER_SIM_SPIRV_SIMULATOR_H
