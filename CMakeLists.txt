@@ -5,6 +5,10 @@ project(shader_sim)
 # force C99 for all targets
 set(CMAKE_C_STANDARD 99)
 
+# platform detection
+string(TOUPPER ${CMAKE_SYSTEM_NAME} PLATFORM_NAME)
+string(CONCAT PLATFORM_DEF "PLATFORM_" ${PLATFORM_NAME})
+
 #
 # MAIN executable
 #
@@ -36,6 +40,7 @@ set(HEADERS
 )
 
 add_executable(${APP_TARGET} ${SOURCES} ${HEADERS})
+target_compile_definitions(${APP_TARGET} PRIVATE ${PLATFORM_DEF})
 
 #
 # Unit tests

@@ -76,3 +76,59 @@ void file_free(int8_t *buffer) {
     assert(buffer);
     arr_free(buffer);
 }
+
+
+#define LINUX_PATH_SEPARATOR '/'
+#define WIN32_PATH_SEPARATOR '\\'
+
+#ifdef PLATFORM_LINUX
+    #define SYSTEM_PATH_SEPARATOR   LINUX_PATH_SEPARATOR
+    #define OTHER_PATH_SEPARATOR    WIN32_PATH_SEPARATOR
+#elif PLATFORM_WINDOWS
+    #define SYSTEM_PATH_SEPARATOR   WIN32_PATH_SEPARATOR
+    #define OTHER_PATH_SEPARATOR    LINUX_PATH_SEPARATOR
+#else
+    #error Unsupported platform
+#endif
+
+void path_fix_separator(const char *path_in, char *path_out) {
+    assert(path_in);
+    assert(path_out);
+
+    strcpy(path_out, path_in);
+
+    char *match = strchr(path_out, OTHER_PATH_SEPARATOR);
+    while (match) {
+        *match++ = SYSTEM_PATH_SEPARATOR;
+        match = strchr(match, OTHER_PATH_SEPARATOR);
+    }
+}
+
+void path_dirname(const char *path_in, char *dir) {
+    assert(path_in);
+    assert(dir);
+
+    const char *lstsep = strrchr(path_in, SYSTEM_PATH_SEPARATOR);
+
+    if (!lstsep) {
+        *dir = '\0';
+    } else {
+        int count = lstsep - path_in;
+        strncpy(dir, path_in, count);
+        dir[count] = '\0';
+    }
+}
+
+void path_append(char *path, const char *suffix) {
+    assert(path);
+    assert(suffix);
+
+    size_t len = strlen(path);
+
+    if (len > 0 && path[len-1] != SYSTEM_PATH_SEPARATOR) {
+        path[len++] = SYSTEM_PATH_SEPARATOR;
+        path[len] = '\0';
+    }
+
+    strcat(path, suffix);
+}
