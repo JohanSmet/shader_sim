@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-#include "types.h"
+#include "utils.h"
 #include "dyn_array.h"
 #include "spirv_binary.h"
 #include "spirv_text.h"
@@ -10,40 +10,6 @@
 #include "spirv_simulator.h"
 
 #include "spirv/spirv.h"
-
-void fatal_error(const char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    printf("FATAL: ");
-    vprintf(fmt, args);
-    printf("\n");
-    va_end(args);
-    exit(1);
-}
-
-int8_t *load_binary_file(const char *filename) {
-    // a truly platform independant method of getting the size of a file has a lot of caveats
-    //  shader binaries shouldn't be large files, just read in blocks and realloc when necessary
-    enum {BLOCK_SIZE = 2048};
-    int8_t block[BLOCK_SIZE];
-    int8_t *contents = NULL;
-
-    FILE *fp = fopen(filename, "rb");
-
-    if (!fp) {
-        fatal_error("Error opening file %s", filename);
-        return NULL;
-    }
-
-    while (!feof(fp)) {
-        size_t read = fread(block, 1, BLOCK_SIZE, fp);
-        arr_push_buf(contents, block, read);
-    }
-
-    fclose(fp);
-
-    return contents;
-}
 
 void disassemble_spirv_shader(int8_t *data) {
 
