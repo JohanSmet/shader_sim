@@ -242,9 +242,9 @@ static void handle_opcode_function(SPIRV_module *module, SPIRV_opcode *op) {
     assert(op->op.kind == SpvOpFunction);
     assert(op->op.length == 5);
 
-    uint32_t result_type = op->optional[0];
+    // uint32_t result_type = op->optional[0];
     uint32_t func_id = op->optional[1];
-    uint32_t func_control = op->optional[2];
+    // uint32_t func_control = op->optional[2];
     uint32_t func_type = op->optional[3];
 
     SPIRV_function *func = new_function(spirv_module_type_by_id(module, func_type), func_id);

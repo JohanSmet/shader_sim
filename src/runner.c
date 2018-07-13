@@ -16,7 +16,8 @@
     static bool Runner ## kind ## _execute(Runner *runner, RunnerCmd *base_cmd) {    \
         assert(runner);    \
         assert(base_cmd);   \
-        Runner##kind *cmd = (Runner##kind *) base_cmd;
+        Runner##kind *cmd = (Runner##kind *) base_cmd; \
+        (void) cmd;
 
 #define RUNNER_FUNC_END   }
 
@@ -138,6 +139,7 @@ static inline RunnerCmdAssociateInput *new_cmd_associate_input(void) {
     cmd->base.kind = CmdAssociateInput;
     cmd->base.cmd_func = RunnerCmdAssociateInput_execute;
     cmd->var_kind = VarKindInput;
+    return cmd;
 }
 
 static inline RunnerCmdAssociateOutput *new_cmd_associate_output(void) {
@@ -145,24 +147,28 @@ static inline RunnerCmdAssociateOutput *new_cmd_associate_output(void) {
     cmd->base.kind = CmdAssociateOutput;
     cmd->base.cmd_func = RunnerCmdAssociateOutput_execute;
     cmd->var_kind = VarKindOutput;
+    return cmd;
 }
 
 static inline RunnerCmdRun *new_cmd_run(void) {
     RunnerCmdRun *cmd = (RunnerCmdRun *) malloc(sizeof(RunnerCmdRun));
     cmd->base.kind = CmdRun;
     cmd->base.cmd_func = RunnerCmdRun_execute;
+    return cmd;
 }
 
 static inline RunnerCmdStep *new_cmd_step(void) {
     RunnerCmdStep *cmd = (RunnerCmdStep *) malloc(sizeof(RunnerCmdStep));
     cmd->base.kind = CmdStep;
     cmd->base.cmd_func = RunnerCmdStep_execute;
+    return cmd;
 }
 
 static inline RunnerCmdCmpOutput *new_cmd_cmp_output(void) {
     RunnerCmdCmpOutput *cmd = (RunnerCmdCmpOutput *) malloc(sizeof(RunnerCmdCmpOutput));
     cmd->base.kind = CmdCmpOutput;
     cmd->base.cmd_func = RunnerCmdCmpOutput_execute;
+    return cmd;
 }
 
 static const char *json_string_value(const cJSON *json, const char *field) {
@@ -354,7 +360,7 @@ bool runner_init(Runner *runner, const char *filename) {
     }
 
     /* parse JSON config */
-    cJSON *json = cJSON_Parse(json_data);
+    cJSON *json = cJSON_Parse((char *) json_data);
 
     if (json == NULL) {
         /* FIXME: handle JSON error */

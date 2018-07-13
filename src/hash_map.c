@@ -60,8 +60,6 @@ static void hashmap_put_ptr(HashMap *map, void *key, void *val) {
 }
 
 static void hashmap_put_str(HashMap *map, void *key, void *val) {
-    const char *str_key = (const char *) key;
-
     uint64_t idx = hash_str(key) % map->cap;
 
     for (;;) {
