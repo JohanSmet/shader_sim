@@ -77,6 +77,10 @@ RUNNER_FUNC_BEGIN(CmdCmpOutput)
     }
 
     switch (cmd->data_type) {
+            
+        case TypeVoid:
+            break;
+            
         case TypeBool: {
             bool actual = *((bool *) result->buffer);
             bool expect = *((bool *) cmd->data);
@@ -91,7 +95,8 @@ RUNNER_FUNC_BEGIN(CmdCmpOutput)
         }
 
         case TypeInteger:
-        case TypeVectorInteger: {
+        case TypeVectorInteger:
+        case TypeMatrixInteger: {
             int32_t *actual = (int32_t *) result->buffer;
             int32_t *expect = (int32_t *) cmd->data;
             int32_t count = cmd->data_size / sizeof(int32_t);
@@ -107,7 +112,8 @@ RUNNER_FUNC_BEGIN(CmdCmpOutput)
         }
 
         case TypeFloat:
-        case TypeVectorFloat: {
+        case TypeVectorFloat:
+        case TypeMatrixFloat: {
             float *actual = (float *) result->buffer;
             float *expect = (float *) cmd->data;
             int32_t count = cmd->data_size / sizeof(float);
@@ -121,6 +127,10 @@ RUNNER_FUNC_BEGIN(CmdCmpOutput)
             }
            break;
         }
+            
+        case TypePointer:
+        case TypeFunction:
+            break;
     }
 
     if (error_msg != NULL) {
