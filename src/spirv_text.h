@@ -6,13 +6,13 @@
 #define JS_SHADER_SIM_SPIRV_TEXT_H
 
 // require forward declarations
-typedef struct SPIRV_header SPIRV_header;
-typedef struct SPIRV_opcode SPIRV_opcode;
+struct SPIRV_header;
+struct SPIRV_opcode;
 
 // interface functions
-int spirv_text_header_num_lines(SPIRV_header *header);
-char *spirv_text_header_line(SPIRV_header *header, int line);
+int spirv_text_header_num_lines(struct SPIRV_header *header);
+char *spirv_text_header_line(struct SPIRV_header *header, int line);
 
-char *spirv_text_opcode(SPIRV_opcode *opcode);
+char *spirv_text_opcode(struct SPIRV_opcode *opcode);
 
 #endif // JS_SHADER_SIM_SPIRV_TEXT_H

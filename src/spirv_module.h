@@ -7,8 +7,8 @@
 #include "types.h"
 
 // required  forward declarations
-typedef struct SPIRV_binary SPIRV_binary;
-typedef struct SPIRV_opcode SPIRV_opcode;
+struct SPIRV_binary;
+struct SPIRV_opcode;
 
 // types
 typedef struct IdName {
@@ -114,8 +114,8 @@ typedef enum ProgramKind {
 
 typedef struct SPIRV_function {
     Function func;
-    SPIRV_opcode *fst_opcode;
-    SPIRV_opcode *lst_opcode;
+    struct SPIRV_opcode *fst_opcode;
+    struct SPIRV_opcode *lst_opcode;
 } SPIRV_function;
 
 typedef struct EntryPoint {
@@ -125,7 +125,7 @@ typedef struct EntryPoint {
 } EntryPoint;
 
 typedef struct SPIRV_module {
-    SPIRV_binary *spirv_bin;
+    struct SPIRV_binary *spirv_bin;
 
     HashMap names;          // id (int) -> IdName *
     HashMap decorations;    // id (int) -> SPIRV_opcode ** (dyn_array)
@@ -139,7 +139,7 @@ typedef struct SPIRV_module {
 } SPIRV_module;
 
 // interface functions
-void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary);
+void spirv_module_load(SPIRV_module *module, struct SPIRV_binary *binary);
 
 Type *spirv_module_type_by_id(SPIRV_module *module, uint32_t id);
 

@@ -20,7 +20,7 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
     assert(module);
 
     *sim = (SPIRV_simulator) {
-        module: module
+        .module = module
     };
 
     spirv_sim_select_entry_point(sim, 0);

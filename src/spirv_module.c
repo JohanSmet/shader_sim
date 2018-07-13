@@ -20,7 +20,7 @@ static IdName *new_id_name(const char *name, int member_index) {
 static Type *new_type(TypeKind kind) {
     Type *result = malloc(sizeof(Type));
     *result = (Type) {
-        kind : kind
+        .kind = kind
     };
     return result;
 }
@@ -34,8 +34,8 @@ static Constant *new_constant(Type *type) {
 static Variable *new_variable(Type *type) {
     Variable *result = malloc(sizeof(Variable));
     *result = (Variable) {
-        type: type,
-        initializer_kind: InitializerNone
+        .type = type,
+        .initializer_kind = InitializerNone
     };
     return result;
 }
@@ -288,8 +288,8 @@ static void handle_opcode_entrypoint(SPIRV_module *module, SPIRV_opcode *op) {
     uint32_t func_id = op->optional[1];
 
     EntryPoint ep = (EntryPoint) {
-        func_id: func_id,
-        kind: execution_model
+        .func_id = func_id,
+        .kind = execution_model
     };
     arr_push(module->entry_points, ep);
 }

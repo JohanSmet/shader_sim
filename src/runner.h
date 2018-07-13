@@ -8,15 +8,16 @@
 #include "spirv_module.h"
 #include "spirv_binary.h"
 
-// types
-typedef struct Runner Runner;
-typedef struct RunnerCmd RunnerCmd;
-typedef struct SPIRV_simulator SPIRV_simulator;
+// forward declarations
+struct Runner;
+struct RunnerCmd;
+struct SPIRV_simulator;
 
 typedef enum RunnerLanguage {
     LangSpirV
 } RunnerLanguage;
 
+// types
 typedef enum RunnerCmdKind {
     CmdAssociateInput,
     CmdAssociateOutput,
@@ -34,8 +35,7 @@ typedef enum RunnerCmpOp {
     CMP_GTEQ
 } RunnerCmpOp;
 
-
-typedef bool (*RUNNER_CMD_FUNC)(Runner *runner, RunnerCmd *cmd);
+typedef bool (*RUNNER_CMD_FUNC)(struct Runner *runner, struct RunnerCmd *cmd);
 
 typedef struct RunnerCmd {
     RunnerCmdKind   kind;
@@ -84,11 +84,11 @@ typedef struct Runner {
     SPIRV_module spirv_module;
     RunnerCmd **commands;       // dyn_array
 
-    SPIRV_simulator *spirv_sim;
+    struct SPIRV_simulator *spirv_sim;
 } Runner;
 
 // interface functions
 bool runner_init(Runner *runner, const char *filename);
-void runner_execute(Runner *runner, SPIRV_simulator *sim);
+void runner_execute(Runner *runner, struct SPIRV_simulator *sim);
 
 #endif // JS_SHADER_SIM_RUNNER_H
