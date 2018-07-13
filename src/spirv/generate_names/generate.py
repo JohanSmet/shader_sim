@@ -44,6 +44,11 @@ def generate_enum(enum, c_array, c_function, c_enum, c_prefix, c_postfix = ''):
 
     for t in enums:
         e = t[0]
+        
+        # skip duplicate values
+        if enum == 'Capability' and e in ['StorageBuffer16BitAccess', 'StorageUniform16', 'ShaderViewportIndexLayerNV']:
+            continue
+
         if c_postfix == 'Mask' and e == 'MaskNone':
             print("\t[{0}{1}] = \"None\",".format(c_prefix, e))
         elif c_prefix == 'SpvDim' and e[:3] == 'Dim':
