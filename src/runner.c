@@ -5,8 +5,10 @@
 #include "utils.h"
 #include "dyn_array.h"
 #include "spirv_simulator.h"
+#include "spirv_text.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <assert.h>
 
@@ -44,22 +46,27 @@ RUNNER_FUNC_BEGIN(CmdAssociateOutput)
 
 RUNNER_FUNC_END
 
-RUNNER_FUNC_BEGIN(CmdRun)
+RUNNER_FUNC_BEGIN(CmdStep)
 
-    while (!runner->spirv_sim->finished && !runner->spirv_sim->error_msg) {
+    if (!runner->spirv_sim->finished && !runner->spirv_sim->error_msg) {
+        printf("Execute %s\n", spirv_text_opcode(spirv_bin_opcode_current(&runner->spirv_bin)));
         spirv_sim_step(runner->spirv_sim);
+        for (uint32_t idx = 0; idx < runner->spirv_sim->reg_free_start; ++idx) {
+            SimRegister *reg = &runner->spirv_sim->temp_regs[idx];
+            printf(" reg %2d (%%%d) = [%.6f %.6f %.6f %.6f]\n", idx, reg->id, reg->x, reg->y, reg->z, reg->w);
+        }
     }
-
     return true;
 
 RUNNER_FUNC_END
 
-RUNNER_FUNC_BEGIN(CmdStep)
+RUNNER_FUNC_BEGIN(CmdRun)
 
-    if (!runner->spirv_sim->finished && !runner->spirv_sim->error_msg) {
-        spirv_sim_step(runner->spirv_sim);
-    }
-    return true;
+while (!runner->spirv_sim->finished && !runner->spirv_sim->error_msg) {
+    RunnerCmdStep_execute(runner, base_cmd);
+}
+
+return true;
 
 RUNNER_FUNC_END
 
