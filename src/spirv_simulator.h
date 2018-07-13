@@ -14,14 +14,18 @@ typedef struct VariableData {
     size_t size;
 } VariableData;
 
-typedef union SimRegister {
-    float vec[4];
-    struct {
-        float x;
-        float y;
-        float z;
-        float w;
+typedef struct SimRegister {
+    union {
+        float vec[4];
+        struct {
+            float x;
+            float y;
+            float z;
+            float w;
+        };
     };
+    uint32_t id;
+    Type *type;
 } SimRegister;
 
 #define SPIRV_SIM_MAX_TEMP_REGISTERS    4096
@@ -32,9 +36,7 @@ typedef struct SPIRV_simulator {
 
     SimRegister temp_regs[SPIRV_SIM_MAX_TEMP_REGISTERS];
     uint32_t reg_free_start;
-
     HashMap assigned_regs;  // SPIRV id (uint32_t) -> register index (uint32_t)
-    HashMap object_types;   // SPIRV id (uint32_t) -> Type *
 
     bool finished;
     char *error_msg;        // NULL if no error, dynamic string otherwise

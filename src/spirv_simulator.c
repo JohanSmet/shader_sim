@@ -71,8 +71,14 @@ static inline VariableData *spirv_sim_var_data(SPIRV_simulator *sim, Variable *v
     return spirv_sim_retrieve_var(sim, var->kind, var->if_type, var->if_index);
 }
 
-static inline uint32_t spirv_sim_assign_register(SPIRV_simulator *sim) {
-    return sim->reg_free_start++;
+static inline uint32_t spirv_sim_assign_register(SPIRV_simulator *sim, uint32_t id, Type *type) {
+    assert(sim);
+    uint32_t reg_idx = sim->reg_free_start++;
+    sim->temp_regs[reg_idx].id = id;
+    sim->temp_regs[reg_idx].type = type;
+    map_int_int_put(&sim->assigned_regs, id, reg_idx);
+    
+    return reg_idx;
 }
 
 #define OP_FUNC_BEGIN(kind) \
@@ -101,9 +107,7 @@ OP_FUNC_BEGIN(SpvOpLoad)
     }
 
     // assign a register to keep the data
-    uint32_t reg = spirv_sim_assign_register(sim);
-    map_int_int_put(&sim->assigned_regs, result_id, reg);
-    map_int_ptr_put(&sim->object_types, result_id, res_type);
+    uint32_t reg = spirv_sim_assign_register(sim, result_id, res_type);
 
     // copy data
     size_t var_size = res_type->count * res_type->size;
@@ -119,17 +123,18 @@ OP_FUNC_BEGIN(SpvOpStore)
     Variable *var_desc = spriv_sim_retrieve_var_desc(sim, pointer_id);
     VariableData *data = spirv_sim_var_data(sim, var_desc);
 
+    // find the register that has the object to store
+    uint32_t reg = map_int_int_get(&sim->assigned_regs, object_id);
+
     // validate type
     assert(var_desc->type->kind == TypePointer);
-    Type *res_type = map_int_ptr_get(&sim->object_types, object_id);
+    Type *res_type = sim->temp_regs[reg].type;
 
     if (res_type != var_desc->type->pointer.base_type) {
         arr_printf(sim->error_msg, "Type mismatch in SpvOpStore");
         return;
     }
 
-    // find the register that has the object to store
-    uint32_t reg = map_int_int_get(&sim->assigned_regs, object_id);
 
     // copy data
     size_t var_size = res_type->count * res_type->size;
