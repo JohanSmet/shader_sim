@@ -117,6 +117,7 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
                 type = new_type(TypeVectorInteger);
                 type->count = op->optional[2];
                 type->size = base_type->size;
+                type->is_signed = base_type->is_signed;
             } else if (base_type->kind == TypeFloat) {
                 type = new_type(TypeVectorFloat);
                 type->count = op->optional[2];
