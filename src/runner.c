@@ -48,12 +48,14 @@ RUNNER_FUNC_END
 
 RUNNER_FUNC_BEGIN(CmdStep)
 
+    char reg_str[256];
+
     if (!runner->spirv_sim->finished && !runner->spirv_sim->error_msg) {
         printf("Execute %s\n", spirv_text_opcode(spirv_bin_opcode_current(&runner->spirv_bin)));
         spirv_sim_step(runner->spirv_sim);
         for (uint32_t idx = 0; idx < runner->spirv_sim->reg_free_start; ++idx) {
-            SimRegister *reg = &runner->spirv_sim->temp_regs[idx];
-            printf(" reg %2d (%%%d) = [%.6f %.6f %.6f %.6f]\n", idx, reg->id, reg->x, reg->y, reg->z, reg->w);
+            spirv_register_to_string(runner->spirv_sim, idx, reg_str, sizeof(reg_str));
+            printf("%s\n", reg_str);
         }
     }
     return true;
@@ -62,9 +64,9 @@ RUNNER_FUNC_END
 
 RUNNER_FUNC_BEGIN(CmdRun)
 
-while (!runner->spirv_sim->finished && !runner->spirv_sim->error_msg) {
-    RunnerCmdStep_execute(runner, base_cmd);
-}
+    while (!runner->spirv_sim->finished && !runner->spirv_sim->error_msg) {
+        RunnerCmdStep_execute(runner, base_cmd);
+    }
 
 return true;
 

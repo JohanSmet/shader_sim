@@ -17,12 +17,8 @@ typedef struct VariableData {
 typedef struct SimRegister {
     union {
         float vec[4];
-        struct {
-            float x;
-            float y;
-            float z;
-            float w;
-        };
+        int32_t svec[4];
+        uint32_t uvec[4];
     };
     uint32_t id;
     Type *type;
@@ -55,6 +51,7 @@ void spirv_sim_select_entry_point(SPIRV_simulator *sim, uint32_t index);
 void spirv_sim_step(SPIRV_simulator *sim);
 
 VariableData *spirv_sim_retrieve_var(SPIRV_simulator *sim, VariableKind kind, VariableInterface if_type, int32_t if_index);
+size_t spirv_register_to_string(SPIRV_simulator *sim, uint32_t reg_idx, char *out_str, size_t out_max);
 
 
 #endif // JS_SHADER_SIM_SPIRV_SIMULATOR_H
