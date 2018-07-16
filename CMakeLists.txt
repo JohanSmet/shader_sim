@@ -15,6 +15,7 @@ string(CONCAT PLATFORM_DEF "PLATFORM_" ${PLATFORM_NAME})
 set(APP_TARGET shader_sim)
 
 set(SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/allocator.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/dyn_array.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/hash_map.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/main.c"
@@ -29,6 +30,7 @@ set(SOURCES
 )
 
 set(HEADERS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/allocator.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/dyn_array.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/hash_map.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_binary.h"
