@@ -2,6 +2,7 @@
 
 extern MunitTest dyn_array_tests[];
 extern MunitTest hash_map_tests[];
+extern MunitTest basic_ops_tests[];
 
 static MunitSuite extern_suites[] = {
     { .prefix = "/dyn_array", 
@@ -15,6 +16,12 @@ static MunitSuite extern_suites[] = {
       .suites = NULL,
       .iterations = 1,
       .options = MUNIT_SUITE_OPTION_NONE
+    },
+    { .prefix = "/basic_ops",
+        .tests = basic_ops_tests,
+        .suites = NULL,
+        .iterations = 1,
+        .options = MUNIT_SUITE_OPTION_NONE
     },
     { NULL, NULL, NULL, 0, MUNIT_SUITE_OPTION_NONE}
 };
