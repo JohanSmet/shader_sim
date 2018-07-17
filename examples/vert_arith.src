@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 6
-; Bound: 46
+; Bound: 51
 ; Schema: 0
                OpCapability Shader
           %1 = OpExtInstImport "GLSL.std.450"
@@ -47,6 +47,11 @@
          %38 = OpFDiv %7 %30 %33
 	 %39 = OpLoad %11 %13
          %45 = OpMatrixTimesScalar %11 %39 %8
+	 %46 = OpVectorTimesMatrix %7 %9 %39
+	 %47 = OpMatrixTimesVector %7 %39 %9
+	 %48 = OpMatrixTimesMatrix %11 %39 %39
+         %49 = OpOuterProduct %11 %33 %9
+         %50 = OpDot %6 %33 %9
                OpStore %41 %30
                OpStore %44 %33
                OpReturn

@@ -422,6 +422,95 @@ OP_FUNC_RES_2OP(SpvOpMatrixTimesScalar)
 
 OP_FUNC_END
 
+OP_FUNC_RES_2OP(SpvOpVectorTimesMatrix)
+/* Linear-algebraic Vector X Matrix. */
+
+    int32_t num_rows = sim->temp_regs[op2_reg].type->matrix.num_rows;
+    int32_t num_cols = sim->temp_regs[op2_reg].type->matrix.num_cols;
+    float *v = sim->temp_regs[op1_reg].vec;
+    float *m = sim->temp_regs[op2_reg].vec;
+    float *res = sim->temp_regs[res_reg].vec;
+
+    for (int32_t col = 0; col < num_cols; ++col) {
+        res[col] = 0;
+        for (int32_t row = 0; row < num_rows; ++row) {
+            res[col] += v[row] * m[col * num_rows + row];
+        }
+    }
+
+OP_FUNC_END
+
+OP_FUNC_RES_2OP(SpvOpMatrixTimesVector) {
+/* Linear-algebraic Matrix X Vector. */
+    
+    int32_t num_rows = sim->temp_regs[op1_reg].type->matrix.num_rows;
+    int32_t num_cols = sim->temp_regs[op1_reg].type->matrix.num_cols;
+    float *m = sim->temp_regs[op1_reg].vec;
+    float *v = sim->temp_regs[op2_reg].vec;
+    float *res = sim->temp_regs[res_reg].vec;
+    
+    for (int32_t row = 0; row < num_rows; ++row) {
+        res[row] = 0;
+        for (int32_t col = 0; col < num_cols; ++col) {
+            res[row] += m[col * num_rows + row] * v[col];
+        }
+    }
+
+} OP_FUNC_END
+
+OP_FUNC_RES_2OP(SpvOpMatrixTimesMatrix) {
+/* Linear-algebraic multiply of LeftMatrix X RightMatrix. */
+    
+    int32_t num_rows1 = sim->temp_regs[op1_reg].type->matrix.num_rows;
+    int32_t num_cols1 = sim->temp_regs[op1_reg].type->matrix.num_cols;
+    int32_t num_cols2 = sim->temp_regs[op2_reg].type->matrix.num_cols;
+    float *m1 = sim->temp_regs[op1_reg].vec;
+    float *m2 = sim->temp_regs[op2_reg].vec;
+    float *res = sim->temp_regs[res_reg].vec;
+    
+    for (int32_t i = 0; i < num_rows1; ++i) {
+        for (int32_t j = 0; j < num_cols2; ++j) {
+            res[i * num_cols2 + j] = 0;
+            for (int32_t k = 0; k < num_cols1; ++k) {
+                res[i * num_cols2 + j] += m1[i * num_cols1 + k] * m2[k * num_cols2 + j];
+            }
+        }
+    }
+    
+} OP_FUNC_END
+
+OP_FUNC_RES_2OP(SpvOpOuterProduct) {
+/* Linear-algebraic outer product of Vector 1 and Vector 2. */
+    
+    int32_t num_rows = sim->temp_regs[op1_reg].type->count;
+    int32_t num_cols = sim->temp_regs[op2_reg].type->count;
+    float *v1 = sim->temp_regs[op1_reg].vec;
+    float *v2 = sim->temp_regs[op2_reg].vec;
+    float *res = sim->temp_regs[res_reg].vec;
+    
+    for (int32_t row = 0; row < num_rows; ++row) {
+        for (int32_t col = 0; col < num_cols; ++col) {
+            res[row * num_cols + col] = v1[row] * v2[col];
+        }
+    }
+
+} OP_FUNC_END
+
+OP_FUNC_RES_2OP(SpvOpDot) {
+/* Dot product of Vector 1 and Vector 2. */
+    
+    int32_t n = sim->temp_regs[op1_reg].type->count;
+    float *v1 = sim->temp_regs[op1_reg].vec;
+    float *v2 = sim->temp_regs[op2_reg].vec;
+    float *res = sim->temp_regs[res_reg].vec;
+    
+    *res = v1[0] * v2[0];
+    for (int32_t i = 1; i < n; ++i) {
+        *res += v1[i] * v2[i];
+    }
+    
+} OP_FUNC_END
+
 OP_FUNC_BEGIN(SpvOpReturn) 
     sim->finished = true;
 OP_FUNC_END
@@ -489,11 +578,11 @@ void spirv_sim_step(SPIRV_simulator *sim) {
         OP(SpvOpFMod)
         OP(SpvOpVectorTimesScalar)
         OP(SpvOpMatrixTimesScalar)
-        OP_DEFAULT(SpvOpVectorTimesMatrix)
-        OP_DEFAULT(SpvOpMatrixTimesVector)
-        OP_DEFAULT(SpvOpMatrixTimesMatrix)
-        OP_DEFAULT(SpvOpOuterProduct)
-        OP_DEFAULT(SpvOpDot)
+        OP(SpvOpVectorTimesMatrix)
+        OP(SpvOpMatrixTimesVector)
+        OP(SpvOpMatrixTimesMatrix)
+        OP(SpvOpOuterProduct)
+        OP(SpvOpDot)
         OP_DEFAULT(SpvOpIAddCarry)
         OP_DEFAULT(SpvOpISubBorrow)
         OP_DEFAULT(SpvOpUMulExtended)
