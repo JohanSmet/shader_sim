@@ -287,13 +287,13 @@ static void parse_values(const cJSON *json_values, TypeKind data_type, int32_t e
         *((int32_t *) data) = json_values->valueint;
     } else if (data_type == TypeFloat && cJSON_IsNumber(json_values)) {
         *((float *) data) = json_values->valuedouble;
-    } else if (data_type == TypeVectorInteger && cJSON_IsArray(json_values)) {
+    } else if ((data_type == TypeVectorInteger || data_type == TypeMatrixInteger) && cJSON_IsArray(json_values)) {
         int32_t idx = 0;
         int32_t *int_data = (int32_t *) data;
         for (const cJSON *iter=json_values->child; iter && idx < elements; iter=iter->next) {
             int_data[idx++] = iter->valueint;
         }
-    } else if (data_type == TypeVectorFloat && cJSON_IsArray(json_values)) {
+    } else if ((data_type == TypeVectorFloat || data_type == TypeMatrixFloat) && cJSON_IsArray(json_values)) {
         int32_t idx = 0;
         float *flt_data = (float *) data;
         for (const cJSON *iter=json_values->child; iter && idx < elements; iter=iter->next) {

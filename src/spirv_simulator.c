@@ -24,6 +24,7 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
         .module = module
     };
 
+    mem_arena_init(&sim->reg_data, 256 * 16, ARENA_DEFAULT_ALIGN);
     spirv_sim_select_entry_point(sim, 0);
 }
 
@@ -75,6 +76,7 @@ static inline VariableData *spirv_sim_var_data(SPIRV_simulator *sim, Variable *v
 static inline uint32_t spirv_sim_assign_register(SPIRV_simulator *sim, uint32_t id, Type *type) {
     assert(sim);
     uint32_t reg_idx = sim->reg_free_start++;
+    sim->temp_regs[reg_idx].vec = mem_arena_allocate(&sim->reg_data, type->element_size * type->count);
     sim->temp_regs[reg_idx].id = id;
     sim->temp_regs[reg_idx].type = type;
     map_int_int_put(&sim->assigned_regs, id, reg_idx);
@@ -173,7 +175,7 @@ OP_FUNC_BEGIN(SpvOpLoad)
     uint32_t reg = spirv_sim_assign_register(sim, result_id, res_type);
 
     // copy data
-    size_t var_size = res_type->count * res_type->size;
+    size_t var_size = res_type->count * res_type->element_size;
     memcpy(sim->temp_regs[reg].vec, data->buffer, var_size);
 
 OP_FUNC_END
@@ -199,7 +201,7 @@ OP_FUNC_BEGIN(SpvOpStore)
     }
 
     // copy data
-    size_t var_size = res_type->count * res_type->size;
+    size_t var_size = res_type->count * res_type->element_size;
     memcpy(data->buffer, sim->temp_regs[reg].vec, var_size);
 
 OP_FUNC_END

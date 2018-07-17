@@ -77,7 +77,21 @@ static SPIRV_opcode **decoration_ops_by_id(SPIRV_module *module, uint32_t target
     return map_int_ptr_get(&module->decorations, key);
 }
 
-
+static bool id_has_decoration (SPIRV_module *module, uint32_t target, uint32_t member, SpvDecoration wanted) {
+    
+    SPIRV_opcode **decorations = decoration_ops_by_id(module, target, member);
+    
+    for (SPIRV_opcode **op = decorations; op != arr_end(decorations); ++op) {
+        uint32_t dec_offset = ((*op)->op.kind == SpvOpDecorate) ? 1 : 2;
+        uint32_t decoration = (*op)->optional[dec_offset];
+        
+        if (decoration == wanted) {
+            return true;
+        }
+    }
+    
+    return false;
+}
 
 static void define_name(SPIRV_module *module, uint32_t id, const char *name, int member_index) {
     map_int_ptr_put(&module->names, id, new_id_name(name, member_index));
@@ -89,6 +103,7 @@ static inline bool is_opcode_type(SPIRV_opcode *op) {
 
 static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
     Type *type = NULL;
+    uint32_t result_id = op->optional[0];
 
     switch (op->op.kind) {                                  // FIXME: support all types
         case SpvOpTypeVoid:
@@ -98,44 +113,52 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
         case SpvOpTypeBool:
             type = new_type(TypeBool);
             type->count = 1;
-            type->size = sizeof(bool);
+            type->element_size = sizeof(bool);
             break;
         case SpvOpTypeInt:
             type = new_type(TypeInteger);
             type->count = 1;
-            type->size = op->optional[1] / 8;
+            type->element_size = op->optional[1] / 8;
             type->is_signed = op->optional[2] == 1;
             break;
         case SpvOpTypeFloat:
             type = new_type(TypeFloat);
             type->count = 1;
-            type->size = op->optional[1] / 8;
+            type->element_size = op->optional[1] / 8;
             break;
         case SpvOpTypeVector: {
             Type *base_type = spirv_module_type_by_id(module, op->optional[1]);
             if (base_type->kind == TypeInteger) {
                 type = new_type(TypeVectorInteger);
                 type->count = op->optional[2];
-                type->size = base_type->size;
+                type->element_size = base_type->element_size;
                 type->is_signed = base_type->is_signed;
             } else if (base_type->kind == TypeFloat) {
                 type = new_type(TypeVectorFloat);
                 type->count = op->optional[2];
-                type->size = base_type->size;
+                type->element_size = base_type->element_size;
             }
             break;
         }
         case SpvOpTypeMatrix: {
-            Type *base_type = spirv_module_type_by_id(module, op->optional[1]);
-            if (base_type->kind == TypeVectorInteger) {
+            Type *col_type = spirv_module_type_by_id(module, op->optional[1]);
+            if (col_type->kind == TypeVectorInteger) {
                 type = new_type(TypeMatrixInteger);
-                type->count = op->optional[2];
-                type->size = base_type->size;
-            } else if (base_type->kind == TypeVectorFloat) {
+                type->is_signed = col_type->is_signed;
+            } else if (col_type->kind == TypeVectorFloat) {
                 type = new_type(TypeMatrixFloat);
-                type->count = op->optional[2];
-                type->size = base_type->size;
             }
+            type->matrix.num_cols = op->optional[2];
+            type->matrix.num_rows = col_type->count;
+            type->count = type->matrix.num_cols * type->matrix.num_rows;
+            type->element_size = col_type->element_size;
+            
+            if (id_has_decoration(module, result_id, 0, SpvDecorationColMajor)) {
+                type->matrix.kind = MatrixColMajor;
+            } else {
+                type->matrix.kind = MatrixRowMajor;
+            }
+            
             break;
         }
         case SpvOpTypePointer: 

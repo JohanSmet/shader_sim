@@ -6,6 +6,7 @@
 #define JS_SHADER_SIM_SPIRV_SIMULATOR_H
 
 #include "types.h"
+#include "allocator.h"
 #include "spirv_module.h"
 
 // types
@@ -16,9 +17,9 @@ typedef struct VariableData {
 
 typedef struct SimRegister {
     union {
-        float vec[4];
-        int32_t svec[4];
-        uint32_t uvec[4];
+        float *vec;
+        int32_t *svec;
+        uint32_t *uvec;
     };
     uint32_t id;
     Type *type;
@@ -33,6 +34,7 @@ typedef struct SPIRV_simulator {
     SimRegister temp_regs[SPIRV_SIM_MAX_TEMP_REGISTERS];
     uint32_t reg_free_start;
     HashMap assigned_regs;  // SPIRV id (uint32_t) -> register index (uint32_t)
+    MemArena reg_data;
 
     bool finished;
     char *error_msg;        // NULL if no error, dynamic string otherwise

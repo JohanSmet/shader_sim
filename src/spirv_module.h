@@ -29,14 +29,22 @@ typedef enum TypeKind {
     TypeFunction
 } TypeKind;
 
+typedef enum MatrixKind {
+    MatrixRowMajor,
+    MatrixColMajor
+} MatrixKind;
+
 typedef struct Type {
     TypeKind kind;
-    int count;          // number of elements (vector), number of columns (matrix)
+    int count;              // number of elements
+    int32_t element_size;   // in bytes
+    bool is_signed;         // only for Integer/VectorInteger/MatrixInteger
     union {
         struct {
-            int32_t size;   // in bytes
-            bool is_signed;
-        };
+            MatrixKind  kind;
+            int32_t     num_rows;
+            int32_t     num_cols;
+        } matrix;
         struct {
             // XXX: storage class
             struct Type *base_type;
