@@ -56,6 +56,8 @@ void *map_str_ptr_get(HashMap *map, const char *key);
 #define map_str_str_put(m, k, v)    map_str_ptr_put((map), (key), (value))
 #define map_str_str_get(m, k)       map_str_ptr_get((map), (key))
 
+void map_free(HashMap *map);
+
 // iteration over elements
 int map_begin(HashMap *map);
 int map_end(HashMap *map);

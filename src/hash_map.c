@@ -172,6 +172,13 @@ void *map_str_ptr_get(HashMap *map, const char *key) {
     return NULL;
 }
 
+void map_free(HashMap *map) {
+    assert(map);
+    
+    free(map->data);
+    *map = (HashMap) {0};
+}
+
 int map_begin(HashMap *map) {
     int result = 0;
 
