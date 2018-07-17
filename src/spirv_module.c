@@ -10,29 +10,33 @@
 #include <stdlib.h>
 
 /* allocation / initialization functions */
-static IdName *new_id_name(const char *name, int member_index) {
-    IdName *result = malloc(sizeof(IdName));
-    result->name = name;
-    result->member_index = member_index;
+static inline IdName *new_id_name(SPIRV_module *module, const char *name, int member_index) {
+    IdName *result = mem_arena_allocate(&module->allocator, sizeof(IdName));
+    *result = (IdName) {
+        .name = name,
+        .member_index = member_index
+    };
     return result;
 }
 
-static Type *new_type(TypeKind kind) {
-    Type *result = malloc(sizeof(Type));
+static inline Type *new_type(SPIRV_module *module, TypeKind kind) {
+    Type *result = mem_arena_allocate(&module->allocator, sizeof(Type));
     *result = (Type) {
         .kind = kind
     };
     return result;
 }
 
-static Constant *new_constant(Type *type) {
-    Constant *result = malloc(sizeof(Constant));
-    result->type = type;
+static inline Constant *new_constant(SPIRV_module *module, Type *type) {
+    Constant *result = mem_arena_allocate(&module->allocator, sizeof(Constant));
+    *result = (Constant) {
+        .type = type
+    };
     return result;
 }
 
-static Variable *new_variable(Type *type) {
-    Variable *result = malloc(sizeof(Variable));
+static inline Variable *new_variable(SPIRV_module *module, Type *type) {
+    Variable *result = mem_arena_allocate(&module->allocator, sizeof(Variable));
     *result = (Variable) {
         .type = type,
         .initializer_kind = InitializerNone
@@ -40,14 +44,12 @@ static Variable *new_variable(Type *type) {
     return result;
 }
 
-static SPIRV_function *new_function(Type *type, uint32_t id) {
-    SPIRV_function *result = malloc(sizeof(SPIRV_function));
-
-    result->func.id = id;
-    result->func.type = type;
-    result->func.name = NULL;
-    result->fst_opcode = NULL;
-    result->lst_opcode = NULL;
+static inline SPIRV_function *new_function(SPIRV_module *module, Type *type, uint32_t id) {
+    SPIRV_function *result = mem_arena_allocate(&module->allocator, sizeof(SPIRV_function));
+    *result = (SPIRV_function) {
+        .func.id = id,
+        .func.type = type
+    };
     return result;
 }
 
@@ -94,7 +96,7 @@ static bool id_has_decoration (SPIRV_module *module, uint32_t target, uint32_t m
 }
 
 static void define_name(SPIRV_module *module, uint32_t id, const char *name, int member_index) {
-    map_int_ptr_put(&module->names, id, new_id_name(name, member_index));
+    map_int_ptr_put(&module->names, id, new_id_name(module, name, member_index));
 }
 
 static inline bool is_opcode_type(SPIRV_opcode *op) {
@@ -107,34 +109,34 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
 
     switch (op->op.kind) {                                  // FIXME: support all types
         case SpvOpTypeVoid:
-            type = new_type(TypeVoid);
+            type = new_type(module, TypeVoid);
             type->count = 1;
             break;
         case SpvOpTypeBool:
-            type = new_type(TypeBool);
+            type = new_type(module, TypeBool);
             type->count = 1;
             type->element_size = sizeof(bool);
             break;
         case SpvOpTypeInt:
-            type = new_type(TypeInteger);
+            type = new_type(module, TypeInteger);
             type->count = 1;
             type->element_size = op->optional[1] / 8;
             type->is_signed = op->optional[2] == 1;
             break;
         case SpvOpTypeFloat:
-            type = new_type(TypeFloat);
+            type = new_type(module, TypeFloat);
             type->count = 1;
             type->element_size = op->optional[1] / 8;
             break;
         case SpvOpTypeVector: {
             Type *base_type = spirv_module_type_by_id(module, op->optional[1]);
             if (base_type->kind == TypeInteger) {
-                type = new_type(TypeVectorInteger);
+                type = new_type(module, TypeVectorInteger);
                 type->count = op->optional[2];
                 type->element_size = base_type->element_size;
                 type->is_signed = base_type->is_signed;
             } else if (base_type->kind == TypeFloat) {
-                type = new_type(TypeVectorFloat);
+                type = new_type(module, TypeVectorFloat);
                 type->count = op->optional[2];
                 type->element_size = base_type->element_size;
             }
@@ -143,10 +145,10 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
         case SpvOpTypeMatrix: {
             Type *col_type = spirv_module_type_by_id(module, op->optional[1]);
             if (col_type->kind == TypeVectorInteger) {
-                type = new_type(TypeMatrixInteger);
+                type = new_type(module, TypeMatrixInteger);
                 type->is_signed = col_type->is_signed;
             } else if (col_type->kind == TypeVectorFloat) {
-                type = new_type(TypeMatrixFloat);
+                type = new_type(module, TypeMatrixFloat);
             }
             type->matrix.num_cols = op->optional[2];
             type->matrix.num_rows = col_type->count;
@@ -162,12 +164,12 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
             break;
         }
         case SpvOpTypePointer: 
-            type = new_type(TypePointer);
+            type = new_type(module, TypePointer);
             type->pointer.base_type = spirv_module_type_by_id(module, op->optional[2]);
             break;
 
         case SpvOpTypeFunction:
-            type = new_type(TypeFunction);
+            type = new_type(module, TypeFunction);
             type->function.return_type = spirv_module_type_by_id(module, op->optional[1]);
             for (int idx = 2; idx < op->op.length - 2; ++idx) {
                 arr_push(type->function.parameter_types, spirv_module_type_by_id(module, op->optional[idx]));
@@ -188,15 +190,15 @@ static void handle_opcode_constant(SPIRV_module *module, SPIRV_opcode *op) {
 
     switch (op->op.kind) {                                  // FIXME: support all types
         case SpvOpConstantTrue:
-            constant = new_constant(spirv_module_type_by_id(module, op->optional[0]));
+            constant = new_constant(module, spirv_module_type_by_id(module, op->optional[0]));
             constant->value.as_int = true;
             break;
         case SpvOpConstantFalse:
-            constant = new_constant(spirv_module_type_by_id(module, op->optional[0]));
+            constant = new_constant(module, spirv_module_type_by_id(module, op->optional[0]));
             constant->value.as_int = false;
             break;
         case SpvOpConstant:
-            constant = new_constant(spirv_module_type_by_id(module, op->optional[0]));
+            constant = new_constant(module, spirv_module_type_by_id(module, op->optional[0]));
             constant->value.as_int = op->optional[2];       // FIXME: wider types
             break;
     }
@@ -211,7 +213,7 @@ static void handle_opcode_variable(SPIRV_module *module, SPIRV_opcode *op) {
     uint32_t var_id = op->optional[1];
     uint32_t storage_class = op->optional[2];
 
-    Variable *var = new_variable(spirv_module_type_by_id(module, var_type));
+    Variable *var = new_variable(module, spirv_module_type_by_id(module, var_type));
     var->kind = storage_class;
 
     // optional name that was defined earlier
@@ -271,7 +273,7 @@ static void handle_opcode_function(SPIRV_module *module, SPIRV_opcode *op) {
     // uint32_t func_control = op->optional[2];
     uint32_t func_type = op->optional[3];
 
-    SPIRV_function *func = new_function(spirv_module_type_by_id(module, func_type), func_id);
+    SPIRV_function *func = new_function(module, spirv_module_type_by_id(module, func_type), func_id);
 
     // optional name that was defined earlier
     IdName *name = name_by_id(module, func_id);
@@ -337,8 +339,11 @@ void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary) {
     assert(module);
     assert(binary);
 
-    *module = (SPIRV_module) {0};
-    module->spirv_bin = binary;
+    *module = (SPIRV_module) {
+        .spirv_bin = binary
+    };
+    
+    mem_arena_init(&module->allocator, ARENA_DEFAULT_SIZE, 4);
 
     for (SPIRV_opcode *op = spirv_bin_opcode_rewind(binary); op != spirv_bin_opcode_end(binary); op = spirv_bin_opcode_next(binary)) {
         if (op->op.kind == SpvOpName) {
@@ -367,5 +372,18 @@ void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary) {
 
     for (EntryPoint *ep = module->entry_points; ep != arr_end(module->entry_points); ++ep) {
         ep->function = function_by_id(module, ep->func_id);
+    }
+}
+
+void spirv_module_free(SPIRV_module *module) {
+    if (module) {
+        mem_arena_free(&module->allocator);
+        map_free(&module->names);
+        map_free(&module->decorations);
+        map_free(&module->types);
+        map_free(&module->constants);
+        map_free(&module->variables);
+        map_free(&module->variables_kind);
+        map_free(&module->functions);
     }
 }

@@ -5,6 +5,7 @@
 
 #include "hash_map.h"
 #include "types.h"
+#include "allocator.h"
 
 // required  forward declarations
 struct SPIRV_binary;
@@ -134,6 +135,7 @@ typedef struct EntryPoint {
 
 typedef struct SPIRV_module {
     struct SPIRV_binary *spirv_bin;
+    MemArena allocator;
 
     HashMap names;          // id (int) -> IdName *
     HashMap decorations;    // id (int) -> SPIRV_opcode ** (dyn_array)
@@ -148,6 +150,7 @@ typedef struct SPIRV_module {
 
 // interface functions
 void spirv_module_load(SPIRV_module *module, struct SPIRV_binary *binary);
+void spirv_module_free(SPIRV_module *module);
 
 Type *spirv_module_type_by_id(SPIRV_module *module, uint32_t id);
 
