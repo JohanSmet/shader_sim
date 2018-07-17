@@ -16,6 +16,44 @@ static VariableData *new_variable_data(uint8_t *data, size_t size) {
     return result;
 }
 
+static inline Variable *spriv_sim_retrieve_var_desc(SPIRV_simulator *sim, uint32_t id) {
+    assert(sim);
+    
+    Variable *result = map_int_ptr_get(&sim->module->variables, id);
+    return result;
+}
+
+static inline VariableData *spirv_sim_var_data(SPIRV_simulator *sim, Variable *var) {
+    assert(sim);
+    assert(var);
+    
+    return spirv_sim_retrieve_var(sim, var->kind, var->if_type, var->if_index);
+}
+
+static inline uint32_t spirv_sim_assign_register(SPIRV_simulator *sim, uint32_t id, Type *type) {
+    assert(sim);
+    uint32_t reg_idx = sim->reg_free_start++;
+    sim->temp_regs[reg_idx].vec = mem_arena_allocate(&sim->reg_data, type->element_size * type->count);
+    sim->temp_regs[reg_idx].id = id;
+    sim->temp_regs[reg_idx].type = type;
+    map_int_int_put(&sim->assigned_regs, id, reg_idx);
+    
+    return reg_idx;
+}
+
+static inline bool spirv_sim_type_is_integer(TypeKind kind) {
+    return kind == TypeInteger ||
+    kind == TypeVectorInteger ||
+    kind == TypeMatrixInteger;
+}
+
+static inline bool spirv_sim_type_is_float(TypeKind kind) {
+    return kind == TypeFloat ||
+    kind == TypeVectorFloat ||
+    kind == TypeMatrixFloat;
+}
+
+
 void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
     assert(sim);
     assert(module);
@@ -26,6 +64,14 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
 
     mem_arena_init(&sim->reg_data, 256 * 16, ARENA_DEFAULT_ALIGN);
     spirv_sim_select_entry_point(sim, 0);
+   
+    for (int iter = map_begin(&module->constants); iter != map_end(&module->constants); iter = map_next(&module->constants, iter)) {
+        uint32_t id = map_key_int(&module->constants, iter);
+        Constant *constant = map_val(&module->constants, iter);
+        
+        int32_t reg = spirv_sim_assign_register(sim, id, constant->type);
+        memcpy(sim->temp_regs[reg].vec, &constant->value.as_int, 4);     // FIXME: wider types
+    }
 }
 
 void spirv_sim_variable_associate_data(
@@ -51,49 +97,12 @@ void spirv_sim_select_entry_point(SPIRV_simulator *sim, uint32_t index) {
     spirv_bin_opcode_jump_to(sim->module->spirv_bin, func->fst_opcode);
 }
 
-static inline Variable *spriv_sim_retrieve_var_desc(SPIRV_simulator *sim, uint32_t id) {
-    assert(sim);
-
-    Variable *result = map_int_ptr_get(&sim->module->variables, id);
-    return result;
-}
-
 VariableData *spirv_sim_retrieve_var(SPIRV_simulator *sim, VariableKind kind, VariableInterface if_type, int32_t if_index) {
     assert(sim);
 
     uint64_t key = (uint64_t) kind << 48 | (uint64_t) if_type << 32 | if_index;
     VariableData *result = map_int_ptr_get(&sim->variable_data, key);
     return result;
-}
-
-static inline VariableData *spirv_sim_var_data(SPIRV_simulator *sim, Variable *var) {
-    assert(sim);
-    assert(var);
-
-    return spirv_sim_retrieve_var(sim, var->kind, var->if_type, var->if_index);
-}
-
-static inline uint32_t spirv_sim_assign_register(SPIRV_simulator *sim, uint32_t id, Type *type) {
-    assert(sim);
-    uint32_t reg_idx = sim->reg_free_start++;
-    sim->temp_regs[reg_idx].vec = mem_arena_allocate(&sim->reg_data, type->element_size * type->count);
-    sim->temp_regs[reg_idx].id = id;
-    sim->temp_regs[reg_idx].type = type;
-    map_int_int_put(&sim->assigned_regs, id, reg_idx);
-    
-    return reg_idx;
-}
-
-static inline bool spirv_sim_type_is_integer(TypeKind kind) {
-    return kind == TypeInteger ||
-           kind == TypeVectorInteger ||
-           kind == TypeMatrixInteger;
-}
-
-static inline bool spirv_sim_type_is_float(TypeKind kind) {
-    return kind == TypeFloat ||
-           kind == TypeVectorFloat ||
-           kind == TypeMatrixFloat;
 }
 
 size_t spirv_register_to_string(SPIRV_simulator *sim, uint32_t reg_idx, char *out_str, size_t out_max) {
