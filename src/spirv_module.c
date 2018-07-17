@@ -193,7 +193,7 @@ static void handle_opcode_constant(SPIRV_module *module, SPIRV_opcode *op) {
             break;
         case SpvOpConstantFalse:
             constant = new_constant(spirv_module_type_by_id(module, op->optional[0]));
-            constant->value.as_int = true;
+            constant->value.as_int = false;
             break;
         case SpvOpConstant:
             constant = new_constant(spirv_module_type_by_id(module, op->optional[0]));
