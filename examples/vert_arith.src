@@ -26,6 +26,7 @@
           %6 = OpTypeFloat 32
           %8 = OpConstant %6 3
           %7 = OpTypeVector %6 4
+          %9 = OpConstantComposite %7 %8 %8 %8 %8
          %28 = OpTypePointer Input %7
          %29 = OpVariable %28 Input
          %32 = OpVariable %28 Input

@@ -187,24 +187,42 @@ static inline bool is_opcode_constant(SPIRV_opcode *op) {
 
 static void handle_opcode_constant(SPIRV_module *module, SPIRV_opcode *op) {
     Constant *constant = NULL;
+    uint32_t result_type = op->optional[0];
+    uint32_t result_id = op->optional[1];
 
     switch (op->op.kind) {                                  // FIXME: support all types
         case SpvOpConstantTrue:
-            constant = new_constant(module, spirv_module_type_by_id(module, op->optional[0]));
+            constant = new_constant(module, spirv_module_type_by_id(module, result_type));
             constant->value.as_int = true;
             break;
         case SpvOpConstantFalse:
-            constant = new_constant(module, spirv_module_type_by_id(module, op->optional[0]));
+            constant = new_constant(module, spirv_module_type_by_id(module, result_type));
             constant->value.as_int = false;
             break;
         case SpvOpConstant:
-            constant = new_constant(module, spirv_module_type_by_id(module, op->optional[0]));
+            constant = new_constant(module, spirv_module_type_by_id(module, result_type));
             constant->value.as_int = op->optional[2];       // FIXME: wider types
             break;
+        case SpvOpConstantComposite:
+            constant = new_constant(module, spirv_module_type_by_id(module, result_type));
+            size_t size = constant->type->count * constant->type->element_size;
+            constant->value.as_int_array = mem_arena_allocate(&module->allocator, size);
+            
+            int8_t *dst = (int8_t *) constant->value.as_int_array;
+            for (int32_t i = 2; i < op->op.length - 1; ++i) {
+                Constant *src = map_int_ptr_get(&module->constants, op->optional[i]);
+                size_t src_size = src->type->count * src->type->element_size;
+                if (src->type->count == 1) {
+                    memcpy(dst, &src->value.as_int, src_size);
+                } else {
+                    memcpy(dst, src->value.as_int_array, src_size);
+                }
+                dst += src_size;
+            }
     }
 
     if (constant) {
-        map_int_ptr_put(&module->constants, op->optional[1], constant);
+        map_int_ptr_put(&module->constants, result_id, constant);
     }
 }
 

@@ -60,6 +60,8 @@ typedef struct Type {
 typedef union ConstantValue {
     int32_t as_int;
     float   as_float;
+    int32_t *as_int_array;
+    float   *as_float_array;
 } ConstantValue;
 
 typedef struct Constant {

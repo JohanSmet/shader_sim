@@ -70,7 +70,11 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
         Constant *constant = map_val(&module->constants, iter);
         
         int32_t reg = spirv_sim_assign_register(sim, id, constant->type);
-        memcpy(sim->temp_regs[reg].vec, &constant->value.as_int, 4);     // FIXME: wider types
+        if (constant->type->count == 1) {
+            memcpy(sim->temp_regs[reg].vec, &constant->value.as_int, constant->type->element_size);
+        } else {
+            memcpy(sim->temp_regs[reg].vec, constant->value.as_int_array, constant->type->element_size * constant->type->count);
+        }
     }
 }
 
