@@ -10,15 +10,6 @@
 #include <stdlib.h>
 
 /* allocation / initialization functions */
-static inline IdName *new_id_name(SPIRV_module *module, const char *name, int member_index) {
-    IdName *result = mem_arena_allocate(&module->allocator, sizeof(IdName));
-    *result = (IdName) {
-        .name = name,
-        .member_index = member_index
-    };
-    return result;
-}
-
 static inline Type *new_type(SPIRV_module *module, uint32_t id, TypeKind kind) {
     Type *result = mem_arena_allocate(&module->allocator, sizeof(Type));
     *result = (Type) {
@@ -55,12 +46,16 @@ static inline SPIRV_function *new_function(SPIRV_module *module, Type *type, uin
 }
 
 /* lookup functions */
+static inline uint64_t id_member_to_key(uint32_t id, uint32_t member) {
+    return (uint64_t) id << 32 | member;
+}
+
 Type *spirv_module_type_by_id(SPIRV_module *module, uint32_t id) {
     return map_int_ptr_get(&module->types, id);
 }
 
-static IdName *name_by_id(SPIRV_module *module, uint32_t id) {
-    return map_int_ptr_get(&module->names, id);
+static const char *name_by_id(SPIRV_module *module, uint32_t id, uint32_t member) {
+    return map_int_ptr_get(&module->names, id_member_to_key(id, member));
 }
 
 static Constant *constant_by_id(SPIRV_module *module, uint32_t id) {
@@ -76,8 +71,7 @@ static SPIRV_function *function_by_id(SPIRV_module *module, uint32_t id) {
 }
 
 static SPIRV_opcode **decoration_ops_by_id(SPIRV_module *module, uint32_t target, uint32_t member) {
-    uint64_t key = (uint64_t) target << 32 | member;
-    return map_int_ptr_get(&module->decorations, key);
+    return map_int_ptr_get(&module->decorations, id_member_to_key(target, member));
 }
 
 static bool id_has_decoration (SPIRV_module *module, uint32_t target, uint32_t member, SpvDecoration wanted) {
@@ -97,7 +91,7 @@ static bool id_has_decoration (SPIRV_module *module, uint32_t target, uint32_t m
 }
 
 static void define_name(SPIRV_module *module, uint32_t id, const char *name, int member_index) {
-    map_int_ptr_put(&module->names, id, new_id_name(module, name, member_index));
+    map_int_ptr_put(&module->names, id_member_to_key(id, member_index), (void *) name);
 }
 
 static inline bool is_opcode_type(SPIRV_opcode *op) {
@@ -236,10 +230,7 @@ static void handle_opcode_variable(SPIRV_module *module, SPIRV_opcode *op) {
     var->kind = storage_class;
 
     // optional name that was defined earlier
-    IdName *name = name_by_id(module, var_id);
-    if (name) {
-        var->name = name->name;
-    }
+    var->name = name_by_id(module, id, member);
 
     // initializer - can be a constant or a (global) variable
     if (op->op.length == 5) {
@@ -295,10 +286,7 @@ static void handle_opcode_function(SPIRV_module *module, SPIRV_opcode *op) {
     SPIRV_function *func = new_function(module, spirv_module_type_by_id(module, func_type), func_id);
 
     // optional name that was defined earlier
-    IdName *name = name_by_id(module, func_id);
-    if (name) {
-        func->func.name = name->name;
-    }
+    func->func.name = name_by_id(module, func_id, 0);
 
     // scan ahead to the first real instruction of the function
     func->fst_opcode = spirv_bin_opcode_next(module->spirv_bin);
@@ -346,8 +334,8 @@ static inline bool is_opcode_decoration(SPIRV_opcode *op) {
 
 static void handle_opcode_decoration(SPIRV_module *module, SPIRV_opcode *op) {
     uint32_t target = op->optional[0];
-    uint32_t member = (op->op.kind == SpvOpMemberDecorate) ? op->optional[1] : 0;
-    uint64_t key = ((uint64_t) target << 32) | member;
+    uint32_t member = (op->op.kind == SpvOpMemberDecorate) ? op->optional[1] : -1;
+    uint64_t key = id_member_to_key(target, member);
 
     SPIRV_opcode **id_decs = map_int_ptr_get(&module->decorations, key);
     arr_push(id_decs, op);

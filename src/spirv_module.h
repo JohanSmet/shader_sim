@@ -12,11 +12,6 @@ struct SPIRV_binary;
 struct SPIRV_opcode;
 
 // types
-typedef struct IdName {
-    const char *name;
-    int member_index;
-} IdName;
-
 typedef enum TypeKind {
     TypeVoid,
     TypeBool,
@@ -140,7 +135,7 @@ typedef struct SPIRV_module {
     struct SPIRV_binary *spirv_bin;
     MemArena allocator;
 
-    HashMap names;          // id (int) -> IdName *
+    HashMap names;          // id (int) -> const char *
     HashMap decorations;    // id (int) -> SPIRV_opcode ** (dyn_array)
     HashMap types;          // id (int) -> Type *
     HashMap constants;      // id (int) -> Constant *
