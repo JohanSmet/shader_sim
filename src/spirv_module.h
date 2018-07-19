@@ -36,6 +36,7 @@ typedef enum MatrixKind {
 } MatrixKind;
 
 typedef struct Type {
+    uint32_t id;
     TypeKind kind;
     int count;              // number of elements
     int32_t element_size;   // in bytes

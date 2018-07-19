@@ -19,9 +19,10 @@ static inline IdName *new_id_name(SPIRV_module *module, const char *name, int me
     return result;
 }
 
-static inline Type *new_type(SPIRV_module *module, TypeKind kind) {
+static inline Type *new_type(SPIRV_module *module, uint32_t id, TypeKind kind) {
     Type *result = mem_arena_allocate(&module->allocator, sizeof(Type));
     *result = (Type) {
+        .id = id,
         .kind = kind
     };
     return result;
@@ -109,34 +110,34 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
 
     switch (op->op.kind) {                                  // FIXME: support all types
         case SpvOpTypeVoid:
-            type = new_type(module, TypeVoid);
+            type = new_type(module, result_id, TypeVoid);
             type->count = 1;
             break;
         case SpvOpTypeBool:
-            type = new_type(module, TypeBool);
+            type = new_type(module, result_id, TypeBool);
             type->count = 1;
             type->element_size = sizeof(bool);
             break;
         case SpvOpTypeInt:
-            type = new_type(module, TypeInteger);
+            type = new_type(module, result_id, TypeInteger);
             type->count = 1;
             type->element_size = op->optional[1] / 8;
             type->is_signed = op->optional[2] == 1;
             break;
         case SpvOpTypeFloat:
-            type = new_type(module, TypeFloat);
+            type = new_type(module, result_id, TypeFloat);
             type->count = 1;
             type->element_size = op->optional[1] / 8;
             break;
         case SpvOpTypeVector: {
             Type *base_type = spirv_module_type_by_id(module, op->optional[1]);
             if (base_type->kind == TypeInteger) {
-                type = new_type(module, TypeVectorInteger);
+                type = new_type(module, result_id, TypeVectorInteger);
                 type->count = op->optional[2];
                 type->element_size = base_type->element_size;
                 type->is_signed = base_type->is_signed;
             } else if (base_type->kind == TypeFloat) {
-                type = new_type(module, TypeVectorFloat);
+                type = new_type(module, result_id, TypeVectorFloat);
                 type->count = op->optional[2];
                 type->element_size = base_type->element_size;
             }
@@ -145,10 +146,10 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
         case SpvOpTypeMatrix: {
             Type *col_type = spirv_module_type_by_id(module, op->optional[1]);
             if (col_type->kind == TypeVectorInteger) {
-                type = new_type(module, TypeMatrixInteger);
+                type = new_type(module, result_id, TypeMatrixInteger);
                 type->is_signed = col_type->is_signed;
             } else if (col_type->kind == TypeVectorFloat) {
-                type = new_type(module, TypeMatrixFloat);
+                type = new_type(module, result_id, TypeMatrixFloat);
             }
             type->matrix.num_cols = op->optional[2];
             type->matrix.num_rows = col_type->count;
@@ -164,12 +165,12 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
             break;
         }
         case SpvOpTypePointer: 
-            type = new_type(module, TypePointer);
+            type = new_type(module, result_id, TypePointer);
             type->pointer.base_type = spirv_module_type_by_id(module, op->optional[2]);
             break;
 
         case SpvOpTypeFunction:
-            type = new_type(module, TypeFunction);
+            type = new_type(module, result_id, TypeFunction);
             type->function.return_type = spirv_module_type_by_id(module, op->optional[1]);
             for (int idx = 2; idx < op->op.length - 2; ++idx) {
                 arr_push(type->function.parameter_types, spirv_module_type_by_id(module, op->optional[idx]));
