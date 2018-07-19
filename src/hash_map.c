@@ -8,7 +8,8 @@
 #include <string.h>
 #include <assert.h>
 
-#define KEY_EMPTY   NULL
+#define META_EMPTY  0
+#define META_IN_USE 2
 
 uint64_t hash_uint64(uint64_t key) {
     // mixer from MurmurHash3 (public domain -- see https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp)
@@ -45,9 +46,10 @@ static void hashmap_put_ptr(HashMap *map, void *key, void *val) {
     for (;;) {
         idx = idx % map->cap;
 
-        if (map->keys[idx] == KEY_EMPTY) {
+        if (map->meta[idx] == META_EMPTY) {
             map->keys[idx] = key;
             map->vals[idx] = val;
+            map->meta[idx] = META_IN_USE;
             map->len++;
             return;
         } else if (map->keys[idx] == key) {
@@ -65,9 +67,10 @@ static void hashmap_put_str(HashMap *map, void *key, void *val) {
     for (;;) {
         idx = idx % map->cap;
 
-        if (map->keys[idx] == KEY_EMPTY) {
+        if (map->meta[idx] == META_EMPTY) {
             map->keys[idx] = key;
             map->vals[idx] = val;
+            map->meta[idx] = META_IN_USE;
             map->len++;
             return;
         } else if (strcmp(map->keys[idx], key) == 0) {
@@ -87,13 +90,14 @@ static void hashmap_grow(HashMap *map, size_t new_cap, HASHMAP_PUT_FUNC put_func
     HashMap new_map = (HashMap) {
         .len = 0,
         .cap = new_cap,
-        .data = calloc(new_cap * 2, sizeof(void *))
+        .data = calloc(new_cap, sizeof(void *) * 2 + sizeof(uint8_t))
     };
     new_map.keys = new_map.data;
     new_map.vals = new_map.keys + new_cap;
+    new_map.meta = (uint8_t *) (new_map.vals + new_cap);
 
     for (uint64_t idx = 0; idx < map->cap; ++idx) {
-        if (map->keys[idx] != KEY_EMPTY) {
+        if (map->meta[idx] != META_EMPTY) {
             put_func(&new_map, map->keys[idx], map->vals[idx]);
         }
     }
@@ -103,7 +107,6 @@ static void hashmap_grow(HashMap *map, size_t new_cap, HASHMAP_PUT_FUNC put_func
 }
 
 void map_ptr_ptr_put(HashMap *map, void *key, void *value) {
-    assert(key);
 
     // double container capacity when it becomes half full
     if (map->len * 2 >= map->cap) {
@@ -115,7 +118,6 @@ void map_ptr_ptr_put(HashMap *map, void *key, void *value) {
 
 void *map_ptr_ptr_get(HashMap *map, void *key) {
     assert(map);
-    assert(key);
 
     if (map->cap == 0) {
         return NULL;
@@ -125,11 +127,11 @@ void *map_ptr_ptr_get(HashMap *map, void *key) {
 
     for (;;) {
         idx = idx % map->cap;
-
-        if (map->keys[idx] == key) {
-            return map->vals[idx];
-        } else if (map->keys[idx] == KEY_EMPTY) {
+        
+        if (map->meta[idx] == META_EMPTY) {
             return NULL;
+        } else if (map->keys[idx] == key) {
+            return map->vals[idx];
         }
         ++idx;
     }
@@ -137,8 +139,19 @@ void *map_ptr_ptr_get(HashMap *map, void *key) {
     return NULL;
 }
 
+bool map_ptr_ptr_has(HashMap *map, void *key) {
+    
+    assert(map);
+    
+    if (map->cap == 0) {
+        return NULL;
+    }
+    
+    uint64_t idx = hash_ptr(key) % map->cap;
+    return map->meta[idx] == META_IN_USE;
+}
+
 void map_str_ptr_put(HashMap *map, const char *key, void *value) {
-    assert(key);
 
     // double the container capacity when it becomes half full
     if (map->len * 2 >= map->cap) {
@@ -150,7 +163,6 @@ void map_str_ptr_put(HashMap *map, const char *key, void *value) {
 
 void *map_str_ptr_get(HashMap *map, const char *key) {
     assert(map);
-    assert(key);
 
     if (map->cap == 0) {
         return NULL;
@@ -161,15 +173,26 @@ void *map_str_ptr_get(HashMap *map, const char *key) {
     for (;;) {
         idx = idx % map->cap;
 
-        if (strcmp((const char *) map->keys[idx], key) == 0) {
-            return map->vals[idx];
-        } else if (map->keys[idx] == KEY_EMPTY) {
+        if (map->meta[idx] == META_EMPTY) {
             return NULL;
+        } else if (strcmp((const char *) map->keys[idx], key) == 0) {
+            return map->vals[idx];
         }
         ++idx;
     }
 
     return NULL;
+}
+
+bool map_str_ptr_has(HashMap *map, const char *key) {
+    assert(map);
+    
+    if (map->cap == 0) {
+        return NULL;
+    }
+    
+    uint64_t idx = hash_str(key) % map->cap;
+    return map->meta[idx] == META_IN_USE;
 }
 
 void map_free(HashMap *map) {

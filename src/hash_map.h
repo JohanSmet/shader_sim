@@ -3,7 +3,6 @@
 // an associative container (open addressing, linear probing)
 //  - basic implementation to avoid dependencies on external library
 //  - limited operations: only add / lookup
-//  - NULL is used as a sentinel value to indicate an unused value, NULL / 0 key not supported
 //  - hashmap does not copy objects - keep them around long enough or bad things will happen
 //  - iterators can be invalidated by changing the container during iteration
 
@@ -12,6 +11,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef struct HashMap {
     size_t len;
@@ -19,6 +19,7 @@ typedef struct HashMap {
     void *data;
     void **keys;
     void **vals;
+    uint8_t *meta;
 } HashMap;
 
 inline static size_t map_len(HashMap *map) {
@@ -27,34 +28,31 @@ inline static size_t map_len(HashMap *map) {
 
 void map_ptr_ptr_put(HashMap *map, void *key, void *value);
 void *map_ptr_ptr_get(HashMap *map, void *key);
+bool map_ptr_ptr_has(HashMap *map, void *key);
 
-inline static void map_int_int_put(HashMap *map, int64_t key, int64_t value) {
-    map_ptr_ptr_put(map, (void *) key, (void *) value);
-}
+#define map_int_int_put(map, key, value)    map_ptr_ptr_put((map), (void *) ((int64_t) key), (void *) ((int64_t) value))
+#define map_int_int_get(map, key)           (int64_t) map_ptr_ptr_get((map), (void *) ((int64_t) key))
+#define map_int_int_has(map, key)           map_ptr_ptr_has((map), (void *) ((int64_t) key))
 
-inline static int64_t map_int_int_get(HashMap *map, int64_t key) {
-    return (int64_t) map_ptr_ptr_get(map, (void *) key);
-}
-
-inline static void map_int_ptr_put(HashMap *map, int64_t key, void *value) {
-    map_ptr_ptr_put(map, (void *) key, value);
-}
-
-inline static void *map_int_ptr_get(HashMap *map, int64_t key) {
-    return map_ptr_ptr_get(map, (void *) key);
-}
+#define map_int_ptr_put(map, key, value)    map_ptr_ptr_put((map), (void *) ((int64_t) key), (value))
+#define map_int_ptr_get(map, key)           map_ptr_ptr_get((map), (void *) ((int64_t) key))
+#define map_int_ptr_has(map, key)           map_ptr_ptr_has((map), (void *) ((int64_t) key))
 
 #define map_int_str_put(map, key, value)    map_int_ptr_put((map), (key), (value))
 #define map_int_str_get(map, key)           map_int_ptr_get((map), (key))
+#define map_int_str_has(map, key)           map_int_ptr_has((map), (key))
 
 void map_str_ptr_put(HashMap *map, const char *key, void *value);
 void *map_str_ptr_get(HashMap *map, const char *key);
+bool map_str_ptr_has(HashMap *map, const char *key);
 
 #define map_str_int_put(m, k, v)    map_str_ptr_put((m), (k), (void *)(v))
 #define map_str_int_get(m, k)       (int64_t) map_str_ptr_get((m),(k))
+#define map_str_int_has(m, k)       map_str_ptr_get((m),(k))
 
 #define map_str_str_put(m, k, v)    map_str_ptr_put((map), (key), (value))
 #define map_str_str_get(m, k)       map_str_ptr_get((map), (key))
+#define map_str_str_has(m, k)       map_str_ptr_has((map), (key))
 
 void map_free(HashMap *map);
 
