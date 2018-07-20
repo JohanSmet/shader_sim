@@ -19,8 +19,7 @@ typedef enum RunnerLanguage {
 
 // types
 typedef enum RunnerCmdKind {
-    CmdAssociateInput,
-    CmdAssociateOutput,
+    CmdAssociateData,
     CmdRun,
     CmdStep,
     CmdCmpOutput
@@ -42,23 +41,14 @@ typedef struct RunnerCmd {
     RUNNER_CMD_FUNC cmd_func;
 } RunnerCmd;
 
-typedef struct RunnerCmdAssociateInput {
+typedef struct RunnerCmdAssociateData {
     RunnerCmd base;
     VariableKind var_kind;
     VariableInterface var_if_type;
     uint32_t var_if_index;
     uint8_t *data;
     size_t data_size;
-} RunnerCmdAssociateInput;
-
-typedef struct RunnerCmdAssociateOutput {
-    RunnerCmd base;
-    VariableKind var_kind;
-    VariableInterface var_if_type;
-    uint32_t var_if_index;
-    uint8_t *data;
-    size_t data_size;
-} RunnerCmdAssociateOutput;
+} RunnerCmdAssociateData;
 
 typedef struct RunnerCmdRun {
     RunnerCmd base;

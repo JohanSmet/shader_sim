@@ -23,25 +23,13 @@
 
 #define RUNNER_FUNC_END   }
 
-RUNNER_FUNC_BEGIN(CmdAssociateInput)
+RUNNER_FUNC_BEGIN(CmdAssociateData)
 
     spirv_sim_variable_associate_data(
         runner->spirv_sim,
         cmd->var_kind,
         cmd->var_if_type, cmd->var_if_index,
         cmd->data, cmd->data_size);
-    return true;
-
-RUNNER_FUNC_END
-
-RUNNER_FUNC_BEGIN(CmdAssociateOutput)
-
-    spirv_sim_variable_associate_data(
-        runner->spirv_sim,
-        cmd->var_kind,
-        cmd->var_if_type, cmd->var_if_index,
-        cmd->data, cmd->data_size);
-
     return true;
 
 RUNNER_FUNC_END
@@ -74,7 +62,7 @@ RUNNER_FUNC_END
 
 RUNNER_FUNC_BEGIN(CmdCmpOutput)
 
-    VariableData *result = spirv_sim_retrieve_var(
+    SimPointer *result = spirv_sim_retrieve_intf_pointer(
         runner->spirv_sim, VarKindOutput,
         cmd->var_if_type, cmd->var_if_index);
 
@@ -91,7 +79,7 @@ RUNNER_FUNC_BEGIN(CmdCmpOutput)
             break;
             
         case TypeBool: {
-            bool actual = *((bool *) result->buffer);
+            bool actual = *((bool *) result->memory);
             bool expect = *((bool *) cmd->data);
 
             if (actual != expect) {
@@ -106,7 +94,7 @@ RUNNER_FUNC_BEGIN(CmdCmpOutput)
         case TypeInteger:
         case TypeVectorInteger:
         case TypeMatrixInteger: {
-            int32_t *actual = (int32_t *) result->buffer;
+            int32_t *actual = (int32_t *) result->memory;
             int32_t *expect = (int32_t *) cmd->data;
             int32_t count = cmd->data_size / sizeof(int32_t);
 
@@ -123,7 +111,7 @@ RUNNER_FUNC_BEGIN(CmdCmpOutput)
         case TypeFloat:
         case TypeVectorFloat:
         case TypeMatrixFloat: {
-            float *actual = (float *) result->buffer;
+            float *actual = (float *) result->memory;
             float *expect = (float *) cmd->data;
             int32_t count = cmd->data_size / sizeof(float);
 
@@ -153,19 +141,10 @@ RUNNER_FUNC_END
 #undef RUNNER_FUNC_BEGIN
 #undef RUNNER_FUNC_END
 
-static inline RunnerCmdAssociateInput *new_cmd_associate_input(void) {
-    RunnerCmdAssociateInput *cmd = (RunnerCmdAssociateInput *) malloc(sizeof(RunnerCmdAssociateInput));
-    cmd->base.kind = CmdAssociateInput;
-    cmd->base.cmd_func = RunnerCmdAssociateInput_execute;
-    cmd->var_kind = VarKindInput;
-    return cmd;
-}
-
-static inline RunnerCmdAssociateOutput *new_cmd_associate_output(void) {
-    RunnerCmdAssociateOutput *cmd = (RunnerCmdAssociateOutput *) malloc(sizeof(RunnerCmdAssociateOutput));
-    cmd->base.kind = CmdAssociateOutput;
-    cmd->base.cmd_func = RunnerCmdAssociateOutput_execute;
-    cmd->var_kind = VarKindOutput;
+static inline RunnerCmdAssociateData *new_cmd_associate_data(void) {
+    RunnerCmdAssociateData *cmd = (RunnerCmdAssociateData *) malloc(sizeof(RunnerCmdAssociateData));
+    cmd->base.kind = CmdAssociateData;
+    cmd->base.cmd_func = RunnerCmdAssociateData_execute;
     return cmd;
 }
 
@@ -223,6 +202,19 @@ static TypeKind parse_data_type(const char *data_type) {
         return result;
     } else {
         fatal_error("parse_data_type(): unknown type '%'", data_type);
+        return 0;
+    }
+}
+
+static VariableKind parse_var_kind(const char *kind_str) {
+    if (!strcmp(kind_str, "input")) {
+        return VarKindInput;
+    } else if (!strcmp(kind_str, "uniform")) {
+        return VarKindUniform;
+    } else if (!strcmp(kind_str, "uniform_constant")) {
+        return VarKindUniformConstant;
+    } else {
+        fatal_error("Unknown variable kind");
         return 0;
     }
 }
@@ -316,27 +308,18 @@ static RunnerCmpOp parse_cmp_op(const char *op_str) {
 
 static RunnerCmd *parse_command(const char *cmd, const cJSON *json_data) {
 
-    if (!strcmp(cmd, "associate_input")) {
-        RunnerCmdAssociateInput *cmd = new_cmd_associate_input();
+    if (!strcmp(cmd, "associate_data")) {
+        RunnerCmdAssociateData *cmd = new_cmd_associate_data();
         TypeKind data_type = parse_data_type(json_string_value(json_data, "data_type"));
         int32_t elements = json_int_value(json_data, "elements", 0);
-
+        
+        cmd->var_kind = parse_var_kind(json_string_value(json_data, "kind"));
         cmd->var_if_type = parse_var_interface_type(json_string_value(json_data, "if_type"));
         cmd->var_if_index = parse_var_interface_index(cmd->var_if_type, json_data);
         cmd->data_size = allocate_data(data_type, elements, &cmd->data);
 
         const cJSON *values = cJSON_GetObjectItemCaseSensitive(json_data, "value");
         parse_values(values, data_type, elements, cmd->data);
-
-        return (RunnerCmd *) cmd;
-    } else if (!strcmp(cmd, "associate_output")) {
-        RunnerCmdAssociateOutput *cmd = new_cmd_associate_output();
-        TypeKind data_type = parse_data_type(json_string_value(json_data, "data_type"));
-        int32_t elements = json_int_value(json_data, "elements", 0);
-
-        cmd->var_if_type = parse_var_interface_type(json_string_value(json_data, "if_type"));
-        cmd->var_if_index = parse_var_interface_index(cmd->var_if_type, json_data);
-        cmd->data_size = allocate_data(data_type, elements, &cmd->data);
 
         return (RunnerCmd *) cmd;
     } else if (!strcmp(cmd, "run")) {
