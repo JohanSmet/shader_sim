@@ -22,7 +22,9 @@ typedef enum TypeKind {
     TypeMatrixInteger,
     TypeMatrixFloat,
     TypePointer,
-    TypeFunction
+    TypeFunction,
+    TypeArray,
+    TypeStructure
 } TypeKind;
 
 typedef enum MatrixKind {
@@ -33,9 +35,10 @@ typedef enum MatrixKind {
 typedef struct Type {
     uint32_t id;
     TypeKind kind;
-    int count;              // number of elements
-    int32_t element_size;   // in bytes
-    bool is_signed;         // only for Integer/VectorInteger/MatrixInteger
+    int count;                  // number of elements
+    int32_t element_size;       // in bytes
+    bool is_signed;             // only for Integer/VectorInteger/MatrixInteger
+    struct Type *base_type;     // only for Pointer/Array/Vector/Matrix
     union {
         struct {
             MatrixKind  kind;
@@ -43,13 +46,12 @@ typedef struct Type {
             int32_t     num_cols;
         } matrix;
         struct {
-            // XXX: storage class
-            struct Type *base_type;
-        } pointer;
-        struct {
             struct Type *return_type;
             struct Type **parameter_types;     // dyn_array
         } function;
+        struct {
+            struct Type **members;             // dyn_array
+        } structure;
     };
 } Type;
 
@@ -88,20 +90,22 @@ typedef enum VariableKind {
 } VariableKind;
 
 typedef enum VariableInterface {
-    VarInterfaceBuiltIn = 0,
-    VarInterfaceLocation = 1,
+    VarInterfaceNone = 0,
+    VarInterfaceBuiltIn = 1,
+    VarInterfaceLocation = 2,
 } VariableInterface;
 
 typedef struct Variable {
-    Type *type;
-    const char *name;
+    Type *type;                 // actual type the variable is pointing to
+    const char *name;           // optional
+    uint32_t array_elements;
     VariableInitializerKind initializer_kind;
     union {
         Constant *initializer_constant;
         struct Variable *initializer_variable;
     };
+    struct Variable **members;
     VariableKind kind;      // spirv: storage class
-
     VariableInterface if_type;
     uint32_t if_index;
 } Variable;
@@ -151,5 +155,7 @@ void spirv_module_load(SPIRV_module *module, struct SPIRV_binary *binary);
 void spirv_module_free(SPIRV_module *module);
 
 Type *spirv_module_type_by_id(SPIRV_module *module, uint32_t id);
+Constant *spirv_module_constant_by_id(SPIRV_module *mpdule, uint32_t id);
+Variable *spirv_module_variable_by_intf(SPIRV_module *module, VariableKind kind, VariableInterface if_type, uint32_t if_index);
 
 #endif // JS_SHADER_SIM_SPIRV_MODULE_H

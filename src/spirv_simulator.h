@@ -10,10 +10,16 @@
 #include "spirv_module.h"
 
 // types
-typedef struct VariableData {
-    uint8_t *buffer;
+typedef struct SimPointer {
+    Type *type;
+    uint8_t *memory;
+} SimPointer;
+
+typedef struct SimVarMemory {
+    Variable *var_desc;
     size_t size;
-} VariableData;
+    uint8_t memory[];
+} SimVarMemory;
 
 typedef struct SimRegister {
     union {
@@ -29,7 +35,9 @@ typedef struct SimRegister {
 
 typedef struct SPIRV_simulator {
     SPIRV_module *module;
-    HashMap variable_data;  // uint64_t -> VariableData
+    HashMap var_memory;     // id (uint32_t) -> SimVarMemory *
+    HashMap mem_pointers;   // id (uint32_t) -> SimPointer *
+    HashMap intf_pointers;  // uint64_t -> SimPointer *
 
     SimRegister temp_regs[SPIRV_SIM_MAX_TEMP_REGISTERS];
     uint32_t reg_free_start;
@@ -52,7 +60,7 @@ void spirv_sim_variable_associate_data(
 void spirv_sim_select_entry_point(SPIRV_simulator *sim, uint32_t index);
 void spirv_sim_step(SPIRV_simulator *sim);
 
-VariableData *spirv_sim_retrieve_var(SPIRV_simulator *sim, VariableKind kind, VariableInterface if_type, int32_t if_index);
+SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, VariableKind kind, VariableInterface if_type, int32_t if_index);
 size_t spirv_register_to_string(SPIRV_simulator *sim, uint32_t reg_idx, char *out_str, size_t out_max);
 
 

@@ -244,52 +244,49 @@ static int32_t parse_var_interface_index(VariableInterface if_type, const cJSON 
     return 0;
 }
 
-static inline size_t allocate_data(TypeKind kind, int32_t elements, uint8_t **data) {
+static inline size_t allocate_data(Type *type, uint8_t **data) {
     assert(data);
-    size_t data_size = 0;
-
-    switch (kind) {
-        case TypeInteger:
-        case TypeVectorInteger:
-        case TypeMatrixInteger:
-            data_size = sizeof(int32_t);
-            break;
-        case TypeFloat:
-        case TypeVectorFloat:
-        case TypeMatrixFloat:
-            data_size = sizeof(float);
-            break;
-        case TypePointer:
-        case TypeFunction:
-            data_size = sizeof(int32_t *);
-            break;
-        default:
-            return data_size;
-    }
-
-    data_size *= elements;
+    assert(type);
+    
+    size_t data_size = type->element_size * type->count;
     *data = (uint8_t *) calloc(1, data_size);
     return data_size;
 }
 
-static void parse_values(const cJSON *json_values, TypeKind data_type, int32_t elements, uint8_t *data) {
-/* FIXME: support all types */
+static void parse_values(const cJSON *json_values, Type *type, uint8_t *data) {
 
-    if (data_type == TypeInteger && cJSON_IsNumber(json_values)) {
+    if (type->kind == TypeInteger && cJSON_IsNumber(json_values)) {
         *((int32_t *) data) = json_values->valueint;
-    } else if (data_type == TypeFloat && cJSON_IsNumber(json_values)) {
+    } else if (type->kind == TypeFloat && cJSON_IsNumber(json_values)) {
         *((float *) data) = json_values->valuedouble;
-    } else if ((data_type == TypeVectorInteger || data_type == TypeMatrixInteger) && cJSON_IsArray(json_values)) {
+    } else if ((type->kind == TypeVectorInteger || type->kind == TypeMatrixInteger) && cJSON_IsArray(json_values)) {
         int32_t idx = 0;
         int32_t *int_data = (int32_t *) data;
-        for (const cJSON *iter=json_values->child; iter && idx < elements; iter=iter->next) {
+        for (const cJSON *iter=json_values->child; iter && idx < type->count; iter=iter->next) {
             int_data[idx++] = iter->valueint;
         }
-    } else if ((data_type == TypeVectorFloat || data_type == TypeMatrixFloat) && cJSON_IsArray(json_values)) {
+    } else if ((type->kind == TypeVectorFloat || type->kind == TypeMatrixFloat) && cJSON_IsArray(json_values)) {
         int32_t idx = 0;
         float *flt_data = (float *) data;
-        for (const cJSON *iter=json_values->child; iter && idx < elements; iter=iter->next) {
+        for (const cJSON *iter=json_values->child; iter && idx < type->count; iter=iter->next) {
             flt_data[idx++] = iter->valuedouble;
+        }
+    } else if (type->kind == TypeArray) {
+        uint8_t *ptr = data;
+        int32_t idx = 0;
+        for (const cJSON *iter=json_values->child; iter && idx < type->count; iter=iter->next) {
+            parse_values(iter, type->base_type, ptr);
+            ptr += type->element_size;
+            ++idx;
+        }
+    } else if (type->kind == TypeStructure) {
+        uint8_t *ptr = data;
+        int32_t idx = 0;
+        
+        for (const cJSON *iter=json_values->child; iter && idx < type->count; iter=iter->next) {
+            Type *mem_type = type->structure.members[idx++];
+            parse_values(iter, mem_type, ptr);
+            ptr += mem_type->element_size * mem_type->count;
         }
     }
 }
@@ -306,20 +303,28 @@ static RunnerCmpOp parse_cmp_op(const char *op_str) {
     }
 }
 
-static RunnerCmd *parse_command(const char *cmd, const cJSON *json_data) {
+static RunnerCmd *parse_command(Runner *runner, const char *cmd, const cJSON *json_data) {
 
     if (!strcmp(cmd, "associate_data")) {
         RunnerCmdAssociateData *cmd = new_cmd_associate_data();
-        TypeKind data_type = parse_data_type(json_string_value(json_data, "data_type"));
-        int32_t elements = json_int_value(json_data, "elements", 0);
-        
         cmd->var_kind = parse_var_kind(json_string_value(json_data, "kind"));
         cmd->var_if_type = parse_var_interface_type(json_string_value(json_data, "if_type"));
         cmd->var_if_index = parse_var_interface_index(cmd->var_if_type, json_data);
-        cmd->data_size = allocate_data(data_type, elements, &cmd->data);
-
+        
+        Variable *var = spirv_module_variable_by_intf(
+            &runner->spirv_module,
+            cmd->var_kind, cmd->var_if_type, cmd->var_if_index
+        );
+        
+        if (!var) {
+            fatal_error("Unknown variable (%d/%d/%d)", cmd->var_kind, cmd->var_if_type, cmd->var_if_index);
+            return 0;
+        }
+        
+        cmd->data_size = allocate_data(var->type, &cmd->data);
+        
         const cJSON *values = cJSON_GetObjectItemCaseSensitive(json_data, "value");
-        parse_values(values, data_type, elements, cmd->data);
+        parse_values(values, var->type, cmd->data);
 
         return (RunnerCmd *) cmd;
     } else if (!strcmp(cmd, "run")) {
@@ -330,16 +335,26 @@ static RunnerCmd *parse_command(const char *cmd, const cJSON *json_data) {
         return (RunnerCmd *) cmd;
     } else if (!strcmp(cmd, "cmp_output")) {
         RunnerCmdCmpOutput *cmd = new_cmd_cmp_output();
-        int32_t elements = json_int_value(json_data, "elements", 0);
 
         cmd->op = parse_cmp_op(json_string_value(json_data, "operator"));
         cmd->data_type = parse_data_type(json_string_value(json_data, "data_type"));
         cmd->var_if_type = parse_var_interface_type(json_string_value(json_data, "if_type"));
         cmd->var_if_index = parse_var_interface_index(cmd->var_if_type, json_data);
-        cmd->data_size = allocate_data(cmd->data_type, elements, &cmd->data);
+        
+        Variable *var = spirv_module_variable_by_intf(
+            &runner->spirv_module,
+            VarKindOutput, cmd->var_if_type, cmd->var_if_index
+        );
+        
+        if (!var) {
+            fatal_error("Unknown output variable (%d/%d)", cmd->var_if_type, cmd->var_if_index);
+            return 0;
+        }
+        
+        cmd->data_size = allocate_data(var->type, &cmd->data);
 
         const cJSON *values = cJSON_GetObjectItemCaseSensitive(json_data, "value");
-        parse_values(values, cmd->data_type, elements, cmd->data);
+        parse_values(values, var->type, cmd->data);
 
         return (RunnerCmd *) cmd;
     }
@@ -425,7 +440,7 @@ bool runner_init(Runner *runner, const char *filename) {
             continue;
         }
 
-        RunnerCmd *cmd = parse_command(cmd_type->valuestring, json_cmd);
+        RunnerCmd *cmd = parse_command(runner, cmd_type->valuestring, json_cmd);
         arr_push(runner->commands, cmd);
     }
 

@@ -1,51 +1,41 @@
 {
     "language": "spirv",
-    "file": "vert_arith.spv",
+    "file": "fixed_color_vert.spv",
     "commands": [ 
-        {
-            "command": "associate_data",
-	    "kind": "input",
-            "if_type": "location",
-            "if_index": 0,
-            "value" : [1.0, 0.0, 0.0, 0.0]
-        },
-        {
+    	{
             "command": "associate_data",
 	    "kind": "input",
             "if_type": "location",
             "if_index": 1,
+            "value" : [1.0, 2.0, 3.0, 4.0]
+        },
+    	{
+            "command": "associate_data",
+	    "kind": "uniform_constant",
+            "if_type": "location",
+            "if_index": 0,
             "value" : [0.5, 0.6, 0.7, 1.0]
         },
-	{
-            "command": "associate_data",
-	    "kind": "input",
-            "if_type": "location",
-            "if_index": 2,
-	    "value" : [2.0, 0.0, 0.0, 0.0,
-		       0.0, 2.0, 0.0, 0.0,
-		       0.0, 0.0, 2.0, 0.0,
-		       0.0, 0.0, 0.0, 2.0]
-	},
         {
             "command": "run"
         },
-        {
+	{
             "command": "cmp_output",
             "operator": "==",
             "if_type": "builtin",
             "if_index": "Position",
             "data_type": "VectorFloat",
             "elements": 4,
-            "value" : [1.0, 0.0, 0.0, 0.0]
+            "value" : [1.0, 2.0, 3.0, 4.0]
         },
-        {
+	{
             "command": "cmp_output",
             "operator": "==",
             "if_type": "location",
-            "if_index": 0,
+            "if_index": 3,
             "data_type": "VectorFloat",
             "elements": 4,
             "value" : [0.5, 0.6, 0.7, 1.0]
-        }
+	}
     ]
 }

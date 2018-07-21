@@ -7,8 +7,6 @@
 	    "kind": "input",
             "if_type": "location",
             "if_index": 0,
-            "data_type": "VectorInteger",
-            "elements": 4,
             "value" : [10, 12, 21, 4]
         },
         {
@@ -16,8 +14,6 @@
 	    "kind": "input",
             "if_type": "location",
             "if_index": 1,
-            "data_type": "VectorInteger",
-            "elements": 4,
             "value" : [5, 6, 7, 1]
         },
         {
