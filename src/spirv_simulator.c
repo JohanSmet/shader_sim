@@ -307,6 +307,104 @@ OP_FUNC_BEGIN(SpvOpAccessChain) {
 } OP_FUNC_END
 
 /*
+ * conversion instructions
+ */
+
+OP_FUNC_RES_1OP(SpvOpConvertFToU) {
+    /* Convert (value preserving) from floating point to unsigned integer, with round toward 0.0. */
+    assert(spirv_sim_type_is_float(sim->temp_regs[op_reg].type->kind));
+    assert(spirv_sim_type_is_integer(res_type->kind));
+    assert(!res_type->is_signed);
+   
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].uvec[i] = (uint32_t) sim->temp_regs[op_reg].vec[i];
+    }
+
+} OP_FUNC_END
+
+OP_FUNC_RES_1OP(SpvOpConvertFToS) {
+    /* Convert (value preserving) from floating point to signed integer, with round toward 0.0. */
+    assert(spirv_sim_type_is_float(sim->temp_regs[op_reg].type->kind));
+    assert(spirv_sim_type_is_integer(res_type->kind));
+    assert(res_type->is_signed);
+    
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].svec[i] = (int32_t) sim->temp_regs[op_reg].vec[i];
+    }
+    
+} OP_FUNC_END
+
+OP_FUNC_RES_1OP(SpvOpConvertSToF) {
+    /* Convert (value preserving) from signed integer to floating point. */
+    assert(spirv_sim_type_is_integer(sim->temp_regs[op_reg].type->kind));
+    assert(sim->temp_regs[op_reg].type->is_signed);
+    assert(spirv_sim_type_is_float(res_type->kind));
+    
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].vec[i] = (float) sim->temp_regs[op_reg].svec[i];
+    }
+    
+} OP_FUNC_END
+
+
+OP_FUNC_RES_1OP(SpvOpConvertUToF) {
+    /* Convert (value preserving) from unsigned integer to floating point. */
+    assert(spirv_sim_type_is_integer(sim->temp_regs[op_reg].type->kind));
+    assert(!sim->temp_regs[op_reg].type->is_signed);
+    assert(spirv_sim_type_is_float(res_type->kind));
+    
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].vec[i] = (float) sim->temp_regs[op_reg].uvec[i];
+    }
+    
+} OP_FUNC_END
+
+OP_FUNC_RES_1OP(SpvOpUConvert) {
+    /* Convert (value preserving) unsigned width. This is either a truncate or a zero extend. */
+    assert(spirv_sim_type_is_integer(sim->temp_regs[op_reg].type->kind));
+    assert(!sim->temp_regs[op_reg].type->is_signed);
+    assert(spirv_sim_type_is_integer(res_type->kind));
+    assert(!res_type->is_signed);
+
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op_reg].uvec[i];
+    }
+    
+} OP_FUNC_END
+
+OP_FUNC_RES_1OP(SpvOpSConvert) {
+    /* Convert (value preserving) signed width. This is either a truncate or a sign extend. */
+    assert(spirv_sim_type_is_integer(sim->temp_regs[op_reg].type->kind));
+    assert(sim->temp_regs[op_reg].type->is_signed);
+    assert(spirv_sim_type_is_integer(res_type->kind));
+    assert(res_type->is_signed);
+    
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].svec[i] = sim->temp_regs[op_reg].svec[i];
+    }
+} OP_FUNC_END
+
+OP_FUNC_RES_1OP(SpvOpFConvert) {
+    /* Convert (value preserving) floating-point width. */
+    assert(spirv_sim_type_is_float(sim->temp_regs[op_reg].type->kind));
+    assert(spirv_sim_type_is_float(res_type->kind));
+
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].vec[i] = sim->temp_regs[op_reg].vec[i];
+    }
+} OP_FUNC_END
+
+/*OP_FUNC_RES_1OP(SpvOpQuantizeToF16)
+OP_FUNC_RES_1OP(SpvOpConvertPtrToU)
+OP_FUNC_RES_1OP(SpvOpSatConvertSToU)
+OP_FUNC_RES_1OP(SpvOpSatConvertUToS)
+OP_FUNC_RES_1OP(SpvOpConvertUToPtr)
+OP_FUNC_RES_1OP(SpvOpPtrCastToGeneric)
+OP_FUNC_RES_1OP(SpvOpGenericCastToPtr)
+OP_FUNC_RES_1OP(SpvOpGenericCastToPtrExplicit)
+OP_FUNC_RES_1OP(SpvOpBitcast)*/
+
+/*
  * arithmetic instructions
  */
 
@@ -646,6 +744,24 @@ void spirv_sim_step(SPIRV_simulator *sim) {
         OP_DEFAULT(SpvOpGenericPtrMemSemantics)
         OP_DEFAULT(SpvOpInBoundsPtrAccessChain)
             
+        // conversion instructions
+        OP(SpvOpConvertFToU)
+        OP(SpvOpConvertFToS)
+        OP(SpvOpConvertSToF)
+        OP(SpvOpConvertUToF)
+        OP(SpvOpUConvert)
+        OP(SpvOpSConvert)
+        OP(SpvOpFConvert)
+        OP_DEFAULT(SpvOpQuantizeToF16)
+        OP_DEFAULT(SpvOpConvertPtrToU)
+        OP_DEFAULT(SpvOpSatConvertSToU)
+        OP_DEFAULT(SpvOpSatConvertUToS)
+        OP_DEFAULT(SpvOpConvertUToPtr)
+        OP_DEFAULT(SpvOpPtrCastToGeneric)
+        OP_DEFAULT(SpvOpGenericCastToPtr)
+        OP_DEFAULT(SpvOpGenericCastToPtrExplicit)
+        OP_DEFAULT(SpvOpBitcast)
+
         // arithmetic instructions
         OP(SpvOpSNegate)
         OP(SpvOpFNegate)
