@@ -204,7 +204,11 @@ void map_free(HashMap *map) {
 
 int map_begin(HashMap *map) {
     int result = 0;
-
+    
+    if (map->cap == 0) {
+        return result;
+    }
+    
     while (map->keys[result] == NULL && result < map->cap) {
         ++result;
     }
