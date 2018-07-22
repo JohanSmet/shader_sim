@@ -181,6 +181,30 @@ size_t spirv_register_to_string(SPIRV_simulator *sim, uint32_t reg_idx, char *ou
     return used;
 }
 
+static inline uint32_t sign_extend(uint32_t data, uint32_t width) {
+    return (uint32_t) ((int32_t) (data << (32 - width)) >> (32 - width));
+}
+
+static inline uint32_t reverse_bits(uint32_t data) {
+    data = ((data >> 1) & 0x55555555) | ((data << 1) & 0xaaaaaaaa);
+    data = ((data >> 2) & 0x33333333) | ((data << 2) & 0xcccccccc);
+    data = ((data >> 4) & 0x0f0f0f0f) | ((data << 4) & 0xf0f0f0f0);
+    data = ((data >> 8) & 0x00ff00ff) | ((data << 8) & 0xff00ff00);
+    data = ((data >> 16) & 0x0000ffff) | ((data << 16) & 0xffff0000);
+    return data;
+}
+
+static inline uint32_t count_set_bits(uint32_t data) {
+    uint32_t result = 0;
+    
+    while (data) {
+        data &= (data-1);   /* unset right-most bit */
+        result++;
+    }
+    
+    return result;
+}
+
 #define OP_FUNC_BEGIN(kind) \
     static inline void spirv_sim_op_##kind(SPIRV_simulator *sim, SPIRV_opcode *op) {    \
         assert(sim);    \
@@ -696,6 +720,150 @@ OP_FUNC_RES_2OP(SpvOpDot) {
     
 } OP_FUNC_END
 
+/*
+ * bit instructions
+ */
+
+OP_FUNC_RES_2OP(SpvOpShiftRightLogical) {
+    /* Shift the bits in Base right by the number of bits specified in Shift. The most-significant bits will be zero filled. */
+    
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] >> sim->temp_regs[op2_reg].uvec[i];
+    }
+    
+} OP_FUNC_END
+
+OP_FUNC_RES_2OP(SpvOpShiftRightArithmetic) {
+    /* Shift the bits in Base right by the number of bits specified in Shift. The most-significant bits will be filled with the sign bit from Base. */
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].svec[i] = sim->temp_regs[op1_reg].svec[i] >> sim->temp_regs[op2_reg].uvec[i];
+    }
+} OP_FUNC_END
+
+OP_FUNC_RES_2OP(SpvOpShiftLeftLogical) {
+    /* Shift the bits in Base left by the number of bits specified in Shift. The least-significant bits will be zero filled. */
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] << sim->temp_regs[op2_reg].uvec[i];
+    }
+    
+} OP_FUNC_END
+
+OP_FUNC_RES_2OP(SpvOpBitwiseOr) {
+    
+    assert(spirv_sim_type_is_integer(res_type->kind));
+    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type->kind));
+    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type->kind));
+    
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] | sim->temp_regs[op2_reg].uvec[i];
+    }
+    
+} OP_FUNC_END
+
+OP_FUNC_RES_2OP(SpvOpBitwiseXor) {
+    
+    assert(spirv_sim_type_is_integer(res_type->kind));
+    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type->kind));
+    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type->kind));
+    
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] ^ sim->temp_regs[op2_reg].uvec[i];
+    }
+    
+} OP_FUNC_END
+
+OP_FUNC_RES_2OP(SpvOpBitwiseAnd) {
+    
+    assert(spirv_sim_type_is_integer(res_type->kind));
+    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type->kind));
+    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type->kind));
+    
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] & sim->temp_regs[op2_reg].uvec[i];
+    }
+    
+} OP_FUNC_END
+
+OP_FUNC_RES_1OP(SpvOpNot) {
+    
+    assert(spirv_sim_type_is_integer(res_type->kind));
+    assert(spirv_sim_type_is_integer(sim->temp_regs[op_reg].type->kind));
+
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].uvec[i] = ~ sim->temp_regs[op_reg].uvec[i];
+    }
+    
+} OP_FUNC_END
+
+OP_FUNC_BEGIN(SpvOpBitFieldInsert) {
+    
+    Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
+    SimRegister *res_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[1]);
+    SimRegister *base_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[2]);
+    SimRegister *insert_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[3]);
+    SimRegister *offset_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[4]);
+    SimRegister *count_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[5]);
+
+    assert(spirv_sim_type_is_integer(offset_reg->type->kind));
+    assert(spirv_sim_type_is_integer(count_reg->type->kind));
+    
+    uint32_t base_mask = ((1 << count_reg->uvec[0]) - 1) << offset_reg->uvec[0];
+    uint32_t insert_mask = ~base_mask;
+
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        res_reg->uvec[i] = (base_reg->uvec[i] & base_mask) | (insert_reg->uvec[i] & insert_mask);
+    }
+
+} OP_FUNC_END
+
+OP_FUNC_BEGIN(SpvOpBitFieldSExtract) {
+    
+    Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
+    SimRegister *res_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[1]);
+    SimRegister *base_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[2]);
+    SimRegister *offset_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[4]);
+    SimRegister *count_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[5]);
+    
+    uint32_t mask = ((1 << count_reg->uvec[0]) - 1) << offset_reg->uvec[0];
+    
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        res_reg->svec[i] = sign_extend((base_reg->uvec[i] & mask) >> offset_reg->uvec[0], count_reg->uvec[0]);
+    }
+
+} OP_FUNC_END
+
+OP_FUNC_BEGIN(SpvOpBitFieldUExtract) {
+    
+    Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
+    SimRegister *res_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[1]);
+    SimRegister *base_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[2]);
+    SimRegister *offset_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[4]);
+    SimRegister *count_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[5]);
+    
+    uint32_t mask = ((1 << count_reg->uvec[0]) - 1) << offset_reg->uvec[0];
+    
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        res_reg->uvec[i] = (base_reg->uvec[i] & mask) >> offset_reg->uvec[0];
+    }
+    
+} OP_FUNC_END
+
+OP_FUNC_RES_1OP(SpvOpBitReverse) {
+    
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].uvec[i] = reverse_bits(sim->temp_regs[op_reg].uvec[i]);
+    }
+    
+} OP_FUNC_END
+
+OP_FUNC_RES_1OP(SpvOpBitCount) {
+    
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        sim->temp_regs[res_reg].uvec[i] = count_set_bits(sim->temp_regs[op_reg].uvec[i]);
+    }
+    
+} OP_FUNC_END
+
 OP_FUNC_BEGIN(SpvOpReturn) 
     sim->finished = true;
 OP_FUNC_END
@@ -790,6 +958,20 @@ void spirv_sim_step(SPIRV_simulator *sim) {
         OP_DEFAULT(SpvOpISubBorrow)
         OP_DEFAULT(SpvOpUMulExtended)
         OP_DEFAULT(SpvOpSMulExtended)
+            
+        // bit instructions
+        OP(SpvOpShiftRightLogical)
+        OP(SpvOpShiftRightArithmetic)
+        OP(SpvOpShiftLeftLogical)
+        OP(SpvOpBitwiseOr)
+        OP(SpvOpBitwiseXor)
+        OP(SpvOpBitwiseAnd)
+        OP(SpvOpNot)
+        OP(SpvOpBitFieldInsert)
+        OP(SpvOpBitFieldSExtract)
+        OP(SpvOpBitFieldUExtract)
+        OP(SpvOpBitReverse)
+        OP(SpvOpBitCount)
 
         OP(SpvOpReturn)
 
