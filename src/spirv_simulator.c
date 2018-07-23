@@ -50,16 +50,24 @@ static inline uint32_t spirv_sim_assign_register(SPIRV_simulator *sim, uint32_t 
     return reg_idx;
 }
 
-static inline bool spirv_sim_type_is_integer(TypeKind kind) {
-    return kind == TypeInteger ||
-    kind == TypeVectorInteger ||
-    kind == TypeMatrixInteger;
+static inline bool spirv_sim_type_is_integer(Type *type) {
+    return type->kind == TypeInteger ||
+           type->kind == TypeVectorInteger ||
+           type->kind == TypeMatrixInteger;
 }
 
-static inline bool spirv_sim_type_is_float(TypeKind kind) {
-    return kind == TypeFloat ||
-    kind == TypeVectorFloat ||
-    kind == TypeMatrixFloat;
+static inline bool spirv_sim_type_is_signed_integer(Type *type) {
+    return spirv_sim_type_is_integer(type ) && type->is_signed;
+}
+
+static inline bool spirv_sim_type_is_unsigned_integer(Type *type) {
+    return spirv_sim_type_is_integer(type ) && !type->is_signed;
+}
+
+static inline bool spirv_sim_type_is_float(Type *type) {
+    return type->kind == TypeFloat ||
+           type->kind == TypeVectorFloat ||
+           type->kind == TypeMatrixFloat;
 }
 
 static inline uint64_t var_data_key(VariableKind kind, VariableInterface if_type, uint32_t if_index) {
@@ -167,9 +175,9 @@ size_t spirv_register_to_string(SPIRV_simulator *sim, uint32_t reg_idx, char *ou
     size_t used = snprintf(out_str, out_max, "reg %2d (%%%d):", reg_idx, reg->id);
     
     for (uint32_t i = 0; i < reg->type->count; ++i) {
-        if (spirv_sim_type_is_float(reg->type->kind)) {
+        if (spirv_sim_type_is_float(reg->type)) {
             used += snprintf(out_str + used, out_max - used, " %.4f", reg->vec[i]);
-        } else if (spirv_sim_type_is_integer(reg->type->kind)) {
+        } else if (spirv_sim_type_is_integer(reg->type)) {
             if (reg->type->is_signed) {
                 used += snprintf(out_str + used, out_max - used, " %d", reg->svec[i]);
             } else {
@@ -205,6 +213,10 @@ static inline uint32_t count_set_bits(uint32_t data) {
     return result;
 }
 
+#define OP_REGISTER(reg, id) \
+    SimRegister *reg = &sim->temp_regs[map_int_int_get(&sim->assigned_regs, op->optional[id])];    \
+    assert(reg != NULL);
+
 #define OP_FUNC_BEGIN(kind) \
     static inline void spirv_sim_op_##kind(SPIRV_simulator *sim, SPIRV_opcode *op) {    \
         assert(sim);    \
@@ -214,30 +226,29 @@ static inline uint32_t count_set_bits(uint32_t data) {
     OP_FUNC_BEGIN(kind)       \
         uint32_t result_type = op->optional[0];     \
         uint32_t result_id = op->optional[1];       \
-        uint32_t operand = op->optional[2];         \
                                                     \
         /* assign a register to keep the data */    \
         Type *res_type = spirv_module_type_by_id(sim->module, result_type);     \
-        uint32_t res_reg = spirv_sim_assign_register(sim, result_id, res_type); \
+        uint32_t res_idx = spirv_sim_assign_register(sim, result_id, res_type); \
+        SimRegister *res_reg = &sim->temp_regs[res_idx];                        \
                                                                                 \
         /* retrieve register used for operand */                                \
-        uint32_t op_reg = map_int_int_get(&sim->assigned_regs, operand);
+        OP_REGISTER(op_reg, 2);
 
 
 #define OP_FUNC_RES_2OP(kind) \
     OP_FUNC_BEGIN(kind)       \
         uint32_t result_type = op->optional[0];     \
         uint32_t result_id = op->optional[1];       \
-        uint32_t op1_id = op->optional[2];          \
-        uint32_t op2_id = op->optional[3];          \
                                                     \
         /* assign new register for the result */    \
         Type *res_type = spirv_module_type_by_id(sim->module, result_type);     \
-        uint32_t res_reg = spirv_sim_assign_register(sim, result_id, res_type); \
+        uint32_t res_idx = spirv_sim_assign_register(sim, result_id, res_type); \
+        SimRegister *res_reg = &sim->temp_regs[res_idx];                        \
                                                                                 \
         /* retrieve register used for operand */                                \
-        uint32_t op1_reg = map_int_int_get(&sim->assigned_regs, op1_id);        \
-        uint32_t op2_reg = map_int_int_get(&sim->assigned_regs, op2_id);
+        OP_REGISTER(op1_reg, 2);                                                \
+        OP_REGISTER(op2_reg, 3);
 
 
 #define OP_FUNC_END   }
@@ -336,36 +347,33 @@ OP_FUNC_BEGIN(SpvOpAccessChain) {
 
 OP_FUNC_RES_1OP(SpvOpConvertFToU) {
     /* Convert (value preserving) from floating point to unsigned integer, with round toward 0.0. */
-    assert(spirv_sim_type_is_float(sim->temp_regs[op_reg].type->kind));
-    assert(spirv_sim_type_is_integer(res_type->kind));
-    assert(!res_type->is_signed);
-   
+    assert(spirv_sim_type_is_float(op_reg->type));
+    assert(spirv_sim_type_is_signed_integer(res_type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = (uint32_t) sim->temp_regs[op_reg].vec[i];
+        res_reg->uvec[i] = (uint32_t) op_reg->vec[i];
     }
 
 } OP_FUNC_END
 
 OP_FUNC_RES_1OP(SpvOpConvertFToS) {
     /* Convert (value preserving) from floating point to signed integer, with round toward 0.0. */
-    assert(spirv_sim_type_is_float(sim->temp_regs[op_reg].type->kind));
-    assert(spirv_sim_type_is_integer(res_type->kind));
-    assert(res_type->is_signed);
-    
+    assert(spirv_sim_type_is_float(op_reg->type));
+    assert(spirv_sim_type_is_signed_integer(res_type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].svec[i] = (int32_t) sim->temp_regs[op_reg].vec[i];
+        res_reg->svec[i] = (int32_t) op_reg->vec[i];
     }
     
 } OP_FUNC_END
 
 OP_FUNC_RES_1OP(SpvOpConvertSToF) {
     /* Convert (value preserving) from signed integer to floating point. */
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op_reg].type->kind));
-    assert(sim->temp_regs[op_reg].type->is_signed);
-    assert(spirv_sim_type_is_float(res_type->kind));
+    assert(spirv_sim_type_is_signed_integer(op_reg->type));
+    assert(spirv_sim_type_is_float(res_type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].vec[i] = (float) sim->temp_regs[op_reg].svec[i];
+        res_reg->vec[i] = (float) op_reg->svec[i];
     }
     
 } OP_FUNC_END
@@ -373,48 +381,43 @@ OP_FUNC_RES_1OP(SpvOpConvertSToF) {
 
 OP_FUNC_RES_1OP(SpvOpConvertUToF) {
     /* Convert (value preserving) from unsigned integer to floating point. */
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op_reg].type->kind));
-    assert(!sim->temp_regs[op_reg].type->is_signed);
-    assert(spirv_sim_type_is_float(res_type->kind));
+    assert(spirv_sim_type_is_unsigned_integer(op_reg->type));
+    assert(spirv_sim_type_is_float(res_type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].vec[i] = (float) sim->temp_regs[op_reg].uvec[i];
+        res_reg->vec[i] = (float) op_reg->uvec[i];
     }
     
 } OP_FUNC_END
 
 OP_FUNC_RES_1OP(SpvOpUConvert) {
     /* Convert (value preserving) unsigned width. This is either a truncate or a zero extend. */
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op_reg].type->kind));
-    assert(!sim->temp_regs[op_reg].type->is_signed);
-    assert(spirv_sim_type_is_integer(res_type->kind));
-    assert(!res_type->is_signed);
+    assert(spirv_sim_type_is_unsigned_integer(op_reg->type));
+    assert(spirv_sim_type_is_unsigned_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op_reg].uvec[i];
+        res_reg->uvec[i] = op_reg->uvec[i];
     }
     
 } OP_FUNC_END
 
 OP_FUNC_RES_1OP(SpvOpSConvert) {
     /* Convert (value preserving) signed width. This is either a truncate or a sign extend. */
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op_reg].type->kind));
-    assert(sim->temp_regs[op_reg].type->is_signed);
-    assert(spirv_sim_type_is_integer(res_type->kind));
-    assert(res_type->is_signed);
+    assert(spirv_sim_type_is_signed_integer(op_reg->type));
+    assert(spirv_sim_type_is_signed_integer(res_type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].svec[i] = sim->temp_regs[op_reg].svec[i];
+        res_reg->svec[i] = op_reg->svec[i];
     }
 } OP_FUNC_END
 
 OP_FUNC_RES_1OP(SpvOpFConvert) {
     /* Convert (value preserving) floating-point width. */
-    assert(spirv_sim_type_is_float(sim->temp_regs[op_reg].type->kind));
-    assert(spirv_sim_type_is_float(res_type->kind));
+    assert(spirv_sim_type_is_float(op_reg->type));
+    assert(spirv_sim_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].vec[i] = sim->temp_regs[op_reg].vec[i];
+        res_reg->vec[i] = op_reg->vec[i];
     }
 } OP_FUNC_END
 
@@ -434,123 +437,120 @@ OP_FUNC_RES_1OP(SpvOpBitcast)*/
 
 OP_FUNC_RES_1OP(SpvOpSNegate)
 
-    assert(spirv_sim_type_is_integer(res_type->kind));
+    assert(spirv_sim_type_is_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].svec[i] = -sim->temp_regs[op_reg].svec[i];
+        res_reg->svec[i] = -op_reg->svec[i];
     }
 
 OP_FUNC_END
 
 OP_FUNC_RES_1OP(SpvOpFNegate)
 
-    assert(spirv_sim_type_is_float(res_type->kind));
+    assert(spirv_sim_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].vec[i] = -sim->temp_regs[op_reg].vec[i];
+        res_reg->vec[i] = -op_reg->vec[i];
     }
 
 OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpIAdd)
 
-    assert(spirv_sim_type_is_integer(res_type->kind));
+    assert(spirv_sim_type_is_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].svec[i] = sim->temp_regs[op1_reg].svec[i] + sim->temp_regs[op2_reg].svec[i];
+        res_reg->svec[i] = op1_reg->svec[i] + op2_reg->svec[i];
 }
 
 OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpFAdd)
 
-    assert(spirv_sim_type_is_float(res_type->kind));
+    assert(spirv_sim_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].vec[i] = sim->temp_regs[op1_reg].vec[i] + sim->temp_regs[op2_reg].vec[i];
+        res_reg->vec[i] = op1_reg->vec[i] + op2_reg->vec[i];
     }
 
 OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpISub)
 
-    assert(spirv_sim_type_is_integer(res_type->kind));
+    assert(spirv_sim_type_is_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].svec[i] = sim->temp_regs[op1_reg].svec[i] - sim->temp_regs[op2_reg].svec[i];
+        res_reg->svec[i] = op1_reg->svec[i] - op2_reg->svec[i];
     }
 
 OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpFSub)
 
-    assert(spirv_sim_type_is_float(res_type->kind));
+    assert(spirv_sim_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].vec[i] = sim->temp_regs[op1_reg].vec[i] - sim->temp_regs[op2_reg].vec[i];
+        res_reg->vec[i] = op1_reg->vec[i] - op2_reg->vec[i];
     }
 
 OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpIMul)
 
-    assert(spirv_sim_type_is_integer(res_type->kind));
+    assert(spirv_sim_type_is_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].svec[i] = sim->temp_regs[op1_reg].svec[i] * sim->temp_regs[op2_reg].svec[i];
+        res_reg->svec[i] = op1_reg->svec[i] * op2_reg->svec[i];
     }
 
 OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpFMul)
 
-    assert(spirv_sim_type_is_float(res_type->kind));
+    assert(spirv_sim_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].vec[i] = sim->temp_regs[op1_reg].vec[i] * sim->temp_regs[op2_reg].vec[i];
+        res_reg->vec[i] = op1_reg->vec[i] * op2_reg->vec[i];
     }
 
 OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpUDiv)
 
-    assert(spirv_sim_type_is_integer(res_type->kind));
-    assert(!res_type->is_signed);
+    assert(spirv_sim_type_is_unsigned_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] / sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] / op2_reg->uvec[i];
     }
 
 OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpSDiv)
 
-    assert(spirv_sim_type_is_integer(res_type->kind));
-    assert(res_type->is_signed);
+    assert(spirv_sim_type_is_signed_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].svec[i] = sim->temp_regs[op1_reg].svec[i] / sim->temp_regs[op2_reg].svec[i];
+        res_reg->svec[i] = op1_reg->svec[i] / op2_reg->svec[i];
     }
 
 OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpFDiv)
 
-    assert(spirv_sim_type_is_float(res_type->kind));
+    assert(spirv_sim_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].vec[i] = sim->temp_regs[op1_reg].vec[i] / sim->temp_regs[op2_reg].vec[i];
+        res_reg->vec[i] = op1_reg->vec[i] / op2_reg->vec[i];
     }
 
 OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpUMod)
 
-    assert(spirv_sim_type_is_integer(res_type->kind));
-    assert(!res_type->is_signed);
+    assert(spirv_sim_type_is_unsigned_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] / sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] / op2_reg->uvec[i];
     }
 
 OP_FUNC_END
@@ -558,13 +558,12 @@ OP_FUNC_END
 OP_FUNC_RES_2OP(SpvOpSRem)
 /* Signed remainder operation of Operand 1 divided by Operand 2. The sign of a non-0 result comes from Operand 1. */
 
-    assert(spirv_sim_type_is_integer(res_type->kind));
-    assert(res_type->is_signed);
+    assert(spirv_sim_type_is_signed_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        int32_t v1 = sim->temp_regs[op1_reg].svec[i];
-        int32_t v2 = sim->temp_regs[op2_reg].svec[i];
-        sim->temp_regs[res_reg].uvec[i] = (v1 - (v2 * (int)(v1/v2)));
+        int32_t v1 = op1_reg->svec[i];
+        int32_t v2 = op2_reg->svec[i];
+        res_reg->uvec[i] = (v1 - (v2 * (int)(v1/v2)));
     }
 
 OP_FUNC_END
@@ -572,13 +571,12 @@ OP_FUNC_END
 OP_FUNC_RES_2OP(SpvOpSMod)
 /* Signed modulo operation of Operand 1 modulo Operand 2. The sign of a non-0 result comes from Operand 2. */
 
-    assert(spirv_sim_type_is_integer(res_type->kind));
-    assert(res_type->is_signed);
+    assert(spirv_sim_type_is_signed_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        int32_t v1 = sim->temp_regs[op1_reg].svec[i];
-        int32_t v2 = sim->temp_regs[op2_reg].svec[i];
-        sim->temp_regs[res_reg].uvec[i] = (v1 - (v2 * (int)floorf(v1/v2)));
+        int32_t v1 = op1_reg->svec[i];
+        int32_t v2 = op2_reg->svec[i];
+        res_reg->uvec[i] = (v1 - (v2 * (int)floorf(v1/v2)));
     }
 
 OP_FUNC_END
@@ -586,12 +584,12 @@ OP_FUNC_END
 OP_FUNC_RES_2OP(SpvOpFRem)
 /* Floating-point remainder operation of Operand 1 divided by Operand 2. The sign of a non-0 result comes from Operand 1. */
 
-    assert(spirv_sim_type_is_float(res_type->kind));
+    assert(spirv_sim_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        float v1 = sim->temp_regs[op1_reg].vec[i];
-        float v2 = sim->temp_regs[op2_reg].vec[i];
-        sim->temp_regs[res_reg].vec[i] = (v1 - (v2 * truncf(v1/v2)));
+        float v1 = op1_reg->vec[i];
+        float v2 = op2_reg->vec[i];
+        res_reg->vec[i] = (v1 - (v2 * truncf(v1/v2)));
     }
 
 OP_FUNC_END
@@ -599,12 +597,12 @@ OP_FUNC_END
 OP_FUNC_RES_2OP(SpvOpFMod)
 /* Floating-point modulo operation of Operand 1 divided by Operand 2. The sign of a non-0 result comes from Operand 2. */
 
-    assert(spirv_sim_type_is_float(res_type->kind));
+    assert(spirv_sim_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        float v1 = sim->temp_regs[op1_reg].vec[i];
-        float v2 = sim->temp_regs[op2_reg].vec[i];
-        sim->temp_regs[res_reg].vec[i] = (v1 - (v2 * floorf(v1/v2)));
+        float v1 = op1_reg->vec[i];
+        float v2 = op2_reg->vec[i];
+        res_reg->vec[i] = (v1 - (v2 * floorf(v1/v2)));
     }
 
 OP_FUNC_END
@@ -612,10 +610,10 @@ OP_FUNC_END
 OP_FUNC_RES_2OP(SpvOpVectorTimesScalar)
 /* Scale a floating-point vector. */
 
-    assert(spirv_sim_type_is_float(res_type->kind));
+    assert(spirv_sim_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].vec[i] = sim->temp_regs[op1_reg].vec[i] * sim->temp_regs[op2_reg].vec[0];
+        res_reg->vec[i] = op1_reg->vec[i] * op2_reg->vec[0];
     }
 
 OP_FUNC_END
@@ -623,10 +621,10 @@ OP_FUNC_END
 OP_FUNC_RES_2OP(SpvOpMatrixTimesScalar)
 /* Scale a floating-point matrix. */
 
-    assert(spirv_sim_type_is_float(res_type->kind));
+    assert(spirv_sim_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].vec[i] = sim->temp_regs[op1_reg].vec[i] * sim->temp_regs[op2_reg].vec[0];
+        res_reg->vec[i] = op1_reg->vec[i] * op2_reg->vec[0];
     }
 
 OP_FUNC_END
@@ -634,11 +632,11 @@ OP_FUNC_END
 OP_FUNC_RES_2OP(SpvOpVectorTimesMatrix)
 /* Linear-algebraic Vector X Matrix. */
 
-    int32_t num_rows = sim->temp_regs[op2_reg].type->matrix.num_rows;
-    int32_t num_cols = sim->temp_regs[op2_reg].type->matrix.num_cols;
-    float *v = sim->temp_regs[op1_reg].vec;
-    float *m = sim->temp_regs[op2_reg].vec;
-    float *res = sim->temp_regs[res_reg].vec;
+    int32_t num_rows = op2_reg->type->matrix.num_rows;
+    int32_t num_cols = op2_reg->type->matrix.num_cols;
+    float *v = op1_reg->vec;
+    float *m = op2_reg->vec;
+    float *res = res_reg->vec;
 
     for (int32_t col = 0; col < num_cols; ++col) {
         res[col] = 0;
@@ -652,11 +650,11 @@ OP_FUNC_END
 OP_FUNC_RES_2OP(SpvOpMatrixTimesVector) {
 /* Linear-algebraic Matrix X Vector. */
     
-    int32_t num_rows = sim->temp_regs[op1_reg].type->matrix.num_rows;
-    int32_t num_cols = sim->temp_regs[op1_reg].type->matrix.num_cols;
-    float *m = sim->temp_regs[op1_reg].vec;
-    float *v = sim->temp_regs[op2_reg].vec;
-    float *res = sim->temp_regs[res_reg].vec;
+    int32_t num_rows = op1_reg->type->matrix.num_rows;
+    int32_t num_cols = op1_reg->type->matrix.num_cols;
+    float *m = op1_reg->vec;
+    float *v = op2_reg->vec;
+    float *res = res_reg->vec;
     
     for (int32_t row = 0; row < num_rows; ++row) {
         res[row] = 0;
@@ -670,12 +668,12 @@ OP_FUNC_RES_2OP(SpvOpMatrixTimesVector) {
 OP_FUNC_RES_2OP(SpvOpMatrixTimesMatrix) {
 /* Linear-algebraic multiply of LeftMatrix X RightMatrix. */
     
-    int32_t num_rows1 = sim->temp_regs[op1_reg].type->matrix.num_rows;
-    int32_t num_cols1 = sim->temp_regs[op1_reg].type->matrix.num_cols;
-    int32_t num_cols2 = sim->temp_regs[op2_reg].type->matrix.num_cols;
-    float *m1 = sim->temp_regs[op1_reg].vec;
-    float *m2 = sim->temp_regs[op2_reg].vec;
-    float *res = sim->temp_regs[res_reg].vec;
+    int32_t num_rows1 = op1_reg->type->matrix.num_rows;
+    int32_t num_cols1 = op1_reg->type->matrix.num_cols;
+    int32_t num_cols2 = op2_reg->type->matrix.num_cols;
+    float *m1 = op1_reg->vec;
+    float *m2 = op2_reg->vec;
+    float *res = res_reg->vec;
     
     for (int32_t i = 0; i < num_rows1; ++i) {
         for (int32_t j = 0; j < num_cols2; ++j) {
@@ -691,11 +689,11 @@ OP_FUNC_RES_2OP(SpvOpMatrixTimesMatrix) {
 OP_FUNC_RES_2OP(SpvOpOuterProduct) {
 /* Linear-algebraic outer product of Vector 1 and Vector 2. */
     
-    int32_t num_rows = sim->temp_regs[op1_reg].type->count;
-    int32_t num_cols = sim->temp_regs[op2_reg].type->count;
-    float *v1 = sim->temp_regs[op1_reg].vec;
-    float *v2 = sim->temp_regs[op2_reg].vec;
-    float *res = sim->temp_regs[res_reg].vec;
+    int32_t num_rows = op1_reg->type->count;
+    int32_t num_cols = op2_reg->type->count;
+    float *v1 = op1_reg->vec;
+    float *v2 = op2_reg->vec;
+    float *res = res_reg->vec;
     
     for (int32_t row = 0; row < num_rows; ++row) {
         for (int32_t col = 0; col < num_cols; ++col) {
@@ -708,10 +706,10 @@ OP_FUNC_RES_2OP(SpvOpOuterProduct) {
 OP_FUNC_RES_2OP(SpvOpDot) {
 /* Dot product of Vector 1 and Vector 2. */
     
-    int32_t n = sim->temp_regs[op1_reg].type->count;
-    float *v1 = sim->temp_regs[op1_reg].vec;
-    float *v2 = sim->temp_regs[op2_reg].vec;
-    float *res = sim->temp_regs[res_reg].vec;
+    int32_t n = op1_reg->type->count;
+    float *v1 = op1_reg->vec;
+    float *v2 = op2_reg->vec;
+    float *res = res_reg->vec;
     
     *res = v1[0] * v2[0];
     for (int32_t i = 1; i < n; ++i) {
@@ -728,7 +726,7 @@ OP_FUNC_RES_2OP(SpvOpShiftRightLogical) {
     /* Shift the bits in Base right by the number of bits specified in Shift. The most-significant bits will be zero filled. */
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] >> sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] >> op2_reg->uvec[i];
     }
     
 } OP_FUNC_END
@@ -736,61 +734,61 @@ OP_FUNC_RES_2OP(SpvOpShiftRightLogical) {
 OP_FUNC_RES_2OP(SpvOpShiftRightArithmetic) {
     /* Shift the bits in Base right by the number of bits specified in Shift. The most-significant bits will be filled with the sign bit from Base. */
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].svec[i] = sim->temp_regs[op1_reg].svec[i] >> sim->temp_regs[op2_reg].uvec[i];
+        res_reg->svec[i] = op1_reg->svec[i] >> op2_reg->uvec[i];
     }
 } OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpShiftLeftLogical) {
     /* Shift the bits in Base left by the number of bits specified in Shift. The least-significant bits will be zero filled. */
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] << sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] << op2_reg->uvec[i];
     }
     
 } OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpBitwiseOr) {
     
-    assert(spirv_sim_type_is_integer(res_type->kind));
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type->kind));
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type->kind));
+    assert(spirv_sim_type_is_integer(res_type));
+    assert(spirv_sim_type_is_integer(op1_reg->type));
+    assert(spirv_sim_type_is_integer(op2_reg->type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] | sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] | op2_reg->uvec[i];
     }
     
 } OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpBitwiseXor) {
     
-    assert(spirv_sim_type_is_integer(res_type->kind));
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type->kind));
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type->kind));
+    assert(spirv_sim_type_is_integer(res_type));
+    assert(spirv_sim_type_is_integer(op1_reg->type));
+    assert(spirv_sim_type_is_integer(op2_reg->type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] ^ sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] ^ op2_reg->uvec[i];
     }
     
 } OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpBitwiseAnd) {
     
-    assert(spirv_sim_type_is_integer(res_type->kind));
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type->kind));
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type->kind));
+    assert(spirv_sim_type_is_integer(res_type));
+    assert(spirv_sim_type_is_integer(op1_reg->type));
+    assert(spirv_sim_type_is_integer(op2_reg->type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] & sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] & op2_reg->uvec[i];
     }
     
 } OP_FUNC_END
 
 OP_FUNC_RES_1OP(SpvOpNot) {
     
-    assert(spirv_sim_type_is_integer(res_type->kind));
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op_reg].type->kind));
+    assert(spirv_sim_type_is_integer(res_type));
+    assert(spirv_sim_type_is_integer(op_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = ~ sim->temp_regs[op_reg].uvec[i];
+        res_reg->uvec[i] = ~ op_reg->uvec[i];
     }
     
 } OP_FUNC_END
@@ -798,14 +796,14 @@ OP_FUNC_RES_1OP(SpvOpNot) {
 OP_FUNC_BEGIN(SpvOpBitFieldInsert) {
     
     Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
-    SimRegister *res_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[1]);
-    SimRegister *base_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[2]);
-    SimRegister *insert_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[3]);
-    SimRegister *offset_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[4]);
-    SimRegister *count_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[5]);
+    OP_REGISTER(res_reg, 1);
+    OP_REGISTER(base_reg, 2);
+    OP_REGISTER(insert_reg, 3);
+    OP_REGISTER(offset_reg, 4);
+    OP_REGISTER(count_reg, 5);
 
-    assert(spirv_sim_type_is_integer(offset_reg->type->kind));
-    assert(spirv_sim_type_is_integer(count_reg->type->kind));
+    assert(spirv_sim_type_is_integer(offset_reg->type));
+    assert(spirv_sim_type_is_integer(count_reg->type));
     
     uint32_t base_mask = ((1 << count_reg->uvec[0]) - 1) << offset_reg->uvec[0];
     uint32_t insert_mask = ~base_mask;
@@ -819,11 +817,11 @@ OP_FUNC_BEGIN(SpvOpBitFieldInsert) {
 OP_FUNC_BEGIN(SpvOpBitFieldSExtract) {
     
     Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
-    SimRegister *res_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[1]);
-    SimRegister *base_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[2]);
-    SimRegister *offset_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[4]);
-    SimRegister *count_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[5]);
-    
+    OP_REGISTER(res_reg, 1);
+    OP_REGISTER(base_reg, 2);
+    OP_REGISTER(offset_reg, 3);
+    OP_REGISTER(count_reg, 4);
+
     uint32_t mask = ((1 << count_reg->uvec[0]) - 1) << offset_reg->uvec[0];
     
     for (int32_t i = 0; i < res_type->count; ++i) {
@@ -835,11 +833,11 @@ OP_FUNC_BEGIN(SpvOpBitFieldSExtract) {
 OP_FUNC_BEGIN(SpvOpBitFieldUExtract) {
     
     Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
-    SimRegister *res_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[1]);
-    SimRegister *base_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[2]);
-    SimRegister *offset_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[4]);
-    SimRegister *count_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[5]);
-    
+    OP_REGISTER(res_reg, 1);
+    OP_REGISTER(base_reg, 2);
+    OP_REGISTER(offset_reg, 3);
+    OP_REGISTER(count_reg, 4);
+
     uint32_t mask = ((1 << count_reg->uvec[0]) - 1) << offset_reg->uvec[0];
     
     for (int32_t i = 0; i < res_type->count; ++i) {
@@ -851,7 +849,7 @@ OP_FUNC_BEGIN(SpvOpBitFieldUExtract) {
 OP_FUNC_RES_1OP(SpvOpBitReverse) {
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = reverse_bits(sim->temp_regs[op_reg].uvec[i]);
+        res_reg->uvec[i] = reverse_bits(op_reg->uvec[i]);
     }
     
 } OP_FUNC_END
@@ -859,7 +857,7 @@ OP_FUNC_RES_1OP(SpvOpBitReverse) {
 OP_FUNC_RES_1OP(SpvOpBitCount) {
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = count_set_bits(sim->temp_regs[op_reg].uvec[i]);
+        res_reg->uvec[i] = count_set_bits(op_reg->uvec[i]);
     }
     
 } OP_FUNC_END
@@ -873,12 +871,12 @@ OP_FUNC_RES_1OP(SpvOpAny) {
     
     assert(res_type->kind == TypeBool);
     assert(res_type->count == 1);
-    assert(sim->temp_regs[op_reg].type->kind == TypeBool);
+    assert(op_reg->type->kind == TypeBool);
     
-    sim->temp_regs[res_reg].uvec[0] = false;
+    res_reg->uvec[0] = false;
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[0] |= sim->temp_regs[op_reg].uvec[i];
+        res_reg->uvec[0] |= op_reg->uvec[i];
     }
 
 } OP_FUNC_END
@@ -888,12 +886,12 @@ OP_FUNC_RES_1OP(SpvOpAll) {
     
     assert(res_type->kind == TypeBool);
     assert(res_type->count == 1);
-    assert(sim->temp_regs[op_reg].type->kind == TypeBool);
+    assert(op_reg->type->kind == TypeBool);
     
-    sim->temp_regs[res_reg].uvec[0] = true;
+    res_reg->uvec[0] = true;
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[0] &= sim->temp_regs[op_reg].uvec[i];
+        res_reg->uvec[0] &= op_reg->uvec[i];
     }
     
 } OP_FUNC_END
@@ -902,10 +900,10 @@ OP_FUNC_RES_1OP(SpvOpIsNan) {
 /* Result is true if x is an IEEE NaN, otherwise result is false. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op_reg].type->kind == TypeFloat);
-    
+    assert(spirv_sim_type_is_float(op_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = isnan(sim->temp_regs[op_reg].vec[i]);
+        res_reg->uvec[i] = isnan(op_reg->vec[i]);
     }
 
 } OP_FUNC_END
@@ -914,10 +912,10 @@ OP_FUNC_RES_1OP(SpvOpIsInf) {
 /* Result is true if x is an IEEE Inf, otherwise result is false. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op_reg].type->kind == TypeFloat);
-    
+    assert(spirv_sim_type_is_float(op_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = isinf(sim->temp_regs[op_reg].vec[i]);
+        res_reg->uvec[i] = isinf(op_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -926,10 +924,10 @@ OP_FUNC_RES_1OP(SpvOpIsFinite) {
 /* Result is true if x is an IEEE finite number, otherwise result is false. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op_reg].type->kind == TypeFloat);
-    
+    assert(spirv_sim_type_is_float(op_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = isfinite(sim->temp_regs[op_reg].vec[i]);
+        res_reg->uvec[i] = isfinite(op_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -938,10 +936,10 @@ OP_FUNC_RES_1OP(SpvOpIsNormal) {
 /* Result is true if x is an IEEE normal number, otherwise result is false. */
 
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op_reg].type->kind == TypeFloat);
-    
+    assert(spirv_sim_type_is_float(op_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = isnormal(sim->temp_regs[op_reg].vec[i]);
+        res_reg->uvec[i] = isnormal(op_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -950,10 +948,10 @@ OP_FUNC_RES_1OP(SpvOpSignBitSet) {
 /* Result is true if x has its sign bit set, otherwise result is false. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op_reg].type->kind == TypeFloat);
-    
+    assert(spirv_sim_type_is_float(op_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = signbit(sim->temp_regs[op_reg].vec[i]);
+        res_reg->uvec[i] = signbit(op_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -962,11 +960,11 @@ OP_FUNC_RES_2OP(SpvOpLessOrGreater) {
 /* Result is true if x < y or x > y, where IEEE comparisons are used, otherwise result is false. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type->kind == TypeFloat);
-    assert(sim->temp_regs[op2_reg].type->kind == TypeFloat);
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_sim_type_is_float(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = islessgreater(sim->temp_regs[op1_reg].vec[i], sim->temp_regs[op2_reg].vec[i]);
+        res_reg->uvec[i] = islessgreater(op1_reg->vec[i], op2_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -975,11 +973,11 @@ OP_FUNC_RES_2OP(SpvOpOrdered) {
 /* Result is true if both x == x and y == y are true, where IEEE comparison is used, otherwise result is false. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type->kind == TypeFloat);
-    assert(sim->temp_regs[op2_reg].type->kind == TypeFloat);
-    
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_sim_type_is_float(op2_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = !isunordered(sim->temp_regs[op1_reg].vec[i], sim->temp_regs[op2_reg].vec[i]);
+        res_reg->uvec[i] = !isunordered(op1_reg->vec[i], op2_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -988,11 +986,11 @@ OP_FUNC_RES_2OP(SpvOpUnordered) {
 /* Result is true if either x or y is an IEEE NaN, otherwise result is false. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type->kind == TypeFloat);
-    assert(sim->temp_regs[op2_reg].type->kind == TypeFloat);
-    
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_sim_type_is_float(op2_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = isunordered(sim->temp_regs[op1_reg].vec[i], sim->temp_regs[op2_reg].vec[i]);
+        res_reg->uvec[i] = isunordered(op1_reg->vec[i], op2_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -1001,11 +999,11 @@ OP_FUNC_RES_2OP(SpvOpLogicalEqual) {
 /* Result is true if Operand 1 and Operand 2 have the same value. Result is false if Operand 1 and Operand 2 have different values. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type == res_type);
-    assert(sim->temp_regs[op2_reg].type == res_type);
-    
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_sim_type_is_float(op2_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] == sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] == op2_reg->uvec[i];
     }
     
 } OP_FUNC_END
@@ -1014,11 +1012,11 @@ OP_FUNC_RES_2OP(SpvOpLogicalNotEqual) {
 /* Result is true if Operand 1 and Operand 2 have different values. Result is false if Operand 1 and Operand 2 have the same value. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type == res_type);
-    assert(sim->temp_regs[op2_reg].type == res_type);
-    
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_sim_type_is_float(op2_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] != sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] != op2_reg->uvec[i];
     }
     
 } OP_FUNC_END
@@ -1027,11 +1025,11 @@ OP_FUNC_RES_2OP(SpvOpLogicalOr) {
 /* Result is true if either Operand 1 or Operand 2 is true. Result is false if both Operand 1 and Operand 2 are false. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type == res_type);
-    assert(sim->temp_regs[op2_reg].type == res_type);
-    
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_sim_type_is_float(op2_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] || sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] || op2_reg->uvec[i];
     }
     
 } OP_FUNC_END
@@ -1040,11 +1038,11 @@ OP_FUNC_RES_2OP(SpvOpLogicalAnd) {
 /* Result is true if both Operand 1 and Operand 2 are true. Result is false if either Operand 1 or Operand 2 are false. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type == res_type);
-    assert(sim->temp_regs[op2_reg].type == res_type);
-    
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_sim_type_is_float(op2_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] && sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] && op2_reg->uvec[i];
     }
     
 } OP_FUNC_END
@@ -1053,10 +1051,10 @@ OP_FUNC_RES_1OP(SpvOpLogicalNot) {
 /* Result is true if Operand is false. Result is false if Operand is true. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op_reg].type == res_type);
+    assert(op_reg->type == res_type);
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = !sim->temp_regs[op_reg].uvec[i];
+        res_reg->uvec[i] = !op_reg->uvec[i];
     }
     
 } OP_FUNC_END
@@ -1083,11 +1081,11 @@ OP_FUNC_RES_2OP(SpvOpIEqual) {
 /* Integer comparison for equality. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type));
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type));
+    assert(spirv_sim_type_is_integer(op1_reg->type));
+    assert(spirv_sim_type_is_integer(op2_reg->type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] == sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] == op2_reg->uvec[i];
     }
     
 } OP_FUNC_END
@@ -1096,11 +1094,11 @@ OP_FUNC_RES_2OP(SpvOpINotEqual) {
 /* Integer comparison for inequality. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type));
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type));
+    assert(spirv_sim_type_is_integer(op1_reg->type));
+    assert(spirv_sim_type_is_integer(op2_reg->type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] != sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] != op2_reg->uvec[i];
     }
     
 } OP_FUNC_END
@@ -1109,13 +1107,11 @@ OP_FUNC_RES_2OP(SpvOpUGreaterThan) {
 /* Unsigned-integer comparison if Operand 1 is greater than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type));
-    assert(!sim->temp_regs[op1_reg].type->is_signed);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type));
-    assert(!sim->temp_regs[op2_reg].type->is_signed);
-    
+    assert(spirv_sim_type_is_unsigned_integer(op1_reg->type));
+    assert(spirv_sim_type_is_unsigned_integer(op2_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] > sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] > op2_reg->uvec[i];
     }
     
 } OP_FUNC_END
@@ -1124,13 +1120,11 @@ OP_FUNC_RES_2OP(SpvOpSGreaterThan) {
 /* Signed-integer comparison if Operand 1 is greater than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type));
-    assert(sim->temp_regs[op1_reg].type->is_signed);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type));
-    assert(sim->temp_regs[op2_reg].type->is_signed);
-    
+    assert(spirv_sim_type_is_signed_integer(op1_reg->type));
+    assert(spirv_sim_type_is_signed_integer(op2_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].svec[i] = sim->temp_regs[op1_reg].svec[i] > sim->temp_regs[op2_reg].svec[i];
+        res_reg->svec[i] = op1_reg->svec[i] > op2_reg->svec[i];
     }
     
 } OP_FUNC_END
@@ -1139,13 +1133,11 @@ OP_FUNC_RES_2OP(SpvOpUGreaterThanEqual) {
 /* Unsigned-integer comparison if Operand 1 is greater than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type));
-    assert(!sim->temp_regs[op1_reg].type->is_signed);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type));
-    assert(!sim->temp_regs[op2_reg].type->is_signed);
-    
+    assert(spirv_sim_type_is_unsigned_integer(op1_reg->type));
+    assert(spirv_sim_type_is_unsigned_integer(op2_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] >= sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] >= op2_reg->uvec[i];
     }
     
 } OP_FUNC_END
@@ -1154,13 +1146,11 @@ OP_FUNC_RES_2OP(SpvOpSGreaterThanEqual) {
 /* Signed-integer comparison if Operand 1 is greater than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type));
-    assert(sim->temp_regs[op1_reg].type->is_signed);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type));
-    assert(sim->temp_regs[op2_reg].type->is_signed);
-    
+    assert(spirv_sim_type_is_signed_integer(op1_reg->type));
+    assert(spirv_sim_type_is_signed_integer(op2_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].svec[i] = sim->temp_regs[op1_reg].svec[i] >= sim->temp_regs[op2_reg].svec[i];
+        res_reg->svec[i] = op1_reg->svec[i] >= op2_reg->svec[i];
     }
     
 } OP_FUNC_END
@@ -1169,13 +1159,11 @@ OP_FUNC_RES_2OP(SpvOpULessThan) {
 /* Unsigned-integer comparison if Operand 1 is less than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type));
-    assert(!sim->temp_regs[op1_reg].type->is_signed);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type));
-    assert(!sim->temp_regs[op2_reg].type->is_signed);
-    
+    assert(spirv_sim_type_is_unsigned_integer(op1_reg->type));
+    assert(spirv_sim_type_is_unsigned_integer(op2_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] < sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] < op2_reg->uvec[i];
     }
     
 } OP_FUNC_END
@@ -1184,13 +1172,11 @@ OP_FUNC_RES_2OP(SpvOpSLessThan) {
 /* Signed-integer comparison if Operand 1 is less than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type));
-    assert(sim->temp_regs[op1_reg].type->is_signed);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type));
-    assert(sim->temp_regs[op2_reg].type->is_signed);
-    
+    assert(spirv_sim_type_is_signed_integer(op1_reg->type));
+    assert(spirv_sim_type_is_signed_integer(op2_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].svec[i] = sim->temp_regs[op1_reg].svec[i] < sim->temp_regs[op2_reg].svec[i];
+        res_reg->svec[i] = op1_reg->svec[i] < op2_reg->svec[i];
     }
 
 } OP_FUNC_END
@@ -1199,13 +1185,11 @@ OP_FUNC_RES_2OP(SpvOpULessThanEqual) {
 /* Unsigned-integer comparison if Operand 1 is less than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type));
-    assert(!sim->temp_regs[op1_reg].type->is_signed);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type));
-    assert(!sim->temp_regs[op2_reg].type->is_signed);
-    
+    assert(spirv_sim_type_is_unsigned_integer(op1_reg->type));
+    assert(spirv_sim_type_is_unsigned_integer(op2_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] = sim->temp_regs[op1_reg].uvec[i] <= sim->temp_regs[op2_reg].uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] <= op2_reg->uvec[i];
     }
     
 } OP_FUNC_END
@@ -1214,13 +1198,11 @@ OP_FUNC_RES_2OP(SpvOpSLessThanEqual) {
 /* Signed-integer comparison if Operand 1 is less than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op1_reg].type));
-    assert(sim->temp_regs[op1_reg].type->is_signed);
-    assert(spirv_sim_type_is_integer(sim->temp_regs[op2_reg].type));
-    assert(sim->temp_regs[op2_reg].type->is_signed);
-    
+    assert(spirv_sim_type_is_signed_integer(op1_reg->type));
+    assert(spirv_sim_type_is_signed_integer(op2_reg->type));
+
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].svec[i] = sim->temp_regs[op1_reg].svec[i] <= sim->temp_regs[op2_reg].svec[i];
+        res_reg->svec[i] = op1_reg->svec[i] <= op2_reg->svec[i];
     }
     
 } OP_FUNC_END
@@ -1229,13 +1211,13 @@ OP_FUNC_RES_2OP(SpvOpFOrdEqual) {
 /* Floating-point comparison for being ordered and equal. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type->kind == TypeFloat);
-    assert(sim->temp_regs[op1_reg].type == sim->temp_regs[op2_reg].type);
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] =
-            !isunordered(sim->temp_regs[op1_reg].vec[i], sim->temp_regs[op2_reg].vec[i]) &&
-            (sim->temp_regs[op1_reg].vec[i] == sim->temp_regs[op2_reg].vec[i]);
+        res_reg->uvec[i] =
+            !isunordered(op1_reg->vec[i], op2_reg->vec[i]) &&
+            (op1_reg->vec[i] == op2_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -1244,13 +1226,13 @@ OP_FUNC_RES_2OP(SpvOpFUnordEqual) {
 /* Floating-point comparison for being unordered or equal. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type->kind == TypeFloat);
-    assert(sim->temp_regs[op1_reg].type == sim->temp_regs[op2_reg].type);
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] =
-        isunordered(sim->temp_regs[op1_reg].vec[i], sim->temp_regs[op2_reg].vec[i]) ||
-        (sim->temp_regs[op1_reg].vec[i] == sim->temp_regs[op2_reg].vec[i]);
+        res_reg->uvec[i] =
+        isunordered(op1_reg->vec[i], op2_reg->vec[i]) ||
+        (op1_reg->vec[i] == op2_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -1259,13 +1241,13 @@ OP_FUNC_RES_2OP(SpvOpFOrdNotEqual) {
 /* Floating-point comparison for being ordered and not equal. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type->kind == TypeFloat);
-    assert(sim->temp_regs[op1_reg].type == sim->temp_regs[op2_reg].type);
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] =
-        !isunordered(sim->temp_regs[op1_reg].vec[i], sim->temp_regs[op2_reg].vec[i]) &&
-        (sim->temp_regs[op1_reg].vec[i] != sim->temp_regs[op2_reg].vec[i]);
+        res_reg->uvec[i] =
+        !isunordered(op1_reg->vec[i], op2_reg->vec[i]) &&
+        (op1_reg->vec[i] != op2_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -1274,13 +1256,13 @@ OP_FUNC_RES_2OP(SpvOpFUnordNotEqual) {
 /* Floating-point comparison for being unordered or not equal. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type->kind == TypeFloat);
-    assert(sim->temp_regs[op1_reg].type == sim->temp_regs[op2_reg].type);
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] =
-        isunordered(sim->temp_regs[op1_reg].vec[i], sim->temp_regs[op2_reg].vec[i]) ||
-        (sim->temp_regs[op1_reg].vec[i] != sim->temp_regs[op2_reg].vec[i]);
+        res_reg->uvec[i] =
+        isunordered(op1_reg->vec[i], op2_reg->vec[i]) ||
+        (op1_reg->vec[i] != op2_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -1289,13 +1271,13 @@ OP_FUNC_RES_2OP(SpvOpFOrdLessThan) {
 /* Floating-point comparison if operands are ordered and Operand 1 is less than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type->kind == TypeFloat);
-    assert(sim->temp_regs[op1_reg].type == sim->temp_regs[op2_reg].type);
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] =
-        !isunordered(sim->temp_regs[op1_reg].vec[i], sim->temp_regs[op2_reg].vec[i]) &&
-        (sim->temp_regs[op1_reg].vec[i] < sim->temp_regs[op2_reg].vec[i]);
+        res_reg->uvec[i] =
+        !isunordered(op1_reg->vec[i], op2_reg->vec[i]) &&
+        (op1_reg->vec[i] < op2_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -1304,13 +1286,13 @@ OP_FUNC_RES_2OP(SpvOpFUnordLessThan) {
 /* Floating-point comparison if operands are unordered or Operand 1 is less than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type->kind == TypeFloat);
-    assert(sim->temp_regs[op1_reg].type == sim->temp_regs[op2_reg].type);
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] =
-        isunordered(sim->temp_regs[op1_reg].vec[i], sim->temp_regs[op2_reg].vec[i]) ||
-        (sim->temp_regs[op1_reg].vec[i] < sim->temp_regs[op2_reg].vec[i]);
+        res_reg->uvec[i] =
+        isunordered(op1_reg->vec[i], op2_reg->vec[i]) ||
+        (op1_reg->vec[i] < op2_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -1319,13 +1301,13 @@ OP_FUNC_RES_2OP(SpvOpFOrdGreaterThan) {
 /* Floating-point comparison if operands are ordered and Operand 1 is greater than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type->kind == TypeFloat);
-    assert(sim->temp_regs[op1_reg].type == sim->temp_regs[op2_reg].type);
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] =
-        !isunordered(sim->temp_regs[op1_reg].vec[i], sim->temp_regs[op2_reg].vec[i]) &&
-        (sim->temp_regs[op1_reg].vec[i] > sim->temp_regs[op2_reg].vec[i]);
+        res_reg->uvec[i] =
+        !isunordered(op1_reg->vec[i], op2_reg->vec[i]) &&
+        (op1_reg->vec[i] > op2_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -1334,13 +1316,13 @@ OP_FUNC_RES_2OP(SpvOpFUnordGreaterThan) {
 /* Floating-point comparison if operands are unordered or Operand 1 is greater than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type->kind == TypeFloat);
-    assert(sim->temp_regs[op1_reg].type == sim->temp_regs[op2_reg].type);
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] =
-        isunordered(sim->temp_regs[op1_reg].vec[i], sim->temp_regs[op2_reg].vec[i]) ||
-        (sim->temp_regs[op1_reg].vec[i] > sim->temp_regs[op2_reg].vec[i]);
+        res_reg->uvec[i] =
+        isunordered(op1_reg->vec[i], op2_reg->vec[i]) ||
+        (op1_reg->vec[i] > op2_reg->vec[i]);
     }
     
     
@@ -1350,13 +1332,13 @@ OP_FUNC_RES_2OP(SpvOpFOrdLessThanEqual) {
 /* Floating-point comparison if operands are ordered and Operand 1 is less than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type->kind == TypeFloat);
-    assert(sim->temp_regs[op1_reg].type == sim->temp_regs[op2_reg].type);
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] =
-        !isunordered(sim->temp_regs[op1_reg].vec[i], sim->temp_regs[op2_reg].vec[i]) &&
-        (sim->temp_regs[op1_reg].vec[i] <= sim->temp_regs[op2_reg].vec[i]);
+        res_reg->uvec[i] =
+        !isunordered(op1_reg->vec[i], op2_reg->vec[i]) &&
+        (op1_reg->vec[i] <= op2_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -1365,13 +1347,13 @@ OP_FUNC_RES_2OP(SpvOpFUnordLessThanEqual) {
 /* Floating-point comparison if operands are unordered or Operand 1 is less than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type->kind == TypeFloat);
-    assert(sim->temp_regs[op1_reg].type == sim->temp_regs[op2_reg].type);
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] =
-        isunordered(sim->temp_regs[op1_reg].vec[i], sim->temp_regs[op2_reg].vec[i]) ||
-        (sim->temp_regs[op1_reg].vec[i] <= sim->temp_regs[op2_reg].vec[i]);
+        res_reg->uvec[i] =
+        isunordered(op1_reg->vec[i], op2_reg->vec[i]) ||
+        (op1_reg->vec[i] <= op2_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -1380,13 +1362,13 @@ OP_FUNC_RES_2OP(SpvOpFOrdGreaterThanEqual) {
 /* Floating-point comparison if operands are ordered and Operand 1 is greater than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type->kind == TypeFloat);
-    assert(sim->temp_regs[op1_reg].type == sim->temp_regs[op2_reg].type);
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] =
-        !isunordered(sim->temp_regs[op1_reg].vec[i], sim->temp_regs[op2_reg].vec[i]) &&
-        (sim->temp_regs[op1_reg].vec[i] >= sim->temp_regs[op2_reg].vec[i]);
+        res_reg->uvec[i] =
+        !isunordered(op1_reg->vec[i], op2_reg->vec[i]) &&
+        (op1_reg->vec[i] >= op2_reg->vec[i]);
     }
     
 } OP_FUNC_END
@@ -1395,13 +1377,13 @@ OP_FUNC_RES_2OP(SpvOpFUnordGreaterThanEqual) {
 /* Floating-point comparison if operands are unordered or Operand 1 is greater than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(sim->temp_regs[op1_reg].type->kind == TypeFloat);
-    assert(sim->temp_regs[op1_reg].type == sim->temp_regs[op2_reg].type);
+    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
-        sim->temp_regs[res_reg].uvec[i] =
-        isunordered(sim->temp_regs[op1_reg].vec[i], sim->temp_regs[op2_reg].vec[i]) ||
-        (sim->temp_regs[op1_reg].vec[i] >= sim->temp_regs[op2_reg].vec[i]);
+        res_reg->uvec[i] =
+        isunordered(op1_reg->vec[i], op2_reg->vec[i]) ||
+        (op1_reg->vec[i] >= op2_reg->vec[i]);
     }
     
     
