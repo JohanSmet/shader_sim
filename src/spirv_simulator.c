@@ -25,20 +25,6 @@ static SimPointer *new_sim_pointer(SPIRV_simulator *sim, Type *type, uint8_t *po
     return result;
 }
 
-/*static inline Variable *spirv_sim_retrieve_var_desc(SPIRV_simulator *sim, uint32_t id) {
-    assert(sim);
-    
-    Variable *result = map_int_ptr_get(&sim->module->variables, id);
-    return result;
-} */
-
-/*static inline VariableData *spirv_sim_var_data(SPIRV_simulator *sim, Variable *var) {
-    assert(sim);
-    assert(var);
-    
-    return spirv_sim_retrieve_var(sim, var->kind, var->if_type, var->if_index);
-}*/
-
 static inline uint32_t spirv_sim_assign_register(SPIRV_simulator *sim, uint32_t id, Type *type) {
     assert(sim);
     uint32_t reg_idx = sim->reg_free_start++;

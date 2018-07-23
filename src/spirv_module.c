@@ -272,12 +272,6 @@ static Variable *create_variable(SPIRV_module *module, uint32_t id, uint32_t mem
     // optional name that was defined earlier
     var->name = name_by_id(module, id, member);
     
-    // if array, set type to the type of element
-    /* if (var->type->kind == TypeArray) {
-        var->array_elements = var->type->count;
-        var->type = var->type->base_type;
-    }*/
-    
     // aggregate types
     Type *aggregate = NULL;
     if (var->type->kind == TypeStructure) {
