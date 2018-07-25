@@ -42,6 +42,8 @@ typedef struct SPIRV_binary {
 } SPIRV_binary;
 
 // interface functions
+void spirv_bin_init(SPIRV_binary *spirv, uint8_t version_high, uint8_t version_low);
+void spirv_bin_finalize(SPIRV_binary *spirv);
 bool spirv_bin_load(SPIRV_binary *spirv, int8_t *data);
 
 SPIRV_header *spirv_bin_header(SPIRV_binary *spirv);
@@ -50,6 +52,7 @@ SPIRV_opcode *spirv_bin_opcode_jump_to(SPIRV_binary *spirv, SPIRV_opcode *op);
 SPIRV_opcode *spirv_bin_opcode_current(SPIRV_binary *spirv);
 SPIRV_opcode *spirv_bin_opcode_next(SPIRV_binary *spirv);
 SPIRV_opcode *spirv_bin_opcode_end(SPIRV_binary *spirv);
+void spirv_bin_opcode_add(SPIRV_binary *spirv, uint16_t opcode, uint32_t *extra, size_t count_extra);
 
 const char *spriv_bin_error_msg(SPIRV_binary *spirv);
 
