@@ -35,5 +35,6 @@ void *arr__grow(const void *array, size_t new_len, size_t elem_size);
 #define arr_clear(a) ((a) ? arr__hdr((a))->len = 0 : 0)
 #define arr_end(a) ((a) + arr_len(a))
 #define arr_printf(a, ...) (a) = arr__printf((a), __VA_ARGS__)
+#define arr_reserve(a, n) (arr__fit((a), (n)), arr__hdr(a)->len+=(n))
 
 #endif // JS_DYN_ARRAY_H
