@@ -148,6 +148,11 @@ void spirv_sim_select_entry_point(SPIRV_simulator *sim, uint32_t index) {
     spirv_bin_opcode_jump_to(sim->module->spirv_bin, func->fst_opcode);
 }
 
+SimRegister *spirv_sim_register_by_id(SPIRV_simulator *sim, uint32_t id) {
+    assert(sim);
+    return &sim->temp_regs[map_int_int_get(&sim->assigned_regs, id)];
+}
+
 SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, VariableKind kind, VariableInterface if_type, int32_t if_index) {
     assert(sim);
     

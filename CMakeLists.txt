@@ -61,9 +61,15 @@ set (TEST_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/tests/test_main.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dyn_array.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/tests/test_hash_map.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_basic_ops.c"
+ 	"${CMAKE_CURRENT_SOURCE_DIR}/tests/test_basic_ops.c"
+ 	"${CMAKE_CURRENT_SOURCE_DIR}/tests/test_spirv_sim.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/dyn_array.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/hash_map.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/allocator.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_binary.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_module.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_simulator.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_text.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/tests/munit/munit.c"
 )
 
