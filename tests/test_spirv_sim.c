@@ -9,6 +9,7 @@
 #include "spirv_simulator.h"
 #include "spirv/spirv.h"
 
+#include <math.h>
 #include <stdio.h>
 
 #define S(a,b,c,d)  ((uint32_t) (d) << 24 | (c) << 16 | (b) << 8 | (a))
@@ -24,6 +25,14 @@ void save_buffer(const char *filename, int8_t *binary_data) {
 #define TEST_TYPE_FLOAT32   1
 #define TEST_TYPE_INT32     2
 #define TEST_TYPE_UINT32    4
+
+static inline float fremf(float v1, float v2) {
+    /* The math.h remainder function rounds the quotient to the nearest integer value which means
+       that two positive numbers can have a negative remainder (e.g. 3.5 / 1). This doesn't match
+       the behavior described by the SPIR-V specification wich takes the sign from either the first
+       or the second operand. This functions takes the sign from the second operand */
+    return (v1 - (v2 * floorf(v1/v2)));
+}
 
 static inline void spirv_common_header(SPIRV_binary *bin) {
     SPIRV_OP(bin, SpvOpCapability,  SpvCapabilityShader);
@@ -96,8 +105,14 @@ MunitResult test_arithmetic_float32(const MunitParameter params[], void* user_da
     SPIRV_OP(&spirv_bin, SpvOpFNegate, ID(11), ID(62), ID(60));
     SPIRV_OP(&spirv_bin, SpvOpFAdd, ID(11), ID(63), ID(61), ID(60));
     SPIRV_OP(&spirv_bin, SpvOpFSub, ID(11), ID(64), ID(61), ID(60));
+    SPIRV_OP(&spirv_bin, SpvOpFMul, ID(11), ID(65), ID(61), ID(60));
+    SPIRV_OP(&spirv_bin, SpvOpFDiv, ID(11), ID(66), ID(61), ID(60));
+    SPIRV_OP(&spirv_bin, SpvOpFRem, ID(11), ID(67), ID(61), ID(60));
+    SPIRV_OP(&spirv_bin, SpvOpFRem, ID(11), ID(68), ID(61), ID(62));
+    SPIRV_OP(&spirv_bin, SpvOpFMod, ID(11), ID(69), ID(61), ID(60));
+    SPIRV_OP(&spirv_bin, SpvOpFMod, ID(11), ID(70), ID(61), ID(62));
     spirv_common_function_footer(&spirv_bin);
-    spirv_bin.header.bound_ids = 65;
+    spirv_bin.header.bound_ids = 71;
     spirv_bin_finalize(&spirv_bin);
     
     /* prepare simulator */
@@ -107,7 +122,7 @@ MunitResult test_arithmetic_float32(const MunitParameter params[], void* user_da
     SPIRV_simulator spirv_sim;
     spirv_sim_init(&spirv_sim, &spirv_module);
     float data1[4] = {1.0f, 2.0f, 3.0f, 4.0f};
-    float data2[4] = {3.0f, 6.0f, 9.0f, 12.0f};
+    float data2[4] = {3.5f, 6.6f, 8.0f, 11.0f};
     spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 0, (uint8_t *) data1, sizeof(data1));
     spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 1, (uint8_t *) data2, sizeof(data2));
 
@@ -123,7 +138,22 @@ MunitResult test_arithmetic_float32(const MunitParameter params[], void* user_da
         data2[0] + data1[0], data2[1] + data1[1], data2[2] + data1[2], data2[3] + data1[3]});
     assert_register_vec4_equal(&spirv_sim, ID(64), (float[]){           /* OpFSub */
         data2[0] - data1[0], data2[1] - data1[1], data2[2] - data1[2], data2[3] - data1[3]});
-
+    assert_register_vec4_equal(&spirv_sim, ID(65), (float[]){           /* OpFMul */
+        data2[0] * data1[0], data2[1] * data1[1], data2[2] * data1[2], data2[3] * data1[3]});
+    assert_register_vec4_equal(&spirv_sim, ID(66), (float[]){           /* OpFDiv */
+        data2[0] / data1[0], data2[1] / data1[1], data2[2] / data1[2], data2[3] / data1[3]});
+    assert_register_vec4_equal(&spirv_sim, ID(67), (float[]){           /* OpFRem */
+        fmodf(data2[0], data1[0]), fmodf(data2[1], data1[1]),
+        fmodf(data2[2], data1[2]), fmodf(data2[3], data1[3])});
+    assert_register_vec4_equal(&spirv_sim, ID(68), (float[]){           /* OpFRem */
+        fmodf(data2[0], -data1[0]), fmodf(data2[1], -data1[1]),
+        fmodf(data2[2], -data1[2]), fmodf(data2[3], -data1[3])});
+    assert_register_vec4_equal(&spirv_sim, ID(69), (float[]){           /* OpFMod */
+        fremf(data2[0], data1[0]), fremf(data2[1], data1[1]),
+        fremf(data2[2], data1[2]), fremf(data2[3], data1[3])});
+    assert_register_vec4_equal(&spirv_sim, ID(70), (float[]){           /* OpFMod */
+        fremf(data2[0], -data1[0]), fremf(data2[1], -data1[1]),
+        fremf(data2[2], -data1[2]), fremf(data2[3], -data1[3])});
 
     return MUNIT_OK;
 }
