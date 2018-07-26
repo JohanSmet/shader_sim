@@ -541,7 +541,7 @@ OP_FUNC_RES_2OP(SpvOpUMod)
     assert(spirv_sim_type_is_unsigned_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        res_reg->uvec[i] = op1_reg->uvec[i] / op2_reg->uvec[i];
+        res_reg->uvec[i] = op1_reg->uvec[i] % op2_reg->uvec[i];
     }
 
 OP_FUNC_END
@@ -567,7 +567,7 @@ OP_FUNC_RES_2OP(SpvOpSMod)
     for (int32_t i = 0; i < res_type->count; ++i) {
         int32_t v1 = op1_reg->svec[i];
         int32_t v2 = op2_reg->svec[i];
-        res_reg->uvec[i] = (v1 - (v2 * (int)floorf(v1/v2)));
+        res_reg->uvec[i] = (v1 - (v2 * (int)floorf((float) v1/v2)));
     }
 
 OP_FUNC_END
