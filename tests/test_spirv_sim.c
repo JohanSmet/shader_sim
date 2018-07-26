@@ -10,17 +10,10 @@
 #include "spirv/spirv.h"
 
 #include <math.h>
-#include <stdio.h>
 
 #define S(a,b,c,d)  ((uint32_t) (d) << 24 | (c) << 16 | (b) << 8 | (a))
 #define ID(i) i
 #define SPIRV_OP(bin,op,...)  spirv_bin_opcode_add(bin, op, (uint32_t[]){__VA_ARGS__}, sizeof((uint32_t[]) {__VA_ARGS__})/sizeof(uint32_t))
-
-void save_buffer(const char *filename, int8_t *binary_data) {
-    FILE *fp = fopen(filename, "wb");
-    fwrite(binary_data, 1, arr_len(binary_data), fp);
-    fclose(fp);
-}
 
 #define TEST_TYPE_FLOAT32   1
 #define TEST_TYPE_INT32     2
