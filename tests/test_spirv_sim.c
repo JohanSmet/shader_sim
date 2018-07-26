@@ -77,14 +77,13 @@ static inline void spirv_common_function_footer(SPIRV_binary *bin) {
     SPIRV_OP(bin, SpvOpFunctionEnd);
 }
 
-static inline void assert_register_vec4_equal(SPIRV_simulator *sim, uint32_t id, float *expected) {
-    SimRegister *reg = spirv_sim_register_by_id(sim, id);
-    
-    munit_assert_not_null(reg);
-    munit_assert_float(reg->vec[0], ==, expected[0]);
-    munit_assert_float(reg->vec[1], ==, expected[1]);
-    munit_assert_float(reg->vec[2], ==, expected[2]);
-    munit_assert_float(reg->vec[3], ==, expected[3]);
+#define ASSERT_REGISTER_VEC4(sim, id, op, e0, e1, e2, e3) { \
+    SimRegister *reg = spirv_sim_register_by_id(sim, id);   \
+    munit_assert_not_null(reg);                             \
+    munit_assert_float(reg->vec[0], op, e0);       \
+    munit_assert_float(reg->vec[1], op, e1);       \
+    munit_assert_float(reg->vec[2], op, e2);       \
+    munit_assert_float(reg->vec[3], op, e3);       \
 }
 
 MunitResult test_arithmetic_float32(const MunitParameter params[], void* user_data_or_fixture) {
@@ -132,28 +131,28 @@ MunitResult test_arithmetic_float32(const MunitParameter params[], void* user_da
     }
     
     /* check registers */
-    assert_register_vec4_equal(&spirv_sim, ID(62), (float[]){           /* OpFNegate */
-        -data1[0], -data1[1], -data1[2], -data1[3]});
-    assert_register_vec4_equal(&spirv_sim, ID(63), (float[]){           /* OpFAdd */
-        data2[0] + data1[0], data2[1] + data1[1], data2[2] + data1[2], data2[3] + data1[3]});
-    assert_register_vec4_equal(&spirv_sim, ID(64), (float[]){           /* OpFSub */
-        data2[0] - data1[0], data2[1] - data1[1], data2[2] - data1[2], data2[3] - data1[3]});
-    assert_register_vec4_equal(&spirv_sim, ID(65), (float[]){           /* OpFMul */
-        data2[0] * data1[0], data2[1] * data1[1], data2[2] * data1[2], data2[3] * data1[3]});
-    assert_register_vec4_equal(&spirv_sim, ID(66), (float[]){           /* OpFDiv */
-        data2[0] / data1[0], data2[1] / data1[1], data2[2] / data1[2], data2[3] / data1[3]});
-    assert_register_vec4_equal(&spirv_sim, ID(67), (float[]){           /* OpFRem */
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(62), ==,                        /* OpFNegate */
+        -data1[0], -data1[1], -data1[2], -data1[3]);
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(63), ==,                        /* OpFAdd */
+        data2[0] + data1[0], data2[1] + data1[1], data2[2] + data1[2], data2[3] + data1[3]);
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(64), ==,                        /* OpFSub */
+        data2[0] - data1[0], data2[1] - data1[1], data2[2] - data1[2], data2[3] - data1[3]);
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(65), ==,                        /* OpFMul */
+        data2[0] * data1[0], data2[1] * data1[1], data2[2] * data1[2], data2[3] * data1[3]);
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(66), ==,                        /* OpFDiv */
+        data2[0] / data1[0], data2[1] / data1[1], data2[2] / data1[2], data2[3] / data1[3]);
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(67), ==,                        /* OpFRem */
         fmodf(data2[0], data1[0]), fmodf(data2[1], data1[1]),
-        fmodf(data2[2], data1[2]), fmodf(data2[3], data1[3])});
-    assert_register_vec4_equal(&spirv_sim, ID(68), (float[]){           /* OpFRem */
+        fmodf(data2[2], data1[2]), fmodf(data2[3], data1[3]));
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(68), ==,                        /* OpFRem */
         fmodf(data2[0], -data1[0]), fmodf(data2[1], -data1[1]),
-        fmodf(data2[2], -data1[2]), fmodf(data2[3], -data1[3])});
-    assert_register_vec4_equal(&spirv_sim, ID(69), (float[]){           /* OpFMod */
+        fmodf(data2[2], -data1[2]), fmodf(data2[3], -data1[3]));
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(69), ==,                        /* OpFMod */
         fremf(data2[0], data1[0]), fremf(data2[1], data1[1]),
-        fremf(data2[2], data1[2]), fremf(data2[3], data1[3])});
-    assert_register_vec4_equal(&spirv_sim, ID(70), (float[]){           /* OpFMod */
+        fremf(data2[2], data1[2]), fremf(data2[3], data1[3]));
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(70), ==,                        /* OpFMod */
         fremf(data2[0], -data1[0]), fremf(data2[1], -data1[1]),
-        fremf(data2[2], -data1[2]), fremf(data2[3], -data1[3])});
+        fremf(data2[2], -data1[2]), fremf(data2[3], -data1[3]));
 
     return MUNIT_OK;
 }
