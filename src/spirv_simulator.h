@@ -26,6 +26,7 @@ typedef struct SimRegister {
         float *vec;
         int32_t *svec;
         uint32_t *uvec;
+        uint8_t *raw;
     };
     uint32_t id;
     Type *type;

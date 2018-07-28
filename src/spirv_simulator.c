@@ -56,6 +56,19 @@ static inline bool spirv_sim_type_is_float(Type *type) {
            type->kind == TypeMatrixFloat;
 }
 
+static inline bool spirv_sim_type_is_scalar(Type *type) {
+   return (type->kind == TypeInteger || type->kind == TypeFloat || type->kind == TypeBool) &&
+          type->count == 1;
+}
+
+static inline bool spirv_sim_type_is_vector(Type *type) {
+    return type->kind == TypeVectorInteger || type->kind == TypeVectorFloat;
+}
+
+static inline bool spirv_sim_type_is_matrix(Type *type) {
+    return type->kind == TypeMatrixInteger || type->kind == TypeMatrixFloat;
+}
+
 static inline uint64_t var_data_key(VariableKind kind, VariableInterface if_type, uint32_t if_index) {
    return (uint64_t) kind << 48 | (uint64_t) if_type << 32 | if_index;
 }
@@ -204,9 +217,37 @@ static inline uint32_t count_set_bits(uint32_t data) {
     return result;
 }
 
+uint32_t aggregate_indices_offset(Type *type, uint32_t num_indices, uint32_t *indices) {
+    
+    uint32_t offset = 0;
+    Type *cur_type = type;
+    
+    for (uint32_t idx = 0; idx < num_indices; ++idx) {
+        if (cur_type->kind == TypeStructure) {
+            for (int32_t i = 0; i < indices[idx]; ++i) {
+                offset += cur_type->structure.members[i]->element_size * cur_type->structure.members[i]->count;
+            }
+            cur_type = cur_type->structure.members[indices[idx]];
+        } else if (cur_type->kind == TypeArray ||
+                   spirv_sim_type_is_vector(cur_type) ||
+                   spirv_sim_type_is_matrix(cur_type)) {
+            offset += cur_type->element_size * indices[idx];
+            cur_type = cur_type->base_type;
+        } else {
+            assert(0 && "Unsupported type in aggregate hierarchy");
+        }
+    }
+    
+    return offset;
+}
+
 #define OP_REGISTER(reg, id) \
     SimRegister *reg = &sim->temp_regs[map_int_int_get(&sim->assigned_regs, op->optional[id])];    \
     assert(reg != NULL);
+
+#define OP_REGISTER_ASSIGN(reg, type, result_id) \
+    uint32_t reg##_idx = spirv_sim_assign_register(sim, result_id, type);  \
+    SimRegister *res_reg = &sim->temp_regs[reg##_idx];
 
 #define OP_FUNC_BEGIN(kind) \
     static inline void spirv_sim_op_##kind(SPIRV_simulator *sim, SPIRV_opcode *op) {    \
@@ -421,6 +462,188 @@ OP_FUNC_RES_1OP(SpvOpPtrCastToGeneric)
 OP_FUNC_RES_1OP(SpvOpGenericCastToPtr)
 OP_FUNC_RES_1OP(SpvOpGenericCastToPtrExplicit)
 OP_FUNC_RES_1OP(SpvOpBitcast)*/
+
+/*
+ * composite instructions
+ */
+
+OP_FUNC_RES_2OP(SpvOpVectorExtractDynamic) {
+/* Extract a single, dynamically selected, component of a vector. */
+    
+    assert(spirv_sim_type_is_scalar(res_type));
+    assert(spirv_sim_type_is_vector(op1_reg->type));
+    assert(op1_reg->type->base_type == res_type);
+    assert(op2_reg->type->kind == TypeInteger);
+    
+    res_reg->uvec[0] = op1_reg->uvec[op2_reg->uvec[0]];
+
+} OP_FUNC_END
+
+OP_FUNC_BEGIN(SpvOpVectorInsertDynamic) {
+/* Make a copy of a vector, with a single, variably selected, component modified. */
+    
+    Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
+    OP_REGISTER_ASSIGN(res_reg, res_type, op->optional[1]);
+    OP_REGISTER(vector, 2);
+    OP_REGISTER(component, 3);
+    OP_REGISTER(index, 4);
+    
+    assert(spirv_sim_type_is_vector(res_type));
+    assert(vector->type == res_type);
+    assert(component->type == res_type->base_type);
+    assert(index->type->kind == TypeInteger);
+    
+    memcpy(res_reg->uvec, vector->uvec, res_reg->type->element_size * res_reg->type->count);
+    res_reg->uvec[index->uvec[0]] = component->uvec[0];
+
+} OP_FUNC_END
+
+OP_FUNC_BEGIN(SpvOpVectorShuffle) {
+/* Select arbitrary components from two vectors to make a new vector. */
+    
+    Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
+    OP_REGISTER_ASSIGN(res_reg, res_type, op->optional[1]);
+    OP_REGISTER(vector_1, 2);
+    OP_REGISTER(vector_2, 3);
+    uint32_t num_components = op->op.length - 5;
+    uint32_t *components = &op->optional[4];
+    
+    assert(spirv_sim_type_is_vector(res_type));
+    assert(res_type->count == num_components);
+    assert(spirv_sim_type_is_vector(vector_1->type));
+    assert(vector_1->type->base_type == res_type->base_type);
+    assert(spirv_sim_type_is_vector(vector_2->type));
+    assert(vector_2->type->base_type == res_type->base_type);
+    
+    for (uint32_t c = 0; c < num_components; ++c) {
+        if (components[c] == 0xFFFFFFFF) {
+            /* no source, undefined */
+            continue;
+        } else if (components[c] >= vector_1->type->count) {
+            res_reg->uvec[c] = vector_2->uvec[components[c] - vector_1->type->count];
+        } else {
+            res_reg->uvec[c] = vector_1->uvec[components[c]];
+        }
+    }
+
+} OP_FUNC_END
+
+OP_FUNC_BEGIN(SpvOpCompositeConstruct) {
+/* Construct a new composite object from a set of constituent objects that will fully form it. */
+    
+    Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
+    uint32_t result_id = op->optional[1];
+    uint32_t num_constituents = op->op.length - 3;
+    uint32_t *constituents = &op->optional[2];
+    
+    OP_REGISTER_ASSIGN(res_reg, res_type, result_id);
+    
+    if (res_type->kind == TypeStructure) {
+        assert(arr_len(res_type->structure.members) == num_constituents);
+        
+        for (uint32_t c = 0, offset = 0; c < num_constituents; ++c) {
+            SimRegister *c_reg = &sim->temp_regs[map_int_int_get(&sim->assigned_regs, constituents[c])];
+            assert(res_type->structure.members[c] == c_reg->type);
+            
+            memcpy(res_reg->raw + offset, c_reg->raw, c_reg->type->count * c_reg->type->element_size);
+            offset += c_reg->type->count * c_reg->type->element_size;
+        }
+    } else if (res_type->kind == TypeArray) {
+        assert(res_type->count == num_constituents);
+       
+        for (uint32_t c = 0, offset = 0; c < num_constituents; ++c) {
+            SimRegister *c_reg = &sim->temp_regs[map_int_int_get(&sim->assigned_regs, constituents[c])];
+            assert(res_type->base_type == c_reg->type);
+            
+            memcpy(res_reg->raw + offset, c_reg->raw, c_reg->type->element_size * c_reg->type->count);
+            offset += c_reg->type->element_size * c_reg->type->count;
+        }
+    } else if (spirv_sim_type_is_vector(res_type)) {
+        /* for constructing a vector a contiguous subset of the scalars consumed can be represented by a vector operand */
+        
+        uint32_t res_idx = 0;
+        
+        for (uint32_t c = 0; c < num_constituents; ++c) {
+            SimRegister *c_reg = &sim->temp_regs[map_int_int_get(&sim->assigned_regs, constituents[c])];
+            assert(c_reg->type == res_type->base_type || c_reg->type->base_type == res_type->base_type);
+            
+            for (uint32_t c_idx = 0; c_idx < c_reg->type->count; ++c_idx) {
+                res_reg->uvec[res_idx++] = c_reg->uvec[c_idx];
+            }
+        }
+        
+        assert(res_idx == res_type->count);
+        
+    } else if (spirv_sim_type_is_matrix(res_type)) {
+        assert(res_type->matrix.num_cols == num_constituents);
+        
+        for (uint32_t c = 0, offset = 0; c < num_constituents; ++c) {
+            SimRegister *c_reg = &sim->temp_regs[map_int_int_get(&sim->assigned_regs, constituents[c])];
+            assert(res_type->base_type == c_reg->type);
+            
+            memcpy(res_reg->raw + offset, c_reg->raw, c_reg->type->count * c_reg->type->element_size);
+            offset += c_reg->type->count * c_reg->type->element_size;
+        }
+    } else {
+        assert(0 && "Unsupported type in SpvOpCompositeConstruct");
+        return;
+    }
+    
+} OP_FUNC_END
+
+OP_FUNC_BEGIN(SpvOpCompositeExtract) {
+/* Extract a part of a composite object. */
+
+    Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
+    OP_REGISTER_ASSIGN(res_reg, res_type, op->optional[1]);
+    OP_REGISTER(composite, 2);
+    
+    uint32_t offset = aggregate_indices_offset(composite->type, op->op.length - 4, &op->optional[3]);
+    memcpy(res_reg->raw, composite->raw + offset, res_reg->type->count * res_reg->type->element_size);
+
+} OP_FUNC_END
+
+OP_FUNC_BEGIN(SpvOpCompositeInsert) {
+/* Make a copy of a composite object, while modifying one part of it. */
+    
+    Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
+    OP_REGISTER_ASSIGN(res_reg, res_type, op->optional[1]);
+    OP_REGISTER(object, 2);
+    OP_REGISTER(composite, 3);
+    
+    assert(res_type == composite->type);
+    
+    uint32_t offset = aggregate_indices_offset(composite->type, op->op.length - 5, &op->optional[4]);
+    memcpy(res_reg->raw, composite->raw, res_reg->type->count * res_reg->type->element_size);
+    memcpy(res_reg->raw + offset, object->raw, object->type->count * object->type->element_size);
+    
+} OP_FUNC_END
+
+OP_FUNC_RES_1OP(SpvOpCopyObject) {
+/* Make a copy of Operand. There are no dereferences involved. */
+    
+    assert(res_reg->type == op_reg->type);
+    memcpy(res_reg->raw, op_reg->raw, res_reg->type->count * res_reg->type->element_size);
+    
+} OP_FUNC_END
+
+OP_FUNC_RES_1OP(SpvOpTranspose) {
+/* Transpose a matrix. */
+    
+    assert(spirv_sim_type_is_matrix(res_reg->type));
+    assert(spirv_sim_type_is_matrix(op_reg->type));
+    assert(res_reg->type->base_type == op_reg->type->base_type);
+    assert(res_reg->type->matrix.num_cols == op_reg->type->matrix.num_rows);
+    assert(res_reg->type->matrix.num_rows == op_reg->type->matrix.num_cols);
+    
+    for (uint32_t s_row = 0; s_row < op_reg->type->matrix.num_rows; ++s_row) {
+        for (uint32_t s_col = 0; s_col < op_reg->type->matrix.num_rows; ++s_col) {
+            res_reg->uvec[s_col * op_reg->type->matrix.num_rows + s_row] =
+                op_reg->uvec[s_row * op_reg->type->matrix.num_cols + s_col];
+        }
+    }
+    
+} OP_FUNC_END
 
 /*
  * arithmetic instructions
@@ -1445,6 +1668,16 @@ void spirv_sim_step(SPIRV_simulator *sim) {
         OP_DEFAULT(SpvOpGenericCastToPtr)
         OP_DEFAULT(SpvOpGenericCastToPtrExplicit)
         OP_DEFAULT(SpvOpBitcast)
+            
+        // composite instructions
+        OP(SpvOpVectorExtractDynamic)
+        OP(SpvOpVectorInsertDynamic)
+        OP(SpvOpVectorShuffle)
+        OP(SpvOpCompositeConstruct)
+        OP(SpvOpCompositeExtract)
+        OP(SpvOpCompositeInsert)
+        OP(SpvOpCopyObject)
+        OP(SpvOpTranspose)
 
         // arithmetic instructions
         OP(SpvOpSNegate)

@@ -54,21 +54,24 @@ static inline void spirv_common_types(SPIRV_binary *bin, uint32_t type_flags) {
         SPIRV_OP(bin, SpvOpTypeFloat, ID(10), 32);
         SPIRV_OP(bin, SpvOpTypeVector, ID(11), ID(10), 4);
         SPIRV_OP(bin, SpvOpTypeMatrix, ID(12), ID(11), 4);
-        SPIRV_OP(bin, SpvOpTypePointer, ID(13), SpvStorageClassInput, ID(11));
+        SPIRV_OP(bin, SpvOpTypePointer, ID(13), SpvStorageClassInput, ID(10));
+        SPIRV_OP(bin, SpvOpTypePointer, ID(14), SpvStorageClassInput, ID(11));
     }
     
     if (type_flags & TEST_TYPE_INT32) {
         SPIRV_OP(bin, SpvOpTypeInt, ID(20), 32, 1);
         SPIRV_OP(bin, SpvOpTypeVector, ID(21), ID(20), 4);
         SPIRV_OP(bin, SpvOpTypeMatrix, ID(22), ID(21), 4);
-        SPIRV_OP(bin, SpvOpTypePointer, ID(23), SpvStorageClassInput, ID(21));
+        SPIRV_OP(bin, SpvOpTypePointer, ID(23), SpvStorageClassInput, ID(20));
+        SPIRV_OP(bin, SpvOpTypePointer, ID(24), SpvStorageClassInput, ID(21));
     }
     
     if (type_flags & TEST_TYPE_UINT32) {
         SPIRV_OP(bin, SpvOpTypeInt, ID(30), 32, 0);
         SPIRV_OP(bin, SpvOpTypeVector, ID(31), ID(30), 4);
         SPIRV_OP(bin, SpvOpTypeMatrix, ID(32), ID(31), 4);
-        SPIRV_OP(bin, SpvOpTypePointer, ID(33), SpvStorageClassInput, ID(31));
+        SPIRV_OP(bin, SpvOpTypePointer, ID(33), SpvStorageClassInput, ID(30));
+        SPIRV_OP(bin, SpvOpTypePointer, ID(34), SpvStorageClassInput, ID(31));
     }
 }
 
@@ -80,6 +83,12 @@ static inline void spirv_common_function_header(SPIRV_binary *bin) {
 static inline void spirv_common_function_footer(SPIRV_binary *bin) {
     SPIRV_OP(bin, SpvOpReturn);
     SPIRV_OP(bin, SpvOpFunctionEnd);
+}
+
+#define ASSERT_REGISTER_FLOAT(sim, id, op, e0) { \
+    SimRegister *reg = spirv_sim_register_by_id(sim, id);   \
+    munit_assert_not_null(reg);                             \
+    munit_assert_float(reg->vec[0], op, (e0));              \
 }
 
 #define ASSERT_REGISTER_VEC4(sim, id, op, e0, e1, e2, e3) { \
@@ -119,8 +128,8 @@ MunitResult test_arithmetic_float32(const MunitParameter params[], void* user_da
     SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(40), SpvDecorationLocation, 0);
     SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(41), SpvDecorationLocation, 1);
     spirv_common_types(&spirv_bin, TEST_TYPE_FLOAT32);
-    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(13), ID(40), SpvStorageClassInput);
-    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(13), ID(41), SpvStorageClassInput);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(14), ID(40), SpvStorageClassInput);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(14), ID(41), SpvStorageClassInput);
     spirv_common_function_header(&spirv_bin);
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(11), ID(60), ID(40));
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(11), ID(61), ID(41));
@@ -190,8 +199,8 @@ MunitResult test_arithmetic_int32(const MunitParameter params[], void* user_data
     SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(40), SpvDecorationLocation, 0);
     SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(41), SpvDecorationLocation, 1);
     spirv_common_types(&spirv_bin, TEST_TYPE_INT32);
-    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(23), ID(40), SpvStorageClassInput);
-    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(23), ID(41), SpvStorageClassInput);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(24), ID(40), SpvStorageClassInput);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(24), ID(41), SpvStorageClassInput);
     spirv_common_function_header(&spirv_bin);
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(21), ID(60), ID(40));
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(21), ID(61), ID(41));
@@ -261,8 +270,8 @@ MunitResult test_arithmetic_uint32(const MunitParameter params[], void* user_dat
     SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(40), SpvDecorationLocation, 0);
     SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(41), SpvDecorationLocation, 1);
     spirv_common_types(&spirv_bin, TEST_TYPE_UINT32);
-    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(33), ID(40), SpvStorageClassInput);
-    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(33), ID(41), SpvStorageClassInput);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(34), ID(40), SpvStorageClassInput);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(34), ID(41), SpvStorageClassInput);
     spirv_common_function_header(&spirv_bin);
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(31), ID(60), ID(40));
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(31), ID(61), ID(41));
@@ -307,10 +316,149 @@ MunitResult test_arithmetic_uint32(const MunitParameter params[], void* user_dat
     return MUNIT_OK;
 }
 
+MunitResult test_composite_float32(const MunitParameter params[], void* user_data_or_fixture) {
+ 
+#pragma pack(push, 0)
+    typedef struct CompositeStruct {
+        float f0;
+        float f1;
+        float v0[4];
+        float v1[4];
+    } CompositeStruct;
+#pragma pack(pop)
+    
+    /* prepare binary */
+    SPIRV_binary spirv_bin;
+    spirv_bin_init(&spirv_bin, 1, 0);
+    
+    spirv_common_header(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(40), SpvDecorationLocation, 0);
+    SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(41), SpvDecorationLocation, 1);
+    SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(42), SpvDecorationLocation, 2);
+    spirv_common_types(&spirv_bin, TEST_TYPE_FLOAT32 | TEST_TYPE_UINT32);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(14), ID(40), SpvStorageClassInput);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(14), ID(41), SpvStorageClassInput);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(13), ID(42), SpvStorageClassInput);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(43), 0);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(44), 1);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(45), 2);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(46), 3);
+    SPIRV_OP(&spirv_bin, SpvOpTypeStruct, ID(50), ID(10), ID(10), ID(11), ID(11));
+    SPIRV_OP(&spirv_bin, SpvOpTypeArray, ID(51), ID(11), ID(45));
+    SPIRV_OP(&spirv_bin, SpvOpTypeVector, ID(52), ID(10), 6);
+    spirv_common_function_header(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(11), ID(60), ID(40));
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(11), ID(61), ID(41));
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(10), ID(62), ID(42));
+    SPIRV_OP(&spirv_bin, SpvOpVectorExtractDynamic, ID(10), ID(63), ID(60), ID(45));
+    SPIRV_OP(&spirv_bin, SpvOpVectorInsertDynamic, ID(11), ID(64), ID(60), ID(62), ID(44));
+    SPIRV_OP(&spirv_bin, SpvOpVectorShuffle, ID(11), ID(65), ID(60), ID(61), 4, 1, 6, 3);
+    SPIRV_OP(&spirv_bin, SpvOpCompositeConstruct, ID(50), ID(66), ID(62), ID(63), ID(60), ID(61));
+    SPIRV_OP(&spirv_bin, SpvOpCompositeConstruct, ID(51), ID(67), ID(60), ID(61));
+    SPIRV_OP(&spirv_bin, SpvOpCompositeConstruct, ID(52), ID(68), ID(62), ID(60), ID(62));
+    SPIRV_OP(&spirv_bin, SpvOpCompositeConstruct, ID(12), ID(69), ID(60), ID(61), ID(64), ID(65));
+    SPIRV_OP(&spirv_bin, SpvOpCompositeExtract, ID(10), ID(70), ID(66), 2, 3);
+    SPIRV_OP(&spirv_bin, SpvOpCompositeInsert, ID(50), ID(71), ID(62), ID(66), 3, 2);
+    SPIRV_OP(&spirv_bin, SpvOpCopyObject, ID(50), ID(72), ID(71));
+    SPIRV_OP(&spirv_bin, SpvOpTranspose, ID(12), ID(73), ID(69));
+    spirv_common_function_footer(&spirv_bin);
+    spirv_bin.header.bound_ids = 74;
+    spirv_bin_finalize(&spirv_bin);
+    
+    /* prepare simulator */
+    SPIRV_module spirv_module;
+    spirv_module_load(&spirv_module, &spirv_bin);
+    
+    SPIRV_simulator spirv_sim;
+    spirv_sim_init(&spirv_sim, &spirv_module);
+    float data1[4] = {1.0f, 2.0f, 3.0f, 4.0f};
+    float data2[4] = {3.5f, 6.6f, 8.0f, 11.0f};
+    float data3 = 5.0f;
+    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 0, (uint8_t *) data1, sizeof(data1));
+    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 1, (uint8_t *) data2, sizeof(data2));
+    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 2, (uint8_t *) &data3, sizeof(data3));
+    
+    /* run simulator */
+    while (!spirv_sim.finished && !spirv_sim.error_msg) {
+        munit_assert_null(spirv_sim.error_msg);
+        spirv_sim_step(&spirv_sim);
+    }
+    
+    /* check registers */
+    ASSERT_REGISTER_FLOAT(&spirv_sim, ID(63), ==, data1[2]);            /* OpVectorExtractDynamic */
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(64), ==,                        /* OpVectorInsertDynamic */
+                         data1[0], data3, data1[2], data1[3]);
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(65), ==,                        /* OpVectorShuffle */
+                         data2[0], data1[1], data2[2], data1[3]);
+    
+    /* OpCompositeConstruct - struct */
+    SimRegister *c1_reg = &spirv_sim.temp_regs[map_int_int_get(&spirv_sim.assigned_regs, ID(66))];
+    CompositeStruct c1_expected = (CompositeStruct) {
+        .f0 = data3,
+        .f1 = data1[2],
+        .v0 = {data1[0], data1[1], data1[2], data1[3]},
+        .v1 = {data2[0], data2[1], data2[2], data2[3]},
+    };
+    munit_assert_memory_equal(sizeof(CompositeStruct), c1_reg->raw, &c1_expected);
+    
+    /* OpCompositeConstruct - array */
+    SimRegister *c2_reg = &spirv_sim.temp_regs[map_int_int_get(&spirv_sim.assigned_regs, ID(67))];
+    float c2_expected[2][4] = {
+        {data1[0], data1[1], data1[2], data1[3]},
+        {data2[0], data2[1], data2[2], data2[3]}
+    };
+    munit_assert_memory_equal(sizeof(float) * 8, c2_reg->raw, c2_expected);
+    
+    /* OpCompositeConstruct - vector */
+    SimRegister *c3_reg = &spirv_sim.temp_regs[map_int_int_get(&spirv_sim.assigned_regs, ID(68))];
+    float c3_expected[6] = {data3, data1[0], data1[1], data1[2], data1[3], data3};
+    munit_assert_memory_equal(sizeof(float) * 6, c3_reg->raw, c3_expected);
+    
+    /* OpCompositeConstruct - matrix */
+    SimRegister *c4_reg = &spirv_sim.temp_regs[map_int_int_get(&spirv_sim.assigned_regs, ID(69))];
+    float c4_expected[4][4] = {
+        {data1[0], data1[1], data1[2], data1[3]},
+        {data2[0], data2[1], data2[2], data2[3]},
+        {data1[0], data3, data1[2], data1[3]},
+        {data2[0], data1[1], data2[2], data1[3]}
+    };
+    munit_assert_memory_equal(sizeof(float) * 16, c4_reg->raw, c4_expected);
+    
+    /* OpCompositeExtract */
+    ASSERT_REGISTER_FLOAT(&spirv_sim, ID(70), ==, c1_expected.v0[3]);
+    
+    /* OpCompositeInsert */
+    SimRegister *i1_reg = &spirv_sim.temp_regs[map_int_int_get(&spirv_sim.assigned_regs, ID(71))];
+    CompositeStruct i1_expected = (CompositeStruct) {
+        .f0 = data3,
+        .f1 = data1[2],
+        .v0 = {data1[0], data1[1], data1[2], data1[3]},
+        .v1 = {data2[0], data2[1], data3, data2[3]},
+    };
+    munit_assert_memory_equal(sizeof(CompositeStruct), i1_reg->raw, &i1_expected);
+    
+    /* OpCopyObject */
+    SimRegister *o1_reg = &spirv_sim.temp_regs[map_int_int_get(&spirv_sim.assigned_regs, ID(72))];
+    munit_assert_memory_equal(sizeof(CompositeStruct), o1_reg->raw, i1_reg->raw);
+    
+    /* OpTranspose */
+    SimRegister *t1_reg = &spirv_sim.temp_regs[map_int_int_get(&spirv_sim.assigned_regs, ID(73))];
+    float t1_expected[4][4] = {
+        {data1[0], data2[0], data1[0], data2[0]},
+        {data1[1], data2[1], data3, data1[1]},
+        {data1[2], data2[2], data1[2], data2[2]},
+        {data1[3], data2[3], data1[3], data1[3]}
+    };
+    munit_assert_memory_equal(sizeof(float) * 16, t1_reg->raw, t1_expected);
+    
+    
+    return MUNIT_OK;
+}
 
 MunitTest spirv_sim_tests[] = {
     { "/arithmetic_float32", test_arithmetic_float32, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/arithmetic_int32", test_arithmetic_int32, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/arithmetic_uint32", test_arithmetic_uint32, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
+    { "/composite_float32", test_composite_float32, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
