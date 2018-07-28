@@ -1010,7 +1010,7 @@ OP_FUNC_RES_1OP(SpvOpNot) {
 OP_FUNC_BEGIN(SpvOpBitFieldInsert) {
     
     Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
-    OP_REGISTER(res_reg, 1);
+    OP_REGISTER_ASSIGN(res_reg, res_type, op->optional[1]);
     OP_REGISTER(base_reg, 2);
     OP_REGISTER(insert_reg, 3);
     OP_REGISTER(offset_reg, 4);
@@ -1031,7 +1031,7 @@ OP_FUNC_BEGIN(SpvOpBitFieldInsert) {
 OP_FUNC_BEGIN(SpvOpBitFieldSExtract) {
     
     Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
-    OP_REGISTER(res_reg, 1);
+    OP_REGISTER_ASSIGN(res_reg, res_type, op->optional[1]);
     OP_REGISTER(base_reg, 2);
     OP_REGISTER(offset_reg, 3);
     OP_REGISTER(count_reg, 4);
@@ -1047,7 +1047,7 @@ OP_FUNC_BEGIN(SpvOpBitFieldSExtract) {
 OP_FUNC_BEGIN(SpvOpBitFieldUExtract) {
     
     Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
-    OP_REGISTER(res_reg, 1);
+    OP_REGISTER_ASSIGN(res_reg, res_type, op->optional[1]);
     OP_REGISTER(base_reg, 2);
     OP_REGISTER(offset_reg, 3);
     OP_REGISTER(count_reg, 4);
@@ -1277,11 +1277,11 @@ OP_FUNC_BEGIN(SpvOpSelect) {
 /* Select components from two objects. */
     
     Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
-    SimRegister *res_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[1]);
-    SimRegister *cond_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[2]);
-    SimRegister *obj1_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[3]);
-    SimRegister *obj2_reg = map_int_ptr_get(&sim->assigned_regs, op->optional[4]);
-    
+    OP_REGISTER_ASSIGN(res_reg, res_type, op->optional[1]);
+    OP_REGISTER(cond_reg, 2);
+    OP_REGISTER(obj1_reg, 3);
+    OP_REGISTER(obj2_reg, 4);
+
     assert(obj1_reg->type == res_reg->type);
     assert(obj2_reg->type == res_reg->type);
 
