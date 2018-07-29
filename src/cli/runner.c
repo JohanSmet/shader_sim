@@ -79,7 +79,7 @@ RUNNER_FUNC_BEGIN(CmdCmpOutput)
             break;
             
         case TypeBool: {
-            bool actual = *((bool *) result->memory);
+            bool actual = *((bool *) (runner->spirv_sim->memory + result->pointer));
             bool expect = *((bool *) cmd->data);
 
             if (actual != expect) {
@@ -94,7 +94,7 @@ RUNNER_FUNC_BEGIN(CmdCmpOutput)
         case TypeInteger:
         case TypeVectorInteger:
         case TypeMatrixInteger: {
-            int32_t *actual = (int32_t *) result->memory;
+            int32_t *actual = (int32_t *) (runner->spirv_sim->memory + result->pointer);
             int32_t *expect = (int32_t *) cmd->data;
             int32_t count = cmd->data_size / sizeof(int32_t);
 
@@ -111,7 +111,7 @@ RUNNER_FUNC_BEGIN(CmdCmpOutput)
         case TypeFloat:
         case TypeVectorFloat:
         case TypeMatrixFloat: {
-            float *actual = (float *) result->memory;
+            float *actual = (float *) (runner->spirv_sim->memory + result->pointer);
             float *expect = (float *) cmd->data;
             int32_t count = cmd->data_size / sizeof(float);
 
@@ -248,12 +248,20 @@ static inline size_t allocate_data(Type *type, uint8_t **data) {
     assert(data);
     assert(type);
     
+    if (type->kind == TypePointer) {
+        type = type->base_type;
+    }
+    
     size_t data_size = type->element_size * type->count;
     *data = (uint8_t *) calloc(1, data_size);
     return data_size;
 }
 
 static void parse_values(const cJSON *json_values, Type *type, uint8_t *data) {
+    
+    if (type->kind == TypePointer) {
+        type = type->base_type;
+    }
 
     if (type->kind == TypeInteger && cJSON_IsNumber(json_values)) {
         *((int32_t *) data) = json_values->valueint;

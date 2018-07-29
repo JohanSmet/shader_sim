@@ -9,18 +9,11 @@
 #include <stdlib.h>
 #include <math.h>
 
-static SimVarMemory *new_sim_var_memory(SPIRV_simulator *sim, Variable *var, size_t size) {
-    SimVarMemory *result = (SimVarMemory *) malloc(sizeof(SimVarMemory) + size);
-    result->var_desc = var;
-    result->size = size;
-    return result;
-}
-
-static SimPointer *new_sim_pointer(SPIRV_simulator *sim, Type *type, uint8_t *pointer) {
+static SimPointer *new_sim_pointer(SPIRV_simulator *sim, Type *type, uint32_t pointer) {
     SimPointer *result = (SimPointer *) malloc(sizeof(SimPointer));
     *result = (SimPointer){
         .type = type,
-        .memory = pointer
+        .pointer = pointer
     };
     return result;
 }
@@ -73,25 +66,25 @@ static inline uint64_t var_data_key(VariableKind kind, VariableInterface if_type
    return (uint64_t) kind << 48 | (uint64_t) if_type << 32 | if_index;
 }
 
-static void spirv_add_interface_pointers(SPIRV_simulator *sim, SimVarMemory *mem) {
+static void spirv_add_interface_pointers(SPIRV_simulator *sim, Variable *var_desc, uint32_t pointer) {
 
     // interface pointer to the entire type
-    if (mem->var_desc->if_type != VarInterfaceNone) {
+    if (var_desc->if_type != VarInterfaceNone) {
         map_int_ptr_put(
             &sim->intf_pointers,
-            var_data_key(mem->var_desc->kind, mem->var_desc->if_type, mem->var_desc->if_index),
-            new_sim_pointer(sim, mem->var_desc->type, mem->memory)
+            var_data_key(var_desc->kind, var_desc->if_type, var_desc->if_index),
+            new_sim_pointer(sim, var_desc->type, pointer)
         );
     }
     
     // interface pointer to members
     size_t offset = 0;
     
-    for (Variable **iter = mem->var_desc->members; iter != arr_end(mem->var_desc->members); ++iter) {
+    for (Variable **iter = var_desc->members; iter != arr_end(var_desc->members); ++iter) {
         map_int_ptr_put(
             &sim->intf_pointers,
             var_data_key((*iter)->kind, (*iter)->if_type, (*iter)->if_index),
-            new_sim_pointer(sim, mem->var_desc->type, mem->memory + offset)
+            new_sim_pointer(sim, var_desc->type, pointer + offset)
         );
         offset += (*iter)->type->element_size * (*iter)->type->count;
     }
@@ -126,12 +119,17 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
         uint32_t id = map_key_int(&module->variables, iter);
         Variable *var = map_val(&module->variables, iter);
         
-        size_t total_size = var->array_elements * var->type->element_size * var->type->count;
-        SimVarMemory *mem = new_sim_var_memory(sim, var, total_size);
+        /* allocate memory */
+        size_t total_size = var->array_elements * var->type->base_type->element_size * var->type->base_type->count;
+        arr_reserve(sim->memory, ALIGN_UP(total_size, 8));
+        uint32_t mem_ptr = sim->memory_free_start;
+        sim->memory_free_start += ALIGN_UP(total_size, 8);
         
-        map_int_ptr_put(&sim->var_memory, id, mem);
-        map_int_ptr_put(&sim->mem_pointers, id, new_sim_pointer(sim, var->type, mem->memory));
-        spirv_add_interface_pointers(sim, mem);
+        /* store pointer in a register */
+        uint32_t reg_idx = spirv_sim_assign_register(sim, id, var->type);
+        sim->temp_regs[reg_idx].uvec[0] = mem_ptr;
+        
+        spirv_add_interface_pointers(sim, var, mem_ptr);
     }
 }
 
@@ -148,9 +146,9 @@ void spirv_sim_variable_associate_data(
 
     SimPointer *ptr = map_int_ptr_get(&sim->intf_pointers, var_data_key(kind, if_type, if_index));
     assert(ptr);
-    assert(data_size <= (ptr->type->element_size * ptr->type->count));
+    assert(data_size <= (ptr->type->base_type->element_size * ptr->type->base_type->count));
     
-    memcpy(ptr->memory, data, data_size);
+    memcpy(sim->memory + ptr->pointer, data, data_size);
 }
 
 void spirv_sim_select_entry_point(SPIRV_simulator *sim, uint32_t index) {
@@ -187,6 +185,8 @@ size_t spirv_register_to_string(SPIRV_simulator *sim, uint32_t reg_idx, char *ou
             } else {
                 used += snprintf(out_str + used, out_max - used, " %d", reg->uvec[i]);
             }
+        } else if (reg->type->kind == TypePointer) {
+            used += snprintf(out_str + used, out_max - used, " ptr(%x)", reg->uvec[i]);
         }
     }
     
@@ -286,62 +286,45 @@ uint32_t aggregate_indices_offset(Type *type, uint32_t num_indices, uint32_t *in
 #define OP_FUNC_END   }
 
 OP_FUNC_BEGIN(SpvOpLoad)
-    uint32_t result_type = op->optional[0];
-    uint32_t result_id = op->optional[1];
-    uint32_t pointer_id = op->optional[2];
-
-    // retrieve the data from memory
-    SimPointer *ptr = map_int_ptr_get(&sim->mem_pointers, pointer_id);
+    Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
+    OP_REGISTER_ASSIGN(res_reg, res_type, op->optional[1]);
+    OP_REGISTER(pointer, 2);
 
     // validate type
-    Type *res_type = spirv_module_type_by_id(sim->module, result_type);
-
-    if (res_type != ptr->type) {
+    if (res_type != pointer->type->base_type) {
         arr_printf(sim->error_msg, "Type mismatch in SpvOpLoad");
         return;
     }
 
-    // assign a register to keep the data
-    uint32_t reg = spirv_sim_assign_register(sim, result_id, res_type);
-
     // copy data
     size_t var_size = res_type->count * res_type->element_size;
-    memcpy(sim->temp_regs[reg].vec, ptr->memory, var_size);
+    memcpy(res_reg->raw, sim->memory + pointer->uvec[0], var_size);
 
 OP_FUNC_END
 
 OP_FUNC_BEGIN(SpvOpStore)
-    uint32_t pointer_id = op->optional[0];
-    uint32_t object_id = op->optional[1];
-
-    // retrieve pointer to output buffer
-    SimPointer *ptr = map_int_ptr_get(&sim->mem_pointers, pointer_id);
-
-    // find the register that has the object to store
-    uint32_t reg = map_int_int_get(&sim->assigned_regs, object_id);
+    OP_REGISTER(pointer, 0);
+    OP_REGISTER(object, 1);
 
     // validate type
-    Type *res_type = sim->temp_regs[reg].type;
-
-    if (res_type != ptr->type) {
+    if (object->type != pointer->type->base_type) {
         arr_printf(sim->error_msg, "Type mismatch in SpvOpStore");
         return;
     }
 
     // copy data
-    size_t var_size = res_type->count * res_type->element_size;
-    memcpy(ptr->memory, sim->temp_regs[reg].vec, var_size);
+    size_t var_size = object->type->count * object->type->element_size;
+    memcpy(sim->memory + pointer->uvec[0], object->raw, var_size);
 
 OP_FUNC_END
 
 OP_FUNC_BEGIN(SpvOpAccessChain) {
-    uint32_t result_type = op->optional[0];
-    uint32_t result_id = op->optional[1];
-    uint32_t pointer_id = op->optional[2];
-   
-    SimVarMemory *mem = map_int_ptr_get(&sim->var_memory, pointer_id);
-    Type *cur_type = mem->var_desc->type;
-    uint8_t *member_ptr = mem->memory;
+    Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
+    OP_REGISTER_ASSIGN(res_reg, res_type, op->optional[1]);
+    OP_REGISTER(base, 2);
+
+    Type *cur_type = base->type->base_type;
+    uint32_t pointer = base->uvec[0];
     
     for (uint32_t idx = 3; idx < op->op.length - 1; ++idx) {
         uint32_t field_offset = spirv_module_constant_by_id(sim->module, op->optional[idx])->value.as_int;
@@ -349,7 +332,7 @@ OP_FUNC_BEGIN(SpvOpAccessChain) {
         switch (cur_type->kind) {
             case TypeStructure:
                 for (int32_t i = 0; i < field_offset; ++i) {
-                    member_ptr += cur_type->structure.members[i]->element_size * cur_type->structure.members[i]->count;
+                    pointer += cur_type->structure.members[i]->element_size * cur_type->structure.members[i]->count;
                 }
                 cur_type = cur_type->structure.members[field_offset];
                 break;
@@ -359,7 +342,7 @@ OP_FUNC_BEGIN(SpvOpAccessChain) {
             case TypeVectorInteger:
             case TypeMatrixFloat:
             case TypeMatrixInteger:
-                member_ptr += cur_type->element_size * field_offset;
+                pointer += cur_type->element_size * field_offset;
                 cur_type = cur_type->base_type;
                 break;
                 
@@ -368,8 +351,7 @@ OP_FUNC_BEGIN(SpvOpAccessChain) {
         }
     }
     
-    Type *pointer_type = spirv_module_type_by_id(sim->module, result_type);
-    map_int_ptr_put(&sim->mem_pointers, result_id, new_sim_pointer(sim, pointer_type->base_type, member_ptr));
+    res_reg->uvec[0] = pointer;
 
 } OP_FUNC_END
 

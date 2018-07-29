@@ -12,14 +12,8 @@
 // types
 typedef struct SimPointer {
     Type *type;
-    uint8_t *memory;
+    uint32_t pointer;
 } SimPointer;
-
-typedef struct SimVarMemory {
-    Variable *var_desc;
-    size_t size;
-    uint8_t memory[];
-} SimVarMemory;
 
 typedef struct SimRegister {
     union {
@@ -36,8 +30,10 @@ typedef struct SimRegister {
 
 typedef struct SPIRV_simulator {
     SPIRV_module *module;
-    HashMap var_memory;     // id (uint32_t) -> SimVarMemory *
-    HashMap mem_pointers;   // id (uint32_t) -> SimPointer *
+    
+    uint8_t *memory;            // dyn_array
+    uint32_t memory_free_start;
+
     HashMap intf_pointers;  // uint64_t -> SimPointer *
 
     SimRegister temp_regs[SPIRV_SIM_MAX_TEMP_REGISTERS];
