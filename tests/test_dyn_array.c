@@ -75,10 +75,24 @@ MunitResult test_printf(const MunitParameter params[], void* user_data_or_fixtur
     return MUNIT_OK;
 }
 
+MunitResult test_reserve(const MunitParameter params[], void* user_data_or_fixture) {
+    
+    uint8_t *test_array = NULL;
+    
+    arr_reserve(test_array, 5);
+    munit_assert_not_null(test_array);
+    munit_assert_int(arr_len(test_array), ==, 5);
+    munit_assert_int(arr_cap(test_array), >=, 5);
+    
+    return MUNIT_OK;
+}
+
+
 MunitTest dyn_array_tests[] = {
     { "/basic", test_basic, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/iteration", test_iteration, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/clear", test_clear, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/printf", test_printf, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
+    { "/reserve", test_reserve, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
