@@ -9,6 +9,21 @@ set(CMAKE_C_STANDARD 99)
 string(TOUPPER ${CMAKE_SYSTEM_NAME} PLATFORM_NAME)
 string(CONCAT PLATFORM_DEF "PLATFORM_" ${PLATFORM_NAME})
 
+# check system libraries
+include(CheckSymbolExists)
+
+check_symbol_exists("floor" "math.h" HAVE_FLOOR)
+if (NOT HAVE_FLOOR)
+	unset(HAVE_FLOOR CACHE)
+	list(APPEND CMAKE_REQUIRED_LIBRARIES m)
+	check_symbol_exists("floor" "math.h" HAVE_FLOOR)
+	if (NOT HAVE_FLOOR)
+		message(FATAL_ERROR "Unable to find math functions")
+	else()
+		list(APPEND EXTRA_LIBS m)
+	endif()
+endif()
+
 #
 # simulator library
 #
@@ -67,7 +82,7 @@ set(HEADERS
 add_executable(${APP_TARGET} ${SOURCES} ${HEADERS})
 target_include_directories(${APP_TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_compile_definitions(${APP_TARGET} PRIVATE ${PLATFORM_DEF})
-target_link_libraries(${APP_TARGET} ${LIB_TARGET})
+target_link_libraries(${APP_TARGET} ${LIB_TARGET} ${EXTRA_LIBS})
 
 #
 # Unit tests
@@ -90,7 +105,7 @@ set (TEST_HEADERS
 
 add_executable(test_runner ${TEST_SOURCES} ${TEST_HEADERS})
 target_include_directories(test_runner PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(test_runner ${LIB_TARGET})
+target_link_libraries(test_runner ${LIB_TARGET} ${EXTRA_LIBS})
 add_test(NAME unittests COMMAND test_runner)
 
 add_custom_command(
