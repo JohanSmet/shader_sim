@@ -362,7 +362,7 @@ OP_FUNC_BEGIN(SpvOpAccessChain) {
 OP_FUNC_RES_1OP(SpvOpConvertFToU) {
     /* Convert (value preserving) from floating point to unsigned integer, with round toward 0.0. */
     assert(spirv_sim_type_is_float(op_reg->type));
-    assert(spirv_sim_type_is_signed_integer(res_type));
+    assert(spirv_sim_type_is_unsigned_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = (uint32_t) op_reg->vec[i];
@@ -435,15 +435,59 @@ OP_FUNC_RES_1OP(SpvOpFConvert) {
     }
 } OP_FUNC_END
 
-/*OP_FUNC_RES_1OP(SpvOpQuantizeToF16)
-OP_FUNC_RES_1OP(SpvOpConvertPtrToU)
-OP_FUNC_RES_1OP(SpvOpSatConvertSToU)
-OP_FUNC_RES_1OP(SpvOpSatConvertUToS)
-OP_FUNC_RES_1OP(SpvOpConvertUToPtr)
+//OP_FUNC_RES_1OP(SpvOpQuantizeToF16)
+
+OP_FUNC_RES_1OP(SpvOpConvertPtrToU) {
+/* Convert a pointer to an unsigned integer type */
+    assert(spirv_sim_type_is_unsigned_integer(res_type));
+    assert(op_reg->type->kind == TypePointer);
+
+    res_reg->uvec[0] = op_reg->uvec[0];
+} OP_FUNC_END
+
+OP_FUNC_RES_1OP(SpvOpSatConvertSToU) {
+/* Convert a signed integer to unsigned integer. */
+    assert(spirv_sim_type_is_signed_integer(op_reg->type));
+    assert(spirv_sim_type_is_unsigned_integer(res_type));
+
+    uint32_t max_uint = (1ul << (res_type->element_size * 8)) - 1;
+
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        res_reg->uvec[i] = MIN(MAX(0, op_reg->svec[i]), max_uint);
+    }
+
+} OP_FUNC_END
+
+OP_FUNC_RES_1OP(SpvOpSatConvertUToS) {
+/* Convert an unsigned integer to signed integer.  */
+    assert(spirv_sim_type_is_unsigned_integer(op_reg->type));
+    assert(spirv_sim_type_is_signed_integer(res_type));
+
+    int32_t min_sint = -(1 << ((res_type->element_size * 8) - 1));
+    int32_t max_sint = (1 << ((res_type->element_size * 8) - 1)) - 1;
+
+    for (int32_t i = 0; i < res_type->count; ++i) {
+        res_reg->svec[i] = MIN(op_reg->uvec[i], (uint32_t) max_sint);
+    }
+
+} OP_FUNC_END
+
+OP_FUNC_RES_1OP(SpvOpConvertUToPtr) {
+/* Convert an integer to pointer */
+
+    assert(spirv_sim_type_is_unsigned_integer(op_reg->type));
+    assert(res_type->kind == TypePointer);
+
+    res_reg->uvec[0] = op_reg->uvec[0];
+
+} OP_FUNC_END
+
+/*
 OP_FUNC_RES_1OP(SpvOpPtrCastToGeneric)
 OP_FUNC_RES_1OP(SpvOpGenericCastToPtr)
 OP_FUNC_RES_1OP(SpvOpGenericCastToPtrExplicit)
-OP_FUNC_RES_1OP(SpvOpBitcast)*/
+OP_FUNC_RES_1OP(SpvOpBitcast)
+*/
 
 /*
  * composite instructions
@@ -1642,10 +1686,10 @@ void spirv_sim_step(SPIRV_simulator *sim) {
         OP(SpvOpSConvert)
         OP(SpvOpFConvert)
         OP_DEFAULT(SpvOpQuantizeToF16)
-        OP_DEFAULT(SpvOpConvertPtrToU)
-        OP_DEFAULT(SpvOpSatConvertSToU)
-        OP_DEFAULT(SpvOpSatConvertUToS)
-        OP_DEFAULT(SpvOpConvertUToPtr)
+        OP(SpvOpConvertPtrToU)
+        OP(SpvOpSatConvertSToU)
+        OP(SpvOpSatConvertUToS)
+        OP(SpvOpConvertUToPtr)
         OP_DEFAULT(SpvOpPtrCastToGeneric)
         OP_DEFAULT(SpvOpGenericCastToPtr)
         OP_DEFAULT(SpvOpGenericCastToPtrExplicit)

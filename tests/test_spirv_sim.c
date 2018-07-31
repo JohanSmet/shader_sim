@@ -451,14 +451,85 @@ MunitResult test_composite_float32(const MunitParameter params[], void* user_dat
     };
     munit_assert_memory_equal(sizeof(float) * 16, t1_reg->raw, t1_expected);
     
-    
     return MUNIT_OK;
 }
+
+MunitResult test_conversion(const MunitParameter params[], void* user_data_or_fixture) {
+ 
+    /* prepare binary */
+    SPIRV_binary spirv_bin;
+    spirv_bin_init(&spirv_bin, 1, 0);
+    
+    spirv_common_header(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(40), SpvDecorationLocation, 0);
+    SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(41), SpvDecorationLocation, 1);
+    SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(42), SpvDecorationLocation, 2);
+    spirv_common_types(&spirv_bin, TEST_TYPE_FLOAT32 | TEST_TYPE_INT32 | TEST_TYPE_UINT32);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(14), ID(40), SpvStorageClassInput);  /* float */
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(24), ID(41), SpvStorageClassInput);  /* signed int */
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(34), ID(42), SpvStorageClassInput);  /* unsigned int */
+/*  
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(43), 0);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(44), 1);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(45), 2);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(46), 3);
+*/
+    spirv_common_function_header(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(11), ID(60), ID(40));
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(21), ID(61), ID(41));
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(31), ID(62), ID(42));
+    SPIRV_OP(&spirv_bin, SpvOpConvertFToU, ID(31), ID(63), ID(60));
+    SPIRV_OP(&spirv_bin, SpvOpConvertFToS, ID(21), ID(64), ID(60));
+    SPIRV_OP(&spirv_bin, SpvOpConvertSToF, ID(11), ID(65), ID(61));
+    SPIRV_OP(&spirv_bin, SpvOpConvertUToF, ID(11), ID(66), ID(62));
+    /* OpUConvert / OpSConvert / OpFConvert are hard to test at the moment because we only support 32-bit types. */
+    SPIRV_OP(&spirv_bin, SpvOpSatConvertSToU, ID(31), ID(67), ID(61));
+    SPIRV_OP(&spirv_bin, SpvOpSatConvertUToS, ID(21), ID(68), ID(62));
+    SPIRV_OP(&spirv_bin, SpvOpConvertPtrToU, ID(30), ID(69), ID(40));
+    SPIRV_OP(&spirv_bin, SpvOpConvertUToPtr, ID(14), ID(70), ID(69));
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(11), ID(71), ID(70));
+    spirv_common_function_footer(&spirv_bin);
+    spirv_bin.header.bound_ids = 74;
+    spirv_bin_finalize(&spirv_bin);
+    
+    /* prepare simulator */
+    SPIRV_module spirv_module;
+    spirv_module_load(&spirv_module, &spirv_bin);
+    
+    SPIRV_simulator spirv_sim;
+    spirv_sim_init(&spirv_sim, &spirv_module);
+    float data_f[4] = {1.3f, -2.0f, 3.7f, 4.0f};
+    int32_t data_s[4] = {1, 2, -3, 4};
+    uint32_t data_u[4] = {1, 2, 3, UINT32_MAX};
+    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 0, (uint8_t *) data_f, sizeof(data_f));
+    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 1, (uint8_t *) data_s, sizeof(data_s));
+    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 2, (uint8_t *) data_u, sizeof(data_u));
+    
+    /* run simulator */
+    while (!spirv_sim.finished && !spirv_sim.error_msg) {
+        munit_assert_null(spirv_sim.error_msg);
+        spirv_sim_step(&spirv_sim);
+    }
+    
+    /* check registers */
+    ASSERT_REGISTER_UVEC4(&spirv_sim, ID(63), ==, 1, UINT32_MAX - 1, 3, 4);                      /* OpConvertFToU */
+    ASSERT_REGISTER_SVEC4(&spirv_sim, ID(64), ==, 1, -2, 3, 4);
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(65), ==, 1.0f, 2.0f, -3.0f, 4.0f);
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(66), ==, 1.0f, 2.0f, 3.0f, (float) UINT32_MAX);
+    ASSERT_REGISTER_UVEC4(&spirv_sim, ID(67), ==, 1, 2, 0, 4);
+    ASSERT_REGISTER_SVEC4(&spirv_sim, ID(68), ==, 1, 2, 3, INT32_MAX);
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(71), ==, data_f[0], data_f[1], data_f[2], data_f[3]);
+
+
+    return MUNIT_OK;
+}
+
 
 MunitTest spirv_sim_tests[] = {
     { "/arithmetic_float32", test_arithmetic_float32, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/arithmetic_int32", test_arithmetic_int32, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/arithmetic_uint32", test_arithmetic_uint32, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/composite_float32", test_composite_float32, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
+    { "/conversion", test_conversion, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
