@@ -468,12 +468,6 @@ MunitResult test_conversion(const MunitParameter params[], void* user_data_or_fi
     SPIRV_OP(&spirv_bin, SpvOpVariable, ID(14), ID(40), SpvStorageClassInput);  /* float */
     SPIRV_OP(&spirv_bin, SpvOpVariable, ID(24), ID(41), SpvStorageClassInput);  /* signed int */
     SPIRV_OP(&spirv_bin, SpvOpVariable, ID(34), ID(42), SpvStorageClassInput);  /* unsigned int */
-/*  
-    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(43), 0);
-    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(44), 1);
-    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(45), 2);
-    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(46), 3);
-*/
     spirv_common_function_header(&spirv_bin);
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(11), ID(60), ID(40));
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(21), ID(61), ID(41));
