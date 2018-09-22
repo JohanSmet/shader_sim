@@ -38,10 +38,10 @@ uint64_t hash_str(const char *ptr) {
     return x;
 }
 
-typedef void (*HASHMAP_PUT_FUNC)(HashMap *map, void *key, void *val);
+typedef void (*HASHMAP_PUT_FUNC)(HashMap *map, uint64_t key, uint64_t val);
 
-static void hashmap_put_ptr(HashMap *map, void *key, void *val) {
-    uint64_t idx = hash_ptr(key) % map->cap;
+static void hashmap_put_int(HashMap *map, uint64_t key, uint64_t val) {
+    uint64_t idx = hash_uint64(key) % map->cap;
 
     for (;;) {
         idx = idx % map->cap;
@@ -61,8 +61,8 @@ static void hashmap_put_ptr(HashMap *map, void *key, void *val) {
     }
 }
 
-static void hashmap_put_str(HashMap *map, void *key, void *val) {
-    uint64_t idx = hash_str(key) % map->cap;
+static void hashmap_put_str(HashMap *map, uint64_t key, uint64_t val) {
+    uint64_t idx = hash_str((const char *) key) % map->cap;
 
     for (;;) {
         idx = idx % map->cap;
@@ -73,7 +73,7 @@ static void hashmap_put_str(HashMap *map, void *key, void *val) {
             map->meta[idx] = META_IN_USE;
             map->len++;
             return;
-        } else if (strcmp(map->keys[idx], key) == 0) {
+        } else if (strcmp((const char *) map->keys[idx], (const char *) key) == 0) {
             map->vals[idx] = val;
             return;
         }
@@ -90,9 +90,9 @@ static void hashmap_grow(HashMap *map, size_t new_cap, HASHMAP_PUT_FUNC put_func
     HashMap new_map = (HashMap) {
         .len = 0,
         .cap = new_cap,
-        .data = calloc(new_cap, sizeof(void *) * 2 + sizeof(uint8_t))
+        .data = calloc(new_cap, sizeof(uint64_t) * 2 + sizeof(uint8_t))
     };
-    new_map.keys = new_map.data;
+    new_map.keys = (uint64_t *) new_map.data;
     new_map.vals = new_map.keys + new_cap;
     new_map.meta = (uint8_t *) (new_map.vals + new_cap);
 
@@ -106,66 +106,66 @@ static void hashmap_grow(HashMap *map, size_t new_cap, HASHMAP_PUT_FUNC put_func
     *map = new_map;
 }
 
-void map_ptr_ptr_put(HashMap *map, void *key, void *value) {
+void map_int_int_put(HashMap *map, uint64_t key, uint64_t value) {
 
     // double container capacity when it becomes half full
     if (map->len * 2 >= map->cap) {
-        hashmap_grow(map, 2 * map->cap, hashmap_put_ptr);
+        hashmap_grow(map, 2 * map->cap, hashmap_put_int);
     }
 
-    hashmap_put_ptr(map, key, value);
+    hashmap_put_int(map, key, value);
 }
 
-void *map_ptr_ptr_get(HashMap *map, void *key) {
+uint64_t map_int_int_get(HashMap *map, uint64_t key) {
     assert(map);
 
     if (map->cap == 0) {
-        return NULL;
+        return 0;
     }
 
-    uint64_t idx = hash_ptr(key) % map->cap;
+    uint64_t idx = hash_uint64(key) % map->cap;
 
     for (;;) {
         idx = idx % map->cap;
         
         if (map->meta[idx] == META_EMPTY) {
-            return NULL;
+            return 0;
         } else if (map->keys[idx] == key) {
             return map->vals[idx];
         }
         ++idx;
     }
 
-    return NULL;
+    return 0;
 }
 
-bool map_ptr_ptr_has(HashMap *map, void *key) {
+bool map_int_int_has(HashMap *map, uint64_t key) {
     
     assert(map);
     
     if (map->cap == 0) {
-        return NULL;
+        return false;
     }
     
-    uint64_t idx = hash_ptr(key) % map->cap;
+    uint64_t idx = hash_uint64(key) % map->cap;
     return map->meta[idx] == META_IN_USE;
 }
 
-void map_str_ptr_put(HashMap *map, const char *key, void *value) {
+void map_str_int_put(HashMap *map, const char *key, uint64_t value) {
 
     // double the container capacity when it becomes half full
     if (map->len * 2 >= map->cap) {
         hashmap_grow(map, 2 * map->cap, hashmap_put_str);
     }
 
-    hashmap_put_str(map, (void *) key, value);
+    hashmap_put_str(map, (uint64_t) key, value);
 }
 
-void *map_str_ptr_get(HashMap *map, const char *key) {
+uint64_t map_str_int_get(HashMap *map, const char *key) {
     assert(map);
 
     if (map->cap == 0) {
-        return NULL;
+        return 0;
     }
 
     uint64_t idx = hash_str(key) % map->cap;
@@ -174,21 +174,21 @@ void *map_str_ptr_get(HashMap *map, const char *key) {
         idx = idx % map->cap;
 
         if (map->meta[idx] == META_EMPTY) {
-            return NULL;
+            return 0;
         } else if (strcmp((const char *) map->keys[idx], key) == 0) {
             return map->vals[idx];
         }
         ++idx;
     }
 
-    return NULL;
+    return 0;
 }
 
-bool map_str_ptr_has(HashMap *map, const char *key) {
+bool map_str_int_has(HashMap *map, const char *key) {
     assert(map);
     
     if (map->cap == 0) {
-        return NULL;
+        return false;
     }
     
     uint64_t idx = hash_str(key) % map->cap;
@@ -209,7 +209,7 @@ int map_begin(HashMap *map) {
         return result;
     }
     
-    while (map->keys[result] == NULL && result < map->cap) {
+    while (map->meta[result] != META_IN_USE && result < map->cap) {
         ++result;
     }
 
@@ -223,7 +223,7 @@ int map_end(HashMap *map) {
 int map_next(HashMap *map, int cur) {
     int result = cur + 1;
 
-    while (map->keys[result] == NULL && result < map->cap) {
+    while (map->meta[result] != META_IN_USE && result < map->cap) {
         ++result;
     }
 
