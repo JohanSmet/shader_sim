@@ -90,6 +90,9 @@ void file_free(int8_t *buffer) {
 #elif PLATFORM_DARWIN
     #define SYSTEM_PATH_SEPARATOR   LINUX_PATH_SEPARATOR
     #define OTHER_PATH_SEPARATOR    WIN32_PATH_SEPARATOR
+#elif PLATFORM_EMSCRIPTEN
+    #define SYSTEM_PATH_SEPARATOR   LINUX_PATH_SEPARATOR
+    #define OTHER_PATH_SEPARATOR    WIN32_PATH_SEPARATOR
 #else
     #error Unsupported platform
 #endif
