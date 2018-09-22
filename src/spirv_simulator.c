@@ -453,7 +453,7 @@ OP_FUNC_RES_1OP(SpvOpSatConvertSToU) {
     uint32_t max_uint = (UINT64_C(1) << (res_type->element_size * 8)) - 1;
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        res_reg->uvec[i] = MIN(MAX(0, op_reg->svec[i]), max_uint);
+        res_reg->uvec[i] = CLAMP(op_reg->svec[i], 0, max_uint);
     }
 
 } OP_FUNC_END
