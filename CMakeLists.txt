@@ -108,10 +108,20 @@ target_include_directories(test_runner PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(test_runner ${LIB_TARGET} ${EXTRA_LIBS})
 add_test(NAME unittests COMMAND test_runner)
 
-add_custom_command(
-     TARGET test_runner
-     COMMENT "Run tests"
-     POST_BUILD 
-     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-     COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION> --output-on-failures
-)
+if (NOT EMSCRIPTEN)
+	add_custom_command(
+	     TARGET test_runner
+	     COMMENT "Run tests"
+	     POST_BUILD 
+	     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+	     COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION> --output-on-failures
+	)
+else()
+	add_custom_command(
+	     TARGET test_runner
+	     COMMENT "Run tests"
+	     POST_BUILD 
+	     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+	     COMMAND node test_runner.js 
+	)
+endif()
