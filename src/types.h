@@ -10,6 +10,7 @@
 #define MIN(a,b)    ((a) <= (b) ? (a) : (b))
 #define MAX(a,b)    ((a) >= (b) ? (a) : (b))
 #define IS_POW2(x)  ((x) != 0 && ((x) & ((x)-1)) == 0)
+#define CLAMP(x, min, max)  (((x) < (min)) ? (min) : ((x) > (max)) ? (max) : (x))
 
 #define ALIGN_DOWN(x, a) ((x) & ~((a) - 1))
 #define ALIGN_UP(x, a) ALIGN_DOWN((x) + (a) - 1, (a))

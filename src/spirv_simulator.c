@@ -365,7 +365,7 @@ OP_FUNC_RES_1OP(SpvOpConvertFToU) {
     assert(spirv_sim_type_is_unsigned_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        res_reg->uvec[i] = (uint32_t) op_reg->vec[i];
+        res_reg->uvec[i] = (uint32_t) CLAMP(op_reg->vec[i], 0, UINT32_MAX);
     }
 
 } OP_FUNC_END
@@ -376,7 +376,7 @@ OP_FUNC_RES_1OP(SpvOpConvertFToS) {
     assert(spirv_sim_type_is_signed_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
-        res_reg->svec[i] = (int32_t) op_reg->vec[i];
+        res_reg->svec[i] = (int32_t) CLAMP(op_reg->vec[i], INT32_MIN, INT32_MAX);
     }
     
 } OP_FUNC_END

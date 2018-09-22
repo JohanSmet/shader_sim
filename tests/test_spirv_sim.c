@@ -506,7 +506,7 @@ MunitResult test_conversion(const MunitParameter params[], void* user_data_or_fi
     }
     
     /* check registers */
-    ASSERT_REGISTER_UVEC4(&spirv_sim, ID(63), ==, 1, UINT32_MAX - 1, 3, 4);                      /* OpConvertFToU */
+    ASSERT_REGISTER_UVEC4(&spirv_sim, ID(63), ==, 1, 0, 3, 4);                      /* OpConvertFToU */
     ASSERT_REGISTER_SVEC4(&spirv_sim, ID(64), ==, 1, -2, 3, 4);
     ASSERT_REGISTER_VEC4(&spirv_sim, ID(65), ==, 1.0f, 2.0f, -3.0f, 4.0f);
     ASSERT_REGISTER_VEC4(&spirv_sim, ID(66), ==, 1.0f, 2.0f, 3.0f, (float) UINT32_MAX);
