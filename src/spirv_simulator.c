@@ -450,7 +450,7 @@ OP_FUNC_RES_1OP(SpvOpSatConvertSToU) {
     assert(spirv_sim_type_is_signed_integer(op_reg->type));
     assert(spirv_sim_type_is_unsigned_integer(res_type));
 
-    uint32_t max_uint = (1ul << (res_type->element_size * 8)) - 1;
+    uint32_t max_uint = (UINT64_C(1) << (res_type->element_size * 8)) - 1;
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = MIN(MAX(0, op_reg->svec[i]), max_uint);
