@@ -79,10 +79,32 @@ set(HEADERS
 	"${CMAKE_CURRENT_SOURCE_DIR}/libs/cJSON/cJSON.h"
 )
 
-add_executable(${APP_TARGET} ${SOURCES} ${HEADERS})
-target_include_directories(${APP_TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_compile_definitions(${APP_TARGET} PRIVATE ${PLATFORM_DEF})
-target_link_libraries(${APP_TARGET} ${LIB_TARGET} ${EXTRA_LIBS})
+if (NOT EMSCRIPTEN)
+	add_executable(${APP_TARGET} ${SOURCES} ${HEADERS})
+	target_include_directories(${APP_TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs ${CMAKE_CURRENT_SOURCE_DIR}/src)
+	target_compile_definitions(${APP_TARGET} PRIVATE ${PLATFORM_DEF})
+	target_link_libraries(${APP_TARGET} ${LIB_TARGET} ${EXTRA_LIBS})
+endif()
+
+#
+# Emscripten / WebAssembly
+#
+
+set(WASM_TARGET shader_sim_api)
+set(WASM_SOURCES
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/emscripten/api.c"
+)
+
+if (EMSCRIPTEN)
+	add_executable(${WASM_TARGET} ${WASM_SOURCES})
+	target_include_directories(${WASM_TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs ${CMAKE_CURRENT_SOURCE_DIR}/src)
+	target_compile_definitions(${WASM_TARGET} PRIVATE ${PLATFORM_DEF})
+	target_link_libraries(${WASM_TARGET} ${LIB_TARGET} ${EXTRA_LIBS})
+	target_link_libraries(${WASM_TARGET} "--shell-file ${CMAKE_CURRENT_SOURCE_DIR}/src/emscripten/html_template/shell_minimal.html")
+	target_link_libraries(${WASM_TARGET} "-s EXTRA_EXPORTED_RUNTIME_METHODS='[\"ccall\", \"cwrap\"]'")
+	target_link_libraries(${WASM_TARGET} "--preload-file ${CMAKE_CURRENT_SOURCE_DIR}/examples@/examples --exclude-file *.json --exclude-file *.src")
+endif()
+
 
 #
 # Unit tests
