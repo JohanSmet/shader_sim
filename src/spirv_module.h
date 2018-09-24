@@ -139,6 +139,8 @@ typedef struct SPIRV_module {
     struct SPIRV_binary *spirv_bin;
     MemArena allocator;
 
+    struct SPIRV_opcode **opcode_array;	// dyn_array
+
     HashMap names;          // id (int) -> const char *
     HashMap decorations;    // id (int) -> SPIRV_opcode ** (dyn_array)
     HashMap types;          // id (int) -> Type *
@@ -157,5 +159,8 @@ void spirv_module_free(SPIRV_module *module);
 Type *spirv_module_type_by_id(SPIRV_module *module, uint32_t id);
 Constant *spirv_module_constant_by_id(SPIRV_module *mpdule, uint32_t id);
 Variable *spirv_module_variable_by_intf(SPIRV_module *module, VariableKind kind, VariableInterface if_type, uint32_t if_index);
+
+size_t spirv_module_opcode_count(SPIRV_module *module);
+struct SPIRV_opcode *spirv_module_opcode_by_index(SPIRV_module *module, uint32_t index);
 
 #endif // JS_SHADER_SIM_SPIRV_MODULE_H

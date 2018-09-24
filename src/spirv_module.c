@@ -430,6 +430,9 @@ void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary) {
     mem_arena_init(&module->allocator, ARENA_DEFAULT_SIZE, 4);
 
     for (SPIRV_opcode *op = spirv_bin_opcode_rewind(binary); op != spirv_bin_opcode_end(binary); op = spirv_bin_opcode_next(binary)) {
+	
+	arr_push(module->opcode_array, op);
+
         if (op->op.kind == SpvOpName) {
             define_name(module, 
                         op->optional[0], 
@@ -471,3 +474,16 @@ void spirv_module_free(SPIRV_module *module) {
         map_free(&module->functions);
     }
 }
+
+size_t spirv_module_opcode_count(SPIRV_module *module) {
+	assert(module);
+	return arr_len(module->opcode_array);
+}
+
+SPIRV_opcode *spirv_module_opcode_by_index(SPIRV_module *module, uint32_t index) {
+	assert(module);
+	assert(index < arr_len(module->opcode_array));
+	return module->opcode_array[index];
+}
+
+
