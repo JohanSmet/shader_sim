@@ -5,9 +5,52 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Emscripten-Generated Code</title>
     <style>
-      .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
-      textarea.emscripten { font-family: monospace; width: 80%; }
-      div.emscripten { text-align: center; }
+		html, body {
+			margin: 0;
+			height: 100%;
+			overflow: hidden;
+		}
+
+		div#main {
+			margin: 0;
+			height: 100%;
+		}
+
+		div#header {
+			height: 40px;
+		}
+		
+		div#content {
+			height: calc(100% - 120px - 40px);
+		}
+		
+		div#shader {
+			font-family: monospace;
+			margin: 1em 0em 1em 1em;
+			overflow-y: auto;
+			height: 100%;
+		}
+
+		div#footer {
+			height: 120px;
+		}
+
+      	.emscripten { 
+			padding-right: 0; 
+			margin-left: auto; 
+			margin-right: auto; 
+			display: block; 
+		}
+
+      	textarea.emscripten { 
+			font-family: monospace; 
+			width: 80%; 
+			height: 80%; 
+		}
+
+		div.emscripten { 
+			text-align: center; 
+		}
 
       .spinner {
         height: 50px;
@@ -41,6 +84,7 @@
         to {transform: rotate(360deg);}
       }
 
+
     </style>
 	<script src="jquery-3.3.1.min.js"></script>
   </head>
@@ -60,13 +104,15 @@
 		<div id="header">
 			<input type="button" id="btnLoad" value="Load shader">
 		</div>
-		<div id="shader" />
+		<div id="content">
+			<div id="shader"></div>
+		</div>
+		<div id="footer">
+			<!-- Emscripten stdout/stderr: -->
+			<textarea class="emscripten" id="output" rows="8"></textarea>
+		</div>
 	</div>
     
-	<div id="footer">
-		<!-- Emscripten stdout/stderr: -->
-    	<textarea class="emscripten" id="output" rows="8"></textarea>
-	</div>
     <script type="text/javascript" src="emscripten.js"></script>
     <script async type="text/javascript" src="wasm/shader_sim_api.js"></script>
 	<script type="text/javascript">
