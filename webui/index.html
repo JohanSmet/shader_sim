@@ -26,9 +26,21 @@
 		
 		div#shader {
 			font-family: monospace;
-			margin: 1em 0em 1em 1em;
 			overflow-y: auto;
 			height: 100%;
+			width: calc(100% - 480px);
+			float: left;
+		}
+
+		div#shader div {
+			margin-left: 1em;
+		}
+
+		div#Input, div#Output {
+			font-family: monospace;
+			width: 480px;
+			float: right;
+			margin-top: 1em;
 		}
 
 		div#footer {
@@ -50,6 +62,11 @@
 
 		div.emscripten { 
 			text-align: center; 
+		}
+
+		input.data {
+			width: 6em;
+			margin-right: 4px;
 		}
 
       .spinner {
@@ -106,6 +123,10 @@
 		</div>
 		<div id="content">
 			<div id="shader"></div>
+			<div id="Input">
+			</div>
+			<div id="Output">
+			</div>
 		</div>
 		<div id="footer">
 			<!-- Emscripten stdout/stderr: -->
@@ -127,6 +148,11 @@
 		var simapi_spirv_load_file = null;
 		var simapi_spirv_opcode_count = null;
 		var simapi_spirv_opcode_text = null;
+		var simapi_spirv_variable_count = null;	
+		var simapi_spirv_variable_id = null;	
+		var simapi_spirv_variable_desc = null;
+		var simapi_spirv_variable_data = null;
+		var simapi_spirv_variable_data_set_float = null;
 
 		var simapi_context = null;
 
@@ -136,16 +162,74 @@
 			simapi_spirv_load_file = Module.cwrap('simapi_spirv_load_file', 'number', ['number', 'string']);
 			simapi_spirv_opcode_count = Module.cwrap('simapi_spirv_opcode_count', 'number', ['number']);
 			simapi_spirv_opcode_text = Module.cwrap('simapi_spirv_opcode_text', 'string', ['number, number']);
+			simapi_spirv_variable_count = Module.cwrap('simapi_spirv_variable_count', 'number', ['number']);
+			simapi_spirv_variable_id = Module.cwrap('simapi_spirv_variable_id', 'number', ['number', 'number']);
+			simapi_spirv_variable_desc =  Module.cwrap('simapi_spirv_variable_desc', 'string', ['number', 'number']);
+			simapi_spirv_variable_data =  Module.cwrap('simapi_spirv_variable_data', 'string', ['number', 'number']);
+			simapi_spirv_variable_data_set_float =  Module.cwrap('simapi_spirv_variable_data_set_float', null, ['number', 'number', 'number', 'number']);
+		}
+
+		function var_description(var_data) {
+			result = '';
+			if (var_data.hasOwnProperty('builtin')) {
+				result = var_data.interface + '.' + var_data.builtin;
+			} else {
+				result = var_data.interface + '[' + var_data.location + ']';
+			}
+			if (var_data.hasOwnProperty('name')) {
+				result = result + ' (' + var_data.name + ')';
+			}
+			return result;
+		}
+
+		function on_exit_data() {
+			var_key = $(this).data("app");
+			simapi_spirv_variable_data_set_float(simapi_context, var_key.id, var_key.index, $(this).val());
 		}
 
 		$("#btnLoad").on("click", function (event) {
 			simapi_context = simapi_create_context();
-			simapi_spirv_load_file(simapi_context, 'examples/vert_arith_int.spv');
+			simapi_spirv_load_file(simapi_context, 'examples/vert_arith.spv');
 			
 			var f_shader_ui = $("#shader");
-			var f_count = simapi_spirv_opcode_count(simapi_context);
-			for (var f_idx = 0; f_idx < f_count; ++f_idx) {
+			var f_line_count = simapi_spirv_opcode_count(simapi_context);
+			for (var f_idx = 0; f_idx < f_line_count; ++f_idx) {
 				f_shader_ui.append($('<div />').text(simapi_spirv_opcode_text(simapi_context, f_idx)));
+			}
+
+			var f_var_count = simapi_spirv_variable_count(simapi_context);
+			for (var f_idx = 0; f_idx < f_var_count; ++f_idx) {
+				var var_id = simapi_spirv_variable_id(simapi_context, f_idx);
+				var var_desc = JSON.parse(simapi_spirv_variable_desc(simapi_context, var_id));
+				var var_data = JSON.parse(simapi_spirv_variable_data(simapi_context, var_id));
+
+				var var_div = $('<div />').text(var_description(var_desc));
+				var data_div = $('<div />');
+				var_div.append(data_div);
+
+				var data_type = var_desc.type;
+				if (data_type.type == 'Pointer') {
+					data_type = var_desc.type.base_type;
+				}
+				
+				$.each(var_data, function (index, value) {
+					if (data_type.type == 'Matrix' && index > 0 && index % data_type.matrix_cols == 0) {
+						data_div.append($('<br />'));
+					}
+
+					input = $('<input />', {class: 'data'})
+						.val(value)
+						.blur(on_exit_data)
+						.data("app", {
+							id: var_id, 
+							member_id: var_desc.member_id, 
+							idx: index
+						});
+					input.prop("disabled", (var_desc.kind == "Output"));
+					data_div.append(input);
+
+				});
+				$("#" + var_desc.kind).append(var_div);
 			}
 		});
 	</script>

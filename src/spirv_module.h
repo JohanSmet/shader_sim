@@ -96,6 +96,8 @@ typedef enum VariableInterface {
 } VariableInterface;
 
 typedef struct Variable {
+	uint32_t id;
+	uint32_t member_id;
     Type *type;                 // actual type the variable is pointing to
     const char *name;           // optional
     uint32_t array_elements;
@@ -158,6 +160,9 @@ void spirv_module_free(SPIRV_module *module);
 
 Type *spirv_module_type_by_id(SPIRV_module *module, uint32_t id);
 Constant *spirv_module_constant_by_id(SPIRV_module *mpdule, uint32_t id);
+uint32_t spirv_module_variable_count(SPIRV_module *module);
+uint32_t spirv_module_variable_id(SPIRV_module *module, uint32_t index);
+Variable *spirv_module_variable_by_id(SPIRV_module *mpdule, uint32_t id);
 Variable *spirv_module_variable_by_intf(SPIRV_module *module, VariableKind kind, VariableInterface if_type, uint32_t if_index);
 
 size_t spirv_module_opcode_count(SPIRV_module *module);

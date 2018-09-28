@@ -93,6 +93,7 @@ endif()
 set(WASM_TARGET shader_sim_api)
 set(WASM_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/emscripten/api.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/emscripten/lut.c"
 )
 
 if (EMSCRIPTEN)

@@ -27,9 +27,11 @@ static inline Constant *new_constant(SPIRV_module *module, Type *type) {
     return result;
 }
 
-static inline Variable *new_variable(SPIRV_module *module, Type *type) {
+static inline Variable *new_variable(SPIRV_module *module, uint32_t id, uint32_t member, Type *type) {
     Variable *result = mem_arena_allocate(&module->allocator, sizeof(Variable));
     *result = (Variable) {
+		.id = id,
+		.member_id = member,
         .type = type,
         .array_elements = 1,
         .initializer_kind = InitializerNone
@@ -63,7 +65,27 @@ Constant *spirv_module_constant_by_id(SPIRV_module *module, uint32_t id) {
     return map_int_ptr_get(&module->constants, id);
 }
 
-static Variable *variable_by_id(SPIRV_module *module, uint32_t id) {
+uint32_t spirv_module_variable_count(SPIRV_module *module) {
+	return map_len(&module->variables);
+}
+
+uint32_t spirv_module_variable_id(SPIRV_module *module, uint32_t index) {
+	assert(index < map_len(&module->variables));
+
+	uint32_t current = 0;
+
+	for (int iter = map_begin(&module->variables); iter != map_end(&module->variables); iter = map_next(&module->variables, iter)) {
+		if (current == index) {
+			return map_key_int(&module->variables, iter);
+		} else {
+			++current;
+		}
+	}
+
+	return 0;
+}
+
+Variable *spirv_module_variable_by_id(SPIRV_module *module, uint32_t id) {
     return map_int_ptr_get(&module->variables, id);
 }
 
@@ -268,7 +290,7 @@ static void handle_opcode_constant(SPIRV_module *module, SPIRV_opcode *op) {
 
 static Variable *create_variable(SPIRV_module *module, uint32_t id, uint32_t member, Type *type, uint32_t storage_class) {
     
-    Variable *var = new_variable(module, type);
+    Variable *var = new_variable(module, id, member, type);
     var->kind = storage_class;
     
     // optional name that was defined earlier
@@ -337,7 +359,7 @@ static void handle_opcode_variable(SPIRV_module *module, SPIRV_opcode *op) {
             var->initializer_kind = InitializerConstant;
             var->initializer_constant = constant;
         } else {
-            Variable *var = variable_by_id(module, op->optional[3]);
+            Variable *var = spirv_module_variable_by_id(module, op->optional[3]);
             if (var) {
                 var->initializer_kind = InitializerVariable;
                 var->initializer_variable = var;
