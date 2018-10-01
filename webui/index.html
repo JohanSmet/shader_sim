@@ -36,11 +36,26 @@
 			margin-left: 1em;
 		}
 
-		div#Input, div#Output {
+		div#Input, div#Output, div#regs {
 			font-family: monospace;
 			width: 480px;
 			float: right;
 			margin-top: 1em;
+		}
+
+		div.register {
+			margin-top: 2px;
+		}
+
+		div.register div.header {
+			display: inline-block;
+			vertical-align: top;
+			margin-top: 3px;
+			width: 3em;
+		}
+
+		div.register div.data {
+			display: inline-block;
 		}
 
 		div#footer {
@@ -70,7 +85,8 @@
 
 		input.data {
 			width: 6em;
-			margin-right: 4px;
+			margin-right: 3px;
+			margin-top: 1px;
 		}
 
       .spinner {
@@ -132,6 +148,8 @@
 			</div>
 			<div id="Output">
 			</div>
+			<div id="regs">
+			</div>
 		</div>
 		<div id="footer">
 			<!-- Emscripten stdout/stderr: -->
@@ -163,10 +181,13 @@
 		var simapi_spirv_select_entry_point = null;
 		var simapi_spirv_step = null;
 		var simapi_spirv_execution_finished = null;
+		var simapi_spirv_first_free_register = null;
+		var simapi_spirv_register = null;
 
 		// global variables
 		var simapi_context = null;
 		var variables_output = [];
+		var register_next = 0;
 
 		// functions
 		function wasm_wrap_functions() {
@@ -184,6 +205,8 @@
 			simapi_spirv_select_entry_point = Module.cwrap('simapi_spirv_select_entry_point', 'number', ['number', 'number']);
 			simapi_spirv_step = Module.cwrap('simapi_spirv_step', 'number', ['number']);
 			simapi_spirv_execution_finished = Module.cwrap('simapi_spirv_execution_finished', 'number', ['number']);
+			simapi_spirv_first_free_register = Module.cwrap('simapi_spirv_first_free_register', 'number', ['number']);
+			simapi_spirv_register = Module.cwrap('simapi_spirv_register', 'string', ['number', 'number']);
 		}
 
 		function var_description(var_data) {
@@ -204,6 +227,23 @@
 			simapi_spirv_variable_data_set_float(simapi_context, var_key.id, var_key.idx, $(this).val());
 		}
 
+		function ui_create_array_inputs(data_type, data_div, disabled, key) {
+			for (var index = 0; index < data_type.count; ++index) {
+				if (data_type.type == 'Matrix' && index > 0 && index % data_type.matrix_cols == 0) {
+					data_div.append($('<br />'));
+				}
+
+				var data_key = {};
+				$.extend(data_key, key, {idx: index});
+
+				input = $('<input />', {class: 'data'})
+					.blur(on_exit_data)
+					.data("app", data_key);
+				input.prop("disabled", disabled);
+				data_div.append(input);
+			}
+		}
+
 		function ui_create_var_display(var_desc) {
 			var var_div = $('<div />', {class: 'variable'}).text(var_description(var_desc));
 			var data_div = $('<div />');
@@ -214,21 +254,12 @@
 				data_type = var_desc.type.base_type;
 			}
 
-			for (var index = 0; index < data_type.count; ++index) {
-				if (data_type.type == 'Matrix' && index > 0 && index % data_type.matrix_cols == 0) {
-					data_div.append($('<br />'));
-				}
-
-				input = $('<input />', {class: 'data'})
-					.blur(on_exit_data)
-					.data("app", {
-						id: var_desc.id, 
-						member_id: var_desc.member_id, 
-						idx: index
-					});
-				input.prop("disabled", (var_desc.kind == "Output"));
-				data_div.append(input);
-			}
+			ui_create_array_inputs(
+				data_type, 
+				data_div, 
+				(var_desc.kind == "Output"),
+				{id: var_desc.id, member_id: var_desc.member_id}
+			);
 
 			if (var_desc.kind == "Output") {
 				variables_output.push(var_desc.id);
@@ -241,6 +272,18 @@
 			var_el.find('input').each(function(index) {
 				$(this).val(var_data[index]);
 			});
+		}
+
+		function ui_create_register_display(reg) {
+			var reg_div = $('<div />', {class: 'register'}).append($('<div />', {class: 'header'}).text('%' + reg.id));
+
+			var data_div = $('<div />', {class: 'data'});
+			reg_div.append(data_div);
+
+			ui_create_array_inputs(reg.type, data_div, true, {id: reg.id});
+			ui_update_var_display(data_div, reg.value);
+
+			return reg_div;
 		}
 
 		function ui_update_current_line(lineno) {
@@ -271,6 +314,8 @@
 
 			var f_curr_line = simapi_spirv_select_entry_point(simapi_context, 0);
 			ui_update_current_line(f_curr_line);
+
+			register_next = simapi_spirv_first_free_register(simapi_context);
 		});
 
 		$("#btnStep").on("click", function (event) {
@@ -290,7 +335,12 @@
 			});
 
 			// update register view
-
+			var first_free = simapi_spirv_first_free_register(simapi_context);
+			while (register_next < first_free) {
+				var reg_info = JSON.parse(simapi_spirv_register(simapi_context, register_next));
+				$("#regs").append(ui_create_register_display(reg_info));
+				register_next = register_next + 1;
+			}
 		});
 	</script>
   </body>

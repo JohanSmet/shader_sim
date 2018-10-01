@@ -164,6 +164,51 @@ static inline void spirv_variable_data_to_json(Variable *var, char **output) {
 
 }	
 
+static inline void spirv_array_to_json(char **output, Type *type, void *data) {
+
+#define FORMAT_ARRAY(t,fmt) 						\
+{													\
+	t *value = (t *) data;							\
+	arr_printf(*output, fmt, value[0]);				\
+	for (int32_t i = 1; i < type->count; ++i) {		\
+		arr_printf(*output, "," fmt, value[i]); 	\
+	}												\
+}
+
+	arr_printf(*output, "[");
+
+	switch(type->kind) {
+
+		case TypeBool:
+			arr_printf(*output, "%s", *((bool *) data) ? "true" : "false");
+			break;
+
+		case TypeInteger:
+		case TypeVectorInteger:
+		case TypeMatrixInteger: 
+			if (type->is_signed) {
+				FORMAT_ARRAY(int32_t, "%d");
+			} else {
+				FORMAT_ARRAY(uint32_t, "%d");
+			}
+			break;
+
+		case TypeFloat:
+		case TypeVectorFloat:
+		case TypeMatrixFloat: 
+			FORMAT_ARRAY(float, "\"%f\"");
+			break;
+
+		default:
+			break;
+	}
+
+	arr_printf(*output, "]");
+
+#undef FORMAT_ARRAY
+
+}
+
 EMSCRIPTEN_KEEPALIVE 
 const char *simapi_spirv_variable_data(SimApiContext *context, uint32_t id) {
 	Variable *var = spirv_module_variable_by_id(&context->spirv_module, id);
@@ -179,47 +224,9 @@ const char *simapi_spirv_variable_data(SimApiContext *context, uint32_t id) {
 			var->if_index);
 
 	char *json = NULL;
-	arr_printf(json, "[");
 
 	Type *data_type = var->type->base_type;
-
-	switch(data_type->kind) {
-		case TypeVoid:
-		case TypePointer:
-		case TypeFunction:
-		case TypeStructure:
-			break;
-
-		case TypeBool:
-			arr_printf(json, "%s", *((bool *) (context->spirv_sim.memory + mem->pointer)) ? "true" : "false");
-			break;
-
-		case TypeInteger:
-		case TypeVectorInteger:
-		case TypeMatrixInteger: {
-			int32_t *value = (int32_t *) (context->spirv_sim.memory + mem->pointer);
-			arr_printf(json, "%d", value[0]);
-			for (int32_t i = 1; i < data_type->count; ++i) {
-				arr_printf(json, ",%d", value[i]);
-			}
-			break;
-		}
-
-		case TypeFloat:
-		case TypeVectorFloat:
-		case TypeMatrixFloat: {
-			float *value = (float *) (context->spirv_sim.memory + mem->pointer);
-			arr_printf(json, "%f", value[0]);
-			for (int32_t i = 1; i < data_type->count; ++i) {
-				arr_printf(json, ",%f", value[i]);
-			}
-			break;
-		}
-
-	}
-
-	arr_printf(json, "]");
-
+	spirv_array_to_json(&json, data_type, context->spirv_sim.memory + mem->pointer);
 	return json;
 }
 
@@ -262,4 +269,25 @@ uint32_t simapi_spirv_step(SimApiContext *context) {
 EMSCRIPTEN_KEEPALIVE
 bool simapi_spirv_execution_finished(SimApiContext *context) {
 	return context->spirv_sim.finished;
+}
+
+EMSCRIPTEN_KEEPALIVE
+uint32_t simapi_spirv_first_free_register(SimApiContext *context) {
+	return context->spirv_sim.reg_free_start;
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char *simapi_spirv_register(SimApiContext *context, uint32_t reg_idx) {
+
+	char *json = NULL;
+	SimRegister *reg = &context->spirv_sim.temp_regs[reg_idx];
+
+	arr_printf(json, "{\"id\": %d", reg->id);
+	arr_printf(json, ",\"type\":");
+	spirv_type_to_json(reg->type, &json);
+	arr_printf(json, ",\"value\": ");
+	spirv_array_to_json(&json, reg->type, reg->raw);
+	arr_printf(json, "}");
+
+	return json;
 }
