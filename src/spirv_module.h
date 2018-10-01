@@ -167,5 +167,6 @@ Variable *spirv_module_variable_by_intf(SPIRV_module *module, VariableKind kind,
 
 size_t spirv_module_opcode_count(SPIRV_module *module);
 struct SPIRV_opcode *spirv_module_opcode_by_index(SPIRV_module *module, uint32_t index);
+uint32_t spirv_module_index_for_opcode(SPIRV_module *module, struct SPIRV_opcode *op);
 
 #endif // JS_SHADER_SIM_SPIRV_MODULE_H

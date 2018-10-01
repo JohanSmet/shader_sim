@@ -47,6 +47,10 @@
 			height: 120px;
 		}
 
+		div.curop {
+			background-color: yellow;
+		}
+
       	.emscripten { 
 			padding-right: 0; 
 			margin-left: auto; 
@@ -120,6 +124,7 @@
 	<div id="main">
 		<div id="header">
 			<input type="button" id="btnLoad" value="Load shader">
+			<input type="button" id="btnStep" value="Step">
 		</div>
 		<div id="content">
 			<div id="shader"></div>
@@ -143,6 +148,7 @@
 		}
 		$("#main").hide();
 
+		// api functions
 		var simapi_create_context = null;
 		var simapi_release_context = null;
 		var simapi_spirv_load_file = null;
@@ -153,6 +159,10 @@
 		var simapi_spirv_variable_desc = null;
 		var simapi_spirv_variable_data = null;
 		var simapi_spirv_variable_data_set_float = null;
+		var simapi_spirv_current_line = null;
+		var simapi_spirv_select_entry_point = null;
+		var simapi_spirv_step = null;
+		var simapi_spirv_execution_finished = null;
 
 		var simapi_context = null;
 
@@ -167,6 +177,10 @@
 			simapi_spirv_variable_desc =  Module.cwrap('simapi_spirv_variable_desc', 'string', ['number', 'number']);
 			simapi_spirv_variable_data =  Module.cwrap('simapi_spirv_variable_data', 'string', ['number', 'number']);
 			simapi_spirv_variable_data_set_float =  Module.cwrap('simapi_spirv_variable_data_set_float', null, ['number', 'number', 'number', 'number']);
+			simapi_spirv_current_line = Module.cwrap('simapi_spirv_current_line', 'number', ['number']);
+			simapi_spirv_select_entry_point = Module.cwrap('simapi_spirv_select_entry_point', 'number', ['number', 'number']);
+			simapi_spirv_step = Module.cwrap('simapi_spirv_step', 'number', ['number']);
+			simapi_spirv_execution_finished = Module.cwrap('simapi_spirv_execution_finished', 'number', ['number']);
 		}
 
 		function var_description(var_data) {
@@ -185,6 +199,11 @@
 		function on_exit_data() {
 			var_key = $(this).data("app");
 			simapi_spirv_variable_data_set_float(simapi_context, var_key.id, var_key.index, $(this).val());
+		}
+
+		function ui_update_current_line(lineno) {
+			$("#shader div").removeClass("curop");
+			$("#shader div:nth-child(" + (lineno + 1) + ")").addClass("curop");
 		}
 
 		$("#btnLoad").on("click", function (event) {
@@ -231,6 +250,23 @@
 				});
 				$("#" + var_desc.kind).append(var_div);
 			}
+			var f_curr_line = simapi_spirv_select_entry_point(simapi_context, 0);
+			ui_update_current_line(f_curr_line);
+		});
+
+		$("#btnStep").on("click", function (event) {
+			var f_curr_line = simapi_spirv_step(simapi_context);
+
+			// update header
+			$("#btnStep").prop("disabled", simapi_spirv_execution_finished(simapi_context));
+
+			// update source display
+			ui_update_current_line(f_curr_line);
+
+			// update output variables
+
+			// update register view
+
 		});
 	</script>
   </body>

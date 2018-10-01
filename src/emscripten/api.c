@@ -240,3 +240,26 @@ void simapi_spirv_variable_data_set_float(SimApiContext *context, uint32_t id, u
 	float *data = (float *) (context->spirv_sim.memory + mem->pointer);
 	data[index] = value;
 }
+
+EMSCRIPTEN_KEEPALIVE
+uint32_t simapi_spirv_current_line(SimApiContext *context) {
+	SPIRV_opcode *current_op = spirv_bin_opcode_current(&context->spirv_bin);
+	return spirv_module_index_for_opcode(&context->spirv_module, current_op);
+}
+
+EMSCRIPTEN_KEEPALIVE
+uint32_t simapi_spirv_select_entry_point(SimApiContext *context, uint32_t index) {
+	spirv_sim_select_entry_point(&context->spirv_sim, index); 
+	return simapi_spirv_current_line(context);
+}
+
+EMSCRIPTEN_KEEPALIVE
+uint32_t simapi_spirv_step(SimApiContext *context) {
+	spirv_sim_step(&context->spirv_sim);
+	return simapi_spirv_current_line(context);
+}
+
+EMSCRIPTEN_KEEPALIVE
+bool simapi_spirv_execution_finished(SimApiContext *context) {
+	return context->spirv_sim.finished;
+}
