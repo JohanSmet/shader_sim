@@ -164,8 +164,11 @@
 		var simapi_spirv_step = null;
 		var simapi_spirv_execution_finished = null;
 
+		// global variables
 		var simapi_context = null;
+		var variables_output = [];
 
+		// functions
 		function wasm_wrap_functions() {
 			simapi_create_context = Module.cwrap('simapi_create_context', 'number', []); 
 			simapi_release_context =  Module.cwrap('simapi_release_context', null, ['number']);
@@ -198,7 +201,46 @@
 
 		function on_exit_data() {
 			var_key = $(this).data("app");
-			simapi_spirv_variable_data_set_float(simapi_context, var_key.id, var_key.index, $(this).val());
+			simapi_spirv_variable_data_set_float(simapi_context, var_key.id, var_key.idx, $(this).val());
+		}
+
+		function ui_create_var_display(var_desc) {
+			var var_div = $('<div />', {class: 'variable'}).text(var_description(var_desc));
+			var data_div = $('<div />');
+			var_div.append(data_div);
+
+			var data_type = var_desc.type;
+			if (data_type.type == 'Pointer') {
+				data_type = var_desc.type.base_type;
+			}
+
+			for (var index = 0; index < data_type.count; ++index) {
+				if (data_type.type == 'Matrix' && index > 0 && index % data_type.matrix_cols == 0) {
+					data_div.append($('<br />'));
+				}
+
+				input = $('<input />', {class: 'data'})
+					.blur(on_exit_data)
+					.data("app", {
+						id: var_desc.id, 
+						member_id: var_desc.member_id, 
+						idx: index
+					});
+				input.prop("disabled", (var_desc.kind == "Output"));
+				data_div.append(input);
+			}
+
+			if (var_desc.kind == "Output") {
+				variables_output.push(var_desc.id);
+			}
+
+			return var_div;
+		}
+
+		function ui_update_var_display(var_el, var_data) {
+			var_el.find('input').each(function(index) {
+				$(this).val(var_data[index]);
+			});
 		}
 
 		function ui_update_current_line(lineno) {
@@ -222,34 +264,11 @@
 				var var_desc = JSON.parse(simapi_spirv_variable_desc(simapi_context, var_id));
 				var var_data = JSON.parse(simapi_spirv_variable_data(simapi_context, var_id));
 
-				var var_div = $('<div />').text(var_description(var_desc));
-				var data_div = $('<div />');
-				var_div.append(data_div);
-
-				var data_type = var_desc.type;
-				if (data_type.type == 'Pointer') {
-					data_type = var_desc.type.base_type;
-				}
-				
-				$.each(var_data, function (index, value) {
-					if (data_type.type == 'Matrix' && index > 0 && index % data_type.matrix_cols == 0) {
-						data_div.append($('<br />'));
-					}
-
-					input = $('<input />', {class: 'data'})
-						.val(value)
-						.blur(on_exit_data)
-						.data("app", {
-							id: var_id, 
-							member_id: var_desc.member_id, 
-							idx: index
-						});
-					input.prop("disabled", (var_desc.kind == "Output"));
-					data_div.append(input);
-
-				});
-				$("#" + var_desc.kind).append(var_div);
+		 		var var_el = ui_create_var_display(var_desc);
+				ui_update_var_display(var_el, var_data);
+				$("#" + var_desc.kind).append(var_el);
 			}
+
 			var f_curr_line = simapi_spirv_select_entry_point(simapi_context, 0);
 			ui_update_current_line(f_curr_line);
 		});
@@ -264,6 +283,11 @@
 			ui_update_current_line(f_curr_line);
 
 			// update output variables
+			$.each(variables_output, function(index, var_id) {
+				var var_data = JSON.parse(simapi_spirv_variable_data(simapi_context, var_id));
+				ui_update_var_display($($("#Output div.variable")[index]), var_data);
+
+			});
 
 			// update register view
 
