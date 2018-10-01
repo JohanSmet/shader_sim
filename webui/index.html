@@ -28,8 +28,16 @@
 			font-family: monospace;
 			overflow-y: auto;
 			height: 100%;
-			width: calc(100% - 480px);
+			width: calc(100% - 1008px);
 			float: left;
+			padding: 4px;
+		}
+
+		div#col1, div#col2 {
+			height: 100%;
+			width: 500px;
+			float: right;
+			overflow: auto;
 		}
 
 		div#shader div {
@@ -38,9 +46,7 @@
 
 		div#Input, div#Output, div#regs {
 			font-family: monospace;
-			width: 480px;
-			float: right;
-			margin-top: 1em;
+			padding: 4px;
 		}
 
 		div.register {
@@ -64,6 +70,13 @@
 
 		div.curop {
 			background-color: yellow;
+		}
+
+		h1 {
+			font-size: larger;
+			margin: 4px 0px;
+			padding: 2px;
+			background-color: lightgray;
 		}
 
       	.emscripten { 
@@ -143,12 +156,21 @@
 			<input type="button" id="btnStep" value="Step">
 		</div>
 		<div id="content">
-			<div id="shader"></div>
-			<div id="Input">
+			<div id="shader">
+				<h1>Source</h1>
 			</div>
-			<div id="Output">
+			<div id="col2">
+				<div id="regs">
+					<h1>Registers</h1>
+				</div>
 			</div>
-			<div id="regs">
+			<div id="col1">
+				<div id="Input"> 
+					<h1>Input</h1>
+				</div>
+				<div id="Output"> 
+					<h1>Output</h1>
+				</div>
 			</div>
 		</div>
 		<div id="footer">
