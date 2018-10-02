@@ -17,11 +17,19 @@
 		}
 
 		div#header {
-			height: 40px;
+			padding: 4px;
+			height: 2em;
+			background-color: lightgray;
+			display: flex;
+			align-items: center;
+		}
+
+		div#header span {
+			margin: 0 .5em;
 		}
 		
 		div#content {
-			height: calc(100% - 120px - 40px);
+			height: calc(100% - 120px - 2em);
 		}
 		
 		div#shader {
@@ -152,8 +160,14 @@
 
 	<div id="main">
 		<div id="header">
-			<input type="button" id="btnLoad" value="Load shader">
-			<input type="button" id="btnStep" value="Step">
+			<span>
+				Builtin demo shader:&nbsp;
+				<select id="selFiles"></select>
+				<input type="button" id="btnLoad" value="Load shader">
+			</span>
+			<span>
+				<input type="button" id="btnStep" value="Step">
+			</span>
 		</div>
 		<div id="content">
 			<div id="shader">
@@ -183,8 +197,10 @@
     <script async type="text/javascript" src="wasm/shader_sim_api.js"></script>
 	<script type="text/javascript">
 		Module.onRuntimeInitialized = function() {
+			$("#content").css('visibility', 'hidden');
 			$("#main").show();
 			wasm_wrap_functions();
+			ui_fill_file_select();
 		}
 		$("#main").hide();
 
@@ -231,6 +247,17 @@
 			simapi_spirv_register = Module.cwrap('simapi_spirv_register', 'string', ['number', 'number']);
 		}
 
+		function wasm_included_files() {
+			var dir = FS.lookupPath('examples');
+			var list = [];
+
+			$.each(dir.node.contents, function (index, entry) {
+				list.push(entry.name);
+			});
+
+			return list;
+		}
+
 		function var_description(var_data) {
 			result = '';
 			if (var_data.hasOwnProperty('builtin')) {
@@ -247,6 +274,16 @@
 		function on_exit_data() {
 			var_key = $(this).data("app");
 			simapi_spirv_variable_data_set_float(simapi_context, var_key.id, var_key.idx, $(this).val());
+		}
+
+
+		function ui_fill_file_select() {
+			var f_select = $("#selFiles");
+			var f_files = wasm_included_files();
+
+			for (file of f_files) {
+				f_select.append($("<option />").val(file).text(file));
+			}
 		}
 
 		function ui_create_array_inputs(data_type, data_div, disabled, key) {
@@ -310,12 +347,27 @@
 
 		function ui_update_current_line(lineno) {
 			$("#shader div").removeClass("curop");
-			$("#shader div:nth-child(" + (lineno + 1) + ")").addClass("curop");
+			$($("#shader div")[lineno]) .addClass("curop");
+		}
+
+		function ui_reset() {
+			$("#shader div").remove();
+			$("#Input div").remove();
+			$("#Output div").remove();
+			$("#regs div").remove();
 		}
 
 		$("#btnLoad").on("click", function (event) {
+			ui_reset();
+
+			if (simapi_context != null) {
+				simapi_release_context(simapi_context);
+				variables_output = [];
+				register_next = 0;
+			}
+
 			simapi_context = simapi_create_context();
-			simapi_spirv_load_file(simapi_context, 'examples/vert_arith.spv');
+			simapi_spirv_load_file(simapi_context, 'examples/' + $( "#selFiles option:selected" ).text());
 			
 			var f_shader_ui = $("#shader");
 			var f_line_count = simapi_spirv_opcode_count(simapi_context);
@@ -337,7 +389,11 @@
 			var f_curr_line = simapi_spirv_select_entry_point(simapi_context, 0);
 			ui_update_current_line(f_curr_line);
 
+			$("#btnStep").prop("disabled", simapi_spirv_execution_finished(simapi_context));
+
 			register_next = simapi_spirv_first_free_register(simapi_context);
+
+			$("#content").css('visibility', '');
 		});
 
 		$("#btnStep").on("click", function (event) {
@@ -351,7 +407,8 @@
 
 			// update output variables
 			$.each(variables_output, function(index, var_id) {
-				var var_data = JSON.parse(simapi_spirv_variable_data(simapi_context, var_id));
+				var json = simapi_spirv_variable_data(simapi_context, var_id);
+				var var_data = JSON.parse(json);
 				ui_update_var_display($($("#Output div.variable")[index]), var_data);
 
 			});
@@ -359,7 +416,8 @@
 			// update register view
 			var first_free = simapi_spirv_first_free_register(simapi_context);
 			while (register_next < first_free) {
-				var reg_info = JSON.parse(simapi_spirv_register(simapi_context, register_next));
+				var json = simapi_spirv_register(simapi_context, register_next);
+				var reg_info = JSON.parse(json);
 				$("#regs").append(ui_create_register_display(reg_info));
 				register_next = register_next + 1;
 			}
