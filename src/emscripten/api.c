@@ -30,6 +30,25 @@ void simapi_release_context(SimApiContext *context) {
 		free(context);
 	}
 }
+
+EMSCRIPTEN_KEEPALIVE
+bool simapi_spirv_load_binary(SimApiContext *context, const int8_t *binary_data, size_t length) {
+	/* spirv_bin_load expects an dyn_array ... */
+	int8_t *blob = NULL;
+	arr_push_buf(blob, binary_data, length);
+
+	if (!spirv_bin_load(&context->spirv_bin, blob)) {
+		arr_free(blob);
+		printf("%s\n", context->spirv_bin.error_msg);
+		return false;
+	}
+
+	spirv_module_load(&context->spirv_module, &context->spirv_bin);
+
+	spirv_sim_init(&context->spirv_sim, &context->spirv_module);
+	return true;
+}
+
 EMSCRIPTEN_KEEPALIVE
 bool simapi_spirv_load_file(SimApiContext *context, const char *filename) {
 	int8_t *binary_data = NULL;
@@ -38,19 +57,14 @@ bool simapi_spirv_load_file(SimApiContext *context, const char *filename) {
 		return false;
 	}
 
-	if (!spirv_bin_load(&context->spirv_bin, binary_data)) {
+	if (!spirv_bin_load(&context->spirv_bin, (int8_t *)binary_data)) {
+		printf("%s\n", context->spirv_bin.error_msg);
 		return false;
 	}
 
 	spirv_module_load(&context->spirv_module, &context->spirv_bin);
 
 	spirv_sim_init(&context->spirv_sim, &context->spirv_module);
-
-	return true;
-}
-
-EMSCRIPTEN_KEEPALIVE
-bool simapi_spirv_load_binary(const uint8_t *blob) {
 	return true;
 }
 

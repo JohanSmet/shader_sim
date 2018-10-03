@@ -26,6 +26,9 @@
 
 		div#header span {
 			margin: 0 .5em;
+			font-size: small;
+			font-family: sans-serif;
+			font-weight: bold;
 		}
 		
 		div#content {
@@ -161,11 +164,16 @@
 	<div id="main">
 		<div id="header">
 			<span>
-				Builtin demo shader:&nbsp;
+				Use builtin shader:&nbsp;
 				<select id="selFiles"></select>
 				<input type="button" id="btnLoad" value="Load shader">
 			</span>
 			<span>
+				or load local shader:&nbsp;
+				<input type="file" id="inpFile">
+			</span>
+			<span>
+				&nbsp;Commands:
 				<input type="button" id="btnStep" value="Step">
 			</span>
 		</div>
@@ -208,6 +216,7 @@
 		var simapi_create_context = null;
 		var simapi_release_context = null;
 		var simapi_spirv_load_file = null;
+		var simapi_spirv_load_binary = null;
 		var simapi_spirv_opcode_count = null;
 		var simapi_spirv_opcode_text = null;
 		var simapi_spirv_variable_count = null;	
@@ -232,6 +241,7 @@
 			simapi_create_context = Module.cwrap('simapi_create_context', 'number', []); 
 			simapi_release_context =  Module.cwrap('simapi_release_context', null, ['number']);
 			simapi_spirv_load_file = Module.cwrap('simapi_spirv_load_file', 'number', ['number', 'string']);
+			simapi_spirv_load_binary = Module.cwrap('simapi_spirv_load_binary', 'number', ['number', 'array', 'number']);
 			simapi_spirv_opcode_count = Module.cwrap('simapi_spirv_opcode_count', 'number', ['number']);
 			simapi_spirv_opcode_text = Module.cwrap('simapi_spirv_opcode_text', 'string', ['number, number']);
 			simapi_spirv_variable_count = Module.cwrap('simapi_spirv_variable_count', 'number', ['number']);
@@ -355,26 +365,23 @@
 			$("#Input div").remove();
 			$("#Output div").remove();
 			$("#regs div").remove();
-		}
-
-		$("#btnLoad").on("click", function (event) {
-			ui_reset();
 
 			if (simapi_context != null) {
 				simapi_release_context(simapi_context);
 				variables_output = [];
 				register_next = 0;
 			}
+		}
 
-			simapi_context = simapi_create_context();
-			simapi_spirv_load_file(simapi_context, 'examples/' + $( "#selFiles option:selected" ).text());
-			
+		function ui_setup() {
+			// shader source
 			var f_shader_ui = $("#shader");
 			var f_line_count = simapi_spirv_opcode_count(simapi_context);
 			for (var f_idx = 0; f_idx < f_line_count; ++f_idx) {
 				f_shader_ui.append($('<div />').text(simapi_spirv_opcode_text(simapi_context, f_idx)));
 			}
 
+			// input and output variables
 			var f_var_count = simapi_spirv_variable_count(simapi_context);
 			for (var f_idx = 0; f_idx < f_var_count; ++f_idx) {
 				var var_id = simapi_spirv_variable_id(simapi_context, f_idx);
@@ -386,14 +393,36 @@
 				$("#" + var_desc.kind).append(var_el);
 			}
 
+			// current line
 			var f_curr_line = simapi_spirv_select_entry_point(simapi_context, 0);
 			ui_update_current_line(f_curr_line);
 
-			$("#btnStep").prop("disabled", simapi_spirv_execution_finished(simapi_context));
-
 			register_next = simapi_spirv_first_free_register(simapi_context);
 
+			// reset header
+			$("#btnStep").prop("disabled", simapi_spirv_execution_finished(simapi_context));
+
 			$("#content").css('visibility', '');
+		}
+
+		$("#btnLoad").on("click", function (event) {
+			ui_reset();
+
+			simapi_context = simapi_create_context();
+			simapi_spirv_load_file(simapi_context, 'examples/' + $( "#selFiles option:selected" ).text());
+			
+			ui_setup();
+		});
+
+		$("#inpFile").change(function() {
+			var reader = new FileReader();
+			reader.onload = function(event) {
+				simapi_context = simapi_create_context();
+				simapi_spirv_load_binary(simapi_context, new Uint8Array(event.target.result), event.target.result.byteLength);
+				ui_setup();
+			}
+
+			reader.readAsArrayBuffer(this.files[0]);
 		});
 
 		$("#btnStep").on("click", function (event) {
@@ -422,6 +451,7 @@
 				register_next = register_next + 1;
 			}
 		});
+
 	</script>
   </body>
 </html>
