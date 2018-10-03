@@ -55,7 +55,7 @@
 			margin-left: 1em;
 		}
 
-		div#Input, div#Output, div#regs {
+		div.data_window {
 			font-family: monospace;
 			padding: 4px;
 		}
@@ -169,15 +169,18 @@
 				<h1>Source</h1>
 			</div>
 			<div id="col2">
-				<div id="regs">
+				<div id="regs" class="data_window">
 					<h1>Registers</h1>
 				</div>
 			</div>
 			<div id="col1">
-				<div id="Input"> 
+				<div id="input" class="data_window"> 
 					<h1>Input</h1>
 				</div>
-				<div id="Output"> 
+				<div id="uniform" class="data_window"> 
+					<h1>Uniforms</h1>
+				</div>
+				<div id="output" class="data_window"> 
 					<h1>Output</h1>
 				</div>
 			</div>
@@ -251,6 +254,17 @@
 			return list;
 		}
 
+		function parse_json(wasm_str) {
+			try {
+				var obj = JSON.parse(wasm_str);
+				// XXX free wasm_str
+				return obj;
+			} catch (err) {
+				console.error(err);
+				console.log(wasm_str);
+			}
+		}
+
 		function var_description(var_data) {
 			result = '';
 			if (var_data.hasOwnProperty('builtin')) {
@@ -321,9 +335,13 @@
 		}
 
 		function ui_update_var_display(var_el, var_data) {
-			var_el.find('input').each(function(index) {
-				$(this).val(var_data[index]);
-			});
+			if (Array.isArray(var_data)) {
+				var_el.find('input').each(function(index) {
+					$(this).val(var_data[index]);
+				});
+			} else {
+				var_el.find('input').val(var_data);
+			}
 		}
 
 		function ui_create_register_display(reg) {
@@ -343,11 +361,19 @@
 			$($("#shader div")[lineno]) .addClass("curop");
 		}
 
+		function ui_data_window(kind) {
+			if (kind == "Input") {
+				return $("#input");
+			} else if (kind == "Output") {
+				return $("#output");
+			} else if (kind == "UniformConstant") {
+				return $("#uniform");
+			}
+		}
+
 		function ui_reset() {
 			$("#shader div").remove();
-			$("#Input div").remove();
-			$("#Output div").remove();
-			$("#regs div").remove();
+			$(".data_window div").remove();
 
 			if (simapi_context != null) {
 				simapi_release_context(simapi_context);
@@ -368,12 +394,12 @@
 			var f_var_count = simapi_spirv_variable_count(simapi_context);
 			for (var f_idx = 0; f_idx < f_var_count; ++f_idx) {
 				var var_id = simapi_spirv_variable_id(simapi_context, f_idx);
-				var var_desc = JSON.parse(simapi_spirv_variable_desc(simapi_context, var_id));
-				var var_data = JSON.parse(simapi_spirv_variable_data(simapi_context, var_id));
+				var var_desc = parse_json(simapi_spirv_variable_desc(simapi_context, var_id));
+				var var_data = parse_json(simapi_spirv_variable_data(simapi_context, var_id));
 
 		 		var var_el = ui_create_var_display(var_desc);
 				ui_update_var_display(var_el, var_data);
-				$("#" + var_desc.kind).append(var_el);
+				ui_data_window(var_desc.kind).append(var_el);
 			}
 
 			// current line
@@ -419,17 +445,15 @@
 
 			// update output variables
 			$.each(variables_output, function(index, var_id) {
-				var json = simapi_spirv_variable_data(simapi_context, var_id);
-				var var_data = JSON.parse(json);
-				ui_update_var_display($($("#Output div.variable")[index]), var_data);
+				var var_data = parse_json(simapi_spirv_variable_data(simapi_context, var_id));
+				ui_update_var_display($($("#output div.variable")[index]), var_data);
 
 			});
 
 			// update register view
 			var first_free = simapi_spirv_first_free_register(simapi_context);
 			while (register_next < first_free) {
-				var json = simapi_spirv_register(simapi_context, register_next);
-				var reg_info = JSON.parse(json);
+				var reg_info = parse_json(simapi_spirv_register(simapi_context, register_next));
 				$("#regs").append(ui_create_register_display(reg_info));
 				register_next = register_next + 1;
 			}

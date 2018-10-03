@@ -189,7 +189,9 @@ static inline void spirv_array_to_json(char **output, Type *type, void *data) {
 	}												\
 }
 
-	arr_printf(*output, "[");
+	if (type->count > 1) {
+		arr_printf(*output, "[");
+	}
 
 	switch(type->kind) {
 
@@ -213,11 +215,29 @@ static inline void spirv_array_to_json(char **output, Type *type, void *data) {
 			FORMAT_ARRAY(float, "\"%f\"");
 			break;
 
+		case TypePointer:
+			FORMAT_ARRAY(uint32_t, "\"0x%.8x\"");
+			break;
+
+		case TypeArray: {
+			size_t el_delta = type->base_type->element_size * type->base_type->count;
+			spirv_array_to_json(output, type->base_type, data);
+			void *el = data + el_delta;
+			for (int32_t i = 1; i < type->count; ++i) {
+				arr_printf(*output, ",");
+				spirv_array_to_json(output, type->base_type, el);
+				el += el_delta;
+			}
+			break;
+		}
+
 		default:
 			break;
 	}
 
-	arr_printf(*output, "]");
+	if (type->count > 1) {
+		arr_printf(*output, "]");
+	}
 
 #undef FORMAT_ARRAY
 
