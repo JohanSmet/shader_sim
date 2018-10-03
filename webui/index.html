@@ -32,7 +32,7 @@
 		}
 		
 		div#content {
-			height: calc(100% - 120px - 2em);
+			height: calc(100% - 2em);
 		}
 		
 		div#shader {
@@ -75,10 +75,6 @@
 			display: inline-block;
 		}
 
-		div#footer {
-			height: 120px;
-		}
-
 		div.curop {
 			background-color: yellow;
 		}
@@ -90,21 +86,12 @@
 			background-color: lightgray;
 		}
 
-      	.emscripten { 
+		div.emscripten { 
+			text-align: center; 
 			padding-right: 0; 
 			margin-left: auto; 
 			margin-right: auto; 
 			display: block; 
-		}
-
-      	textarea.emscripten { 
-			font-family: monospace; 
-			width: 80%; 
-			height: 80%; 
-		}
-
-		div.emscripten { 
-			text-align: center; 
 		}
 
 		input.data {
@@ -194,10 +181,6 @@
 					<h1>Output</h1>
 				</div>
 			</div>
-		</div>
-		<div id="footer">
-			<!-- Emscripten stdout/stderr: -->
-			<textarea class="emscripten" id="output" rows="8"></textarea>
 		</div>
 	</div>
     
