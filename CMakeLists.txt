@@ -21,6 +21,7 @@ if (NOT HAVE_FLOOR)
 		message(FATAL_ERROR "Unable to find math functions")
 	else()
 		list(APPEND EXTRA_LIBS m)
+		unset(HAVE_FLOOR CACHE)
 	endif()
 endif()
 
