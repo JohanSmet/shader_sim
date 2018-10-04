@@ -283,6 +283,24 @@ void simapi_spirv_variable_data_set_float(SimApiContext *context, uint32_t id, u
 }
 
 EMSCRIPTEN_KEEPALIVE
+void simapi_spirv_variable_data_set_int(SimApiContext *context, uint32_t id, uint32_t index, int32_t value) {
+	Variable *var = spirv_module_variable_by_id(&context->spirv_module, id);
+
+	if (!var) {
+		return;
+	}
+
+	SimPointer *mem = spirv_sim_retrieve_intf_pointer(
+			&context->spirv_sim,
+			var->kind, 
+			var->if_type, 
+			var->if_index);
+
+	int32_t *data = (int32_t *) (context->spirv_sim.memory + mem->pointer);
+	data[index] = value;
+}
+
+EMSCRIPTEN_KEEPALIVE
 uint32_t simapi_spirv_current_line(SimApiContext *context) {
 	SPIRV_opcode *current_op = spirv_bin_opcode_current(&context->spirv_bin);
 	return spirv_module_index_for_opcode(&context->spirv_module, current_op);

@@ -210,6 +210,7 @@
 		var simapi_spirv_variable_desc = null;
 		var simapi_spirv_variable_data = null;
 		var simapi_spirv_variable_data_set_float = null;
+		var simapi_spirv_variable_data_set_int = null;
 		var simapi_spirv_current_line = null;
 		var simapi_spirv_select_entry_point = null;
 		var simapi_spirv_step = null;
@@ -232,9 +233,10 @@
 			simapi_spirv_opcode_text = Module.cwrap('simapi_spirv_opcode_text', 'string', ['number, number']);
 			simapi_spirv_variable_count = Module.cwrap('simapi_spirv_variable_count', 'number', ['number']);
 			simapi_spirv_variable_id = Module.cwrap('simapi_spirv_variable_id', 'number', ['number', 'number']);
-			simapi_spirv_variable_desc =  Module.cwrap('simapi_spirv_variable_desc', 'string', ['number', 'number']);
-			simapi_spirv_variable_data =  Module.cwrap('simapi_spirv_variable_data', 'string', ['number', 'number']);
-			simapi_spirv_variable_data_set_float =  Module.cwrap('simapi_spirv_variable_data_set_float', null, ['number', 'number', 'number', 'number']);
+			simapi_spirv_variable_desc = Module.cwrap('simapi_spirv_variable_desc', 'string', ['number', 'number']);
+			simapi_spirv_variable_data = Module.cwrap('simapi_spirv_variable_data', 'string', ['number', 'number']);
+			simapi_spirv_variable_data_set_float = Module.cwrap('simapi_spirv_variable_data_set_float', null, ['number', 'number', 'number', 'number']);
+			simapi_spirv_variable_data_set_int = Module.cwrap('simapi_spirv_variable_data_set_int', null, ['number', 'number', 'number', 'number']);
 			simapi_spirv_current_line = Module.cwrap('simapi_spirv_current_line', 'number', ['number']);
 			simapi_spirv_select_entry_point = Module.cwrap('simapi_spirv_select_entry_point', 'number', ['number', 'number']);
 			simapi_spirv_step = Module.cwrap('simapi_spirv_step', 'number', ['number']);
@@ -278,11 +280,31 @@
 			return result;
 		}
 
-		function on_exit_data() {
+		function leaf_type(type) {
+			var leaf = type;
+			while (leaf.base_type) {
+				leaf = leaf.base_type;
+			}
+
+			if (leaf.type == "Bool" ||
+				leaf.type == "Integer" || leaf.type == "SignedInteger") {
+				return "Integer";
+			} else if (leaf.type == "Float") {
+				return "Float";
+			} else {
+				return "Unsupported";
+			} 
+		} 
+
+		function on_exit_data_float() {
 			var_key = $(this).data("app");
 			simapi_spirv_variable_data_set_float(simapi_context, var_key.id, var_key.idx, $(this).val());
 		}
 
+		function on_exit_data_integer() {
+			var_key = $(this).data("app");
+			simapi_spirv_variable_data_set_int(simapi_context, var_key.id, var_key.idx, $(this).val());
+		}
 
 		function ui_fill_file_select() {
 			var f_select = $("#selFiles");
@@ -303,10 +325,18 @@
 				$.extend(data_key, key, {idx: index});
 
 				input = $('<input />', {class: 'data'})
-					.blur(on_exit_data)
-					.data("app", data_key);
-				input.prop("disabled", disabled);
+					.data("app", data_key)
+					.prop("disabled", disabled);
 				data_div.append(input);
+
+				if (!disabled) {
+					var basic_type = leaf_type(data_type);
+					if (basic_type == "Float") {
+						input.blur(on_exit_data_float)
+					} else if (basic_type == "Integer") {
+						input.blur(on_exit_data_integer)
+					}
+				}
 			}
 		}
 
