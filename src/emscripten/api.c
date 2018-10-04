@@ -69,6 +69,12 @@ bool simapi_spirv_load_file(SimApiContext *context, const char *filename) {
 }
 
 EMSCRIPTEN_KEEPALIVE
+void simapi_spirv_reset(SimApiContext *context) {
+	spirv_bin_opcode_rewind(&context->spirv_bin);
+	spirv_sim_init(&context->spirv_sim, &context->spirv_module);
+}
+
+EMSCRIPTEN_KEEPALIVE
 size_t simapi_spirv_opcode_count(SimApiContext *context) {
 	return spirv_module_opcode_count(&context->spirv_module);
 }
