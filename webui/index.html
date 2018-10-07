@@ -235,6 +235,7 @@
 			simapi_spirv_load_file = Module.cwrap('simapi_spirv_load_file', 'number', ['number', 'string']);
 			simapi_spirv_load_binary = Module.cwrap('simapi_spirv_load_binary', 'number', ['number', 'array', 'number']);
 			simapi_spirv_reset = Module.cwrap('simapi_spirv_reset', null, ['number']);
+			simapi_free_json = Module.cwrap('simapi_free_json', null, ['number', 'number']);
 			simapi_spirv_opcode_count = Module.cwrap('simapi_spirv_opcode_count', 'number', ['number']);
 			simapi_spirv_opcode_text = Module.cwrap('simapi_spirv_opcode_text', 'string', ['number, number']);
 			simapi_spirv_variable_count = Module.cwrap('simapi_spirv_variable_count', 'number', ['number']);
@@ -265,7 +266,7 @@
 		function parse_json(wasm_str) {
 			try {
 				var obj = JSON.parse(wasm_str);
-				// XXX free wasm_str
+				simapi_free_json(wasm_str);
 				return obj;
 			} catch (err) {
 				console.error(err);

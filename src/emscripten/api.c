@@ -75,6 +75,11 @@ void simapi_spirv_reset(SimApiContext *context) {
 }
 
 EMSCRIPTEN_KEEPALIVE
+void simapi_free_json(SimApiContext *context, char *json) {
+	arr_free(json);
+}
+
+EMSCRIPTEN_KEEPALIVE
 size_t simapi_spirv_opcode_count(SimApiContext *context) {
 	return spirv_module_opcode_count(&context->spirv_module);
 }
@@ -179,10 +184,6 @@ const char *simapi_spirv_variable_desc(SimApiContext *context, uint32_t id) {
 
 	return json;
 }
-
-static inline void spirv_variable_data_to_json(Variable *var, char **output) {
-
-}	
 
 static inline void spirv_array_to_json(char **output, Type *type, void *data) {
 
