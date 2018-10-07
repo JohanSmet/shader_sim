@@ -100,6 +100,10 @@
 			margin-top: 1px;
 		}
 
+		.hidden {
+			display: none;
+		}
+
       .spinner {
         height: 50px;
         width: 50px;
@@ -148,7 +152,7 @@
 		</div>
     </div>
 
-	<div id="main">
+	<div id="main" class="hidden">
 		<div id="header">
 			<span>
 				Use builtin shader:&nbsp;
@@ -197,7 +201,6 @@
 			wasm_wrap_functions();
 			ui_fill_file_select();
 		}
-		$("#main").hide();
 
 		// api functions
 		var simapi_create_context = null;
@@ -507,7 +510,6 @@
 			// clear register view
 			$("#regs div").remove();
 		});
-
 	</script>
   </body>
 </html>
