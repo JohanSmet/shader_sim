@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Emscripten-Generated Code</title>
+    <title>ShaderSim - a SPIRV-simulator</title>
     <style>
 		html, body {
 			margin: 0;
@@ -53,6 +53,18 @@
 
 		div#shader div {
 			margin-left: 1em;
+		}
+
+		div#about {
+			z-index: 20;
+			position: fixed;
+			border: 2px black solid;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%,-50%);
+			text-align: center;
+			padding: 20px;
+			font-family: sans-serif;
 		}
 
 		div.data_window {
@@ -168,6 +180,9 @@
 				<input type="button" id="btnStep" value="Step">
 				<input type="button" id="btnReset" value="Reset">
 			</span>
+			<span style="margin-left: 10em">
+				<input type="button" id="btnAboutOpen" value="About">
+			</span>
 		</div>
 		<div id="content">
 			<div id="shader">
@@ -189,6 +204,12 @@
 					<h1>Output</h1>
 				</div>
 			</div>
+		</div>
+		<div id="about" class="hidden">
+			<h1>ShaderSim, a SPIR-V instruction level simulator</h1>
+			<p>For more information please visit the project's GitHub <a href=https://github.com/JohanSmet/shader_sim">repository</a>.</p>
+			<p>Copyright (c) 2018 Johan Smet</p>
+			<input type="button" id="btnAboutClose" value="Close">
 		</div>
 	</div>
     
@@ -510,6 +531,13 @@
 
 			// clear register view
 			$("#regs div").remove();
+		});
+
+	 	$("#btnAboutOpen").on("click", function (event) {
+			$("#about").show();	
+		});
+	 	$("#btnAboutClose").on("click", function (event) {
+			$("#about").hide();	
 		});
 	</script>
   </body>
