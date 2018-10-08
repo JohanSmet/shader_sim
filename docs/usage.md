@@ -13,7 +13,7 @@ For more information: check the examples subdirectory of the project.
 
 ## Using the browser interface
 
-You can try the browser interface online [here](XXX). Or you can run it locally by starting a web server in the `webui` directory of the project, e.g.:
+You can try the browser interface on line [here](https://johansmet.github.io/shader_sim/). Or you can run it locally by starting a web server in the `webui` directory of the project, e.g.:
 
 ```bash
 cd shader_sim/webui

@@ -18,7 +18,7 @@ The core of ShaderSim is implemented as a C99 library, with minimal external dep
 
 There's a command-line front-end that can be used to verify expected outputs from given inputs. The parameters of the execution are specified through a JSON file.
 
-A browser-based front-end can be used to step through the shader instruction by instruction and inspect the state of the internal registers and the outputs. This front-end runs entirely on the client-side of the browser, no communication with an external server is required once the program is loaded. You can test it out now by following [this link](XXX).
+A browser-based front-end can be used to step through the shader instruction by instruction and inspect the state of the internal registers and the outputs. This front-end runs entirely on the client-side of the browser, no communication with an external server is required once the program is loaded. You can test it out now by following [this link](https://johansmet.github.io/shader_sim/).
 
 ## License
 
