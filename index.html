@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>ShaderSim - a SPIRV-simulator</title>
+    <style>
+		html, body {
+			margin: 0;
+			height: 100%;
+			overflow: hidden;
+		}
+
+		div#main {
+			margin: 0;
+			height: 100%;
+		}
+
+		div#header {
+			padding: 4px;
+			height: 2em;
+			background-color: lightgray;
+			display: flex;
+			align-items: center;
+		}
+
+		div#header span {
+			margin: 0 .5em;
+			font-size: small;
+			font-family: sans-serif;
+			font-weight: bold;
+		}
+		
+		div#content {
+			height: calc(100% - 2em);
+		}
+		
+		div#shader {
+			font-family: monospace;
+			overflow-y: auto;
+			height: 100%;
+			width: calc(100% - 1008px);
+			float: left;
+			padding: 4px;
+		}
+
+		div#col1, div#col2 {
+			height: 100%;
+			width: 500px;
+			float: right;
+			overflow: auto;
+		}
+
+		div#shader div {
+			margin-left: 1em;
+		}
+
+		div#about {
+			z-index: 20;
+			position: fixed;
+			border: 2px black solid;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%,-50%);
+			text-align: center;
+			padding: 20px;
+			font-family: sans-serif;
+		}
+
+		div.data_window {
+			font-family: monospace;
+			padding: 4px;
+		}
+
+		div.register {
+			margin-top: 2px;
+		}
+
+		div.register div.header {
+			display: inline-block;
+			vertical-align: top;
+			margin-top: 3px;
+			width: 3em;
+		}
+
+		div.register div.data {
+			display: inline-block;
+		}
+
+		div.curop {
+			background-color: yellow;
+		}
+
+		h1 {
+			font-size: larger;
+			margin: 4px 0px;
+			padding: 2px;
+			background-color: lightgray;
+		}
+
+		div.emscripten { 
+			text-align: center; 
+			padding-right: 0; 
+			margin-left: auto; 
+			margin-right: auto; 
+			display: block; 
+		}
+
+		input.data {
+			width: 6em;
+			margin-right: 3px;
+			margin-top: 1px;
+		}
+
+		.hidden {
+			display: none;
+		}
+
+      .spinner {
+        height: 50px;
+        width: 50px;
+        margin: 0px auto;
+        -webkit-animation: rotation .8s linear infinite;
+        -moz-animation: rotation .8s linear infinite;
+        -o-animation: rotation .8s linear infinite;
+        animation: rotation 0.8s linear infinite;
+        border-left: 10px solid rgb(0,150,240);
+        border-right: 10px solid rgb(0,150,240);
+        border-bottom: 10px solid rgb(0,150,240);
+        border-top: 10px solid rgb(100,0,200);
+        border-radius: 100%;
+        background-color: rgb(200,100,250);
+      }
+      @-webkit-keyframes rotation {
+        from {-webkit-transform: rotate(0deg);}
+        to {-webkit-transform: rotate(360deg);}
+      }
+      @-moz-keyframes rotation {
+        from {-moz-transform: rotate(0deg);}
+        to {-moz-transform: rotate(360deg);}
+      }
+      @-o-keyframes rotation {
+        from {-o-transform: rotate(0deg);}
+        to {-o-transform: rotate(360deg);}
+      }
+      @keyframes rotation {
+        from {transform: rotate(0deg);}
+        to {transform: rotate(360deg);}
+      }
+
+
+    </style>
+	<script src="jquery-3.3.1.min.js"></script>
+  </head>
+  <body>
+    <div id="loading">
+		<figure style="overflow:visible;" id="spinner">
+			<div class="spinner"></div>
+			<center style="margin-top:0.5em"><strong>WebAssembly Modules</strong></center>
+		</figure>
+		<div class="emscripten" id="status">Downloading...</div>
+		<div class="emscripten">
+		  <progress value="0" max="100" id="progress" hidden=1></progress>  
+		</div>
+    </div>
+
+	<div id="main" class="hidden">
+		<div id="header">
+			<span>
+				Use builtin shader:&nbsp;
+				<select id="selFiles"></select>
+				<input type="button" id="btnLoad" value="Load shader">
+			</span>
+			<span>
+				or load local shader:&nbsp;
+				<input type="file" id="inpFile">
+			</span>
+			<span>
+				&nbsp;Commands:
+				<input type="button" id="btnStep" value="Step">
+				<input type="button" id="btnReset" value="Reset">
+			</span>
+			<span style="margin-left: 10em">
+				<input type="button" id="btnAboutOpen" value="About">
+			</span>
+		</div>
+		<div id="content">
+			<div id="shader">
+				<h1>Source</h1>
+			</div>
+			<div id="col2">
+				<div id="regs" class="data_window">
+					<h1>Registers</h1>
+				</div>
+			</div>
+			<div id="col1">
+				<div id="input" class="data_window"> 
+					<h1>Input</h1>
+				</div>
+				<div id="uniform" class="data_window"> 
+					<h1>Uniforms</h1>
+				</div>
+				<div id="output" class="data_window"> 
+					<h1>Output</h1>
+				</div>
+			</div>
+		</div>
+		<div id="about" class="hidden">
+			<h1>ShaderSim, a SPIR-V instruction level simulator</h1>
+			<p>For more information please visit the project's GitHub <a href=https://github.com/JohanSmet/shader_sim">repository</a>.</p>
+			<p>Copyright (c) 2018 Johan Smet</p>
+			<input type="button" id="btnAboutClose" value="Close">
+		</div>
+	</div>
+    
+    <script type="text/javascript" src="emscripten.js"></script>
+    <script async type="text/javascript" src="wasm/shader_sim_api.js"></script>
+	<script type="text/javascript">
+		Module.onRuntimeInitialized = function() {
+			$("#content").css('visibility', 'hidden');
+			$("#main").show();
+			wasm_wrap_functions();
+			ui_fill_file_select();
+		}
+
+		// api functions
+		var simapi_create_context = null;
+		var simapi_release_context = null;
+		var simapi_spirv_load_file = null;
+		var simapi_spirv_load_binary = null;
+		var simapi_spirv_reset = null;
+		var simapi_spirv_opcode_count = null;
+		var simapi_spirv_opcode_text = null;
+		var simapi_spirv_variable_count = null;	
+		var simapi_spirv_variable_id = null;	
+		var simapi_spirv_variable_desc = null;
+		var simapi_spirv_variable_data = null;
+		var simapi_spirv_variable_data_set_float = null;
+		var simapi_spirv_variable_data_set_int = null;
+		var simapi_spirv_current_line = null;
+		var simapi_spirv_select_entry_point = null;
+		var simapi_spirv_step = null;
+		var simapi_spirv_execution_finished = null;
+		var simapi_spirv_first_free_register = null;
+		var simapi_spirv_register = null;
+
+		// global variables
+		var simapi_context = null;
+		var variables_output = [];
+		var register_next = 0;
+
+		// functions
+		function wasm_wrap_functions() {
+			simapi_create_context = Module.cwrap('simapi_create_context', 'number', []); 
+			simapi_release_context =  Module.cwrap('simapi_release_context', null, ['number']);
+			simapi_spirv_load_file = Module.cwrap('simapi_spirv_load_file', 'number', ['number', 'string']);
+			simapi_spirv_load_binary = Module.cwrap('simapi_spirv_load_binary', 'number', ['number', 'array', 'number']);
+			simapi_spirv_reset = Module.cwrap('simapi_spirv_reset', null, ['number']);
+			simapi_free_json = Module.cwrap('simapi_free_json', null, ['number', 'number']);
+			simapi_spirv_opcode_count = Module.cwrap('simapi_spirv_opcode_count', 'number', ['number']);
+			simapi_spirv_opcode_text = Module.cwrap('simapi_spirv_opcode_text', 'string', ['number, number']);
+			simapi_spirv_variable_count = Module.cwrap('simapi_spirv_variable_count', 'number', ['number']);
+			simapi_spirv_variable_id = Module.cwrap('simapi_spirv_variable_id', 'number', ['number', 'number']);
+			simapi_spirv_variable_desc = Module.cwrap('simapi_spirv_variable_desc', 'string', ['number', 'number']);
+			simapi_spirv_variable_data = Module.cwrap('simapi_spirv_variable_data', 'string', ['number', 'number']);
+			simapi_spirv_variable_data_set_float = Module.cwrap('simapi_spirv_variable_data_set_float', null, ['number', 'number', 'number', 'number']);
+			simapi_spirv_variable_data_set_int = Module.cwrap('simapi_spirv_variable_data_set_int', null, ['number', 'number', 'number', 'number']);
+			simapi_spirv_current_line = Module.cwrap('simapi_spirv_current_line', 'number', ['number']);
+			simapi_spirv_select_entry_point = Module.cwrap('simapi_spirv_select_entry_point', 'number', ['number', 'number']);
+			simapi_spirv_step = Module.cwrap('simapi_spirv_step', 'number', ['number']);
+			simapi_spirv_execution_finished = Module.cwrap('simapi_spirv_execution_finished', 'number', ['number']);
+			simapi_spirv_first_free_register = Module.cwrap('simapi_spirv_first_free_register', 'number', ['number']);
+			simapi_spirv_register = Module.cwrap('simapi_spirv_register', 'string', ['number', 'number']);
+		}
+
+		function wasm_included_files() {
+			var dir = FS.lookupPath('examples');
+			var list = [];
+
+			$.each(dir.node.contents, function (index, entry) {
+				list.push(entry.name);
+			});
+
+			return list;
+		}
+
+		function parse_json(wasm_str) {
+			try {
+				var obj = JSON.parse(wasm_str);
+				simapi_free_json(wasm_str);
+				return obj;
+			} catch (err) {
+				console.error(err);
+				console.log(wasm_str);
+			}
+		}
+
+		function var_description(var_data) {
+			result = '';
+			if (var_data.hasOwnProperty('builtin')) {
+				result = var_data.interface + '.' + var_data.builtin;
+			} else {
+				result = var_data.interface + '[' + var_data.location + ']';
+			}
+			if (var_data.hasOwnProperty('name')) {
+				result = result + ' (' + var_data.name + ')';
+			}
+			return result;
+		}
+
+		function leaf_type(type) {
+			var leaf = type;
+			while (leaf.base_type) {
+				leaf = leaf.base_type;
+			}
+
+			if (leaf.type == "Bool" ||
+				leaf.type == "Integer" || leaf.type == "SignedInteger") {
+				return "Integer";
+			} else if (leaf.type == "Float") {
+				return "Float";
+			} else {
+				return "Unsupported";
+			} 
+		} 
+
+		function on_exit_data_float() {
+			var_key = $(this).data("app");
+			simapi_spirv_variable_data_set_float(simapi_context, var_key.id, var_key.idx, $(this).val());
+		}
+
+		function on_exit_data_integer() {
+			var_key = $(this).data("app");
+			simapi_spirv_variable_data_set_int(simapi_context, var_key.id, var_key.idx, $(this).val());
+		}
+
+		function ui_fill_file_select() {
+			var f_select = $("#selFiles");
+			var f_files = wasm_included_files();
+
+			for (file of f_files) {
+				f_select.append($("<option />").val(file).text(file));
+			}
+		}
+
+		function ui_create_array_inputs(data_type, data_div, disabled, key) {
+			for (var index = 0; index < data_type.count; ++index) {
+				if (data_type.type == 'Matrix' && index > 0 && index % data_type.matrix_cols == 0) {
+					data_div.append($('<br />'));
+				}
+
+				var data_key = {};
+				$.extend(data_key, key, {idx: index});
+
+				input = $('<input />', {class: 'data'})
+					.data("app", data_key)
+					.prop("disabled", disabled);
+				data_div.append(input);
+
+				if (!disabled) {
+					var basic_type = leaf_type(data_type);
+					if (basic_type == "Float") {
+						input.blur(on_exit_data_float)
+					} else if (basic_type == "Integer") {
+						input.blur(on_exit_data_integer)
+					}
+				}
+			}
+		}
+
+		function ui_create_var_display(var_desc) {
+			var var_div = $('<div />', {class: 'variable'}).text(var_description(var_desc));
+			var data_div = $('<div />');
+			var_div.append(data_div);
+
+			var data_type = var_desc.type;
+			if (data_type.type == 'Pointer') {
+				data_type = var_desc.type.base_type;
+			}
+
+			ui_create_array_inputs(
+				data_type, 
+				data_div, 
+				(var_desc.kind == "Output"),
+				{id: var_desc.id, member_id: var_desc.member_id}
+			);
+
+			if (var_desc.kind == "Output") {
+				variables_output.push(var_desc.id);
+			}
+
+			return var_div;
+		}
+
+		function ui_update_var_display(var_el, var_data) {
+			if (Array.isArray(var_data)) {
+				var_el.find('input').each(function(index) {
+					$(this).val(var_data[index]);
+				});
+			} else {
+				var_el.find('input').val(var_data);
+			}
+		}
+
+		function ui_create_register_display(reg) {
+			var reg_div = $('<div />', {class: 'register'}).append($('<div />', {class: 'header'}).text('%' + reg.id));
+
+			var data_div = $('<div />', {class: 'data'});
+			reg_div.append(data_div);
+
+			ui_create_array_inputs(reg.type, data_div, true, {id: reg.id});
+			ui_update_var_display(data_div, reg.value);
+
+			return reg_div;
+		}
+
+		function ui_update_current_line(lineno) {
+			$("#shader div").removeClass("curop");
+			$($("#shader div")[lineno]) .addClass("curop");
+		}
+
+		function ui_data_window(kind) {
+			if (kind == "Input") {
+				return $("#input");
+			} else if (kind == "Output") {
+				return $("#output");
+			} else if (kind == "UniformConstant") {
+				return $("#uniform");
+			}
+		}
+
+		function ui_reset() {
+			$("#shader div").remove();
+			$(".data_window div").remove();
+
+			if (simapi_context != null) {
+				simapi_release_context(simapi_context);
+				variables_output = [];
+				register_next = 0;
+			}
+		}
+
+		function ui_setup() {
+			// shader source
+			var f_shader_ui = $("#shader");
+			var f_line_count = simapi_spirv_opcode_count(simapi_context);
+			for (var f_idx = 0; f_idx < f_line_count; ++f_idx) {
+				f_shader_ui.append($('<div />').text(simapi_spirv_opcode_text(simapi_context, f_idx)));
+			}
+
+			// input and output variables
+			var f_var_count = simapi_spirv_variable_count(simapi_context);
+			for (var f_idx = 0; f_idx < f_var_count; ++f_idx) {
+				var var_id = simapi_spirv_variable_id(simapi_context, f_idx);
+				var var_desc = parse_json(simapi_spirv_variable_desc(simapi_context, var_id));
+				var var_data = parse_json(simapi_spirv_variable_data(simapi_context, var_id));
+
+		 		var var_el = ui_create_var_display(var_desc);
+				ui_update_var_display(var_el, var_data);
+				ui_data_window(var_desc.kind).append(var_el);
+			}
+
+			// current line
+			var f_curr_line = simapi_spirv_select_entry_point(simapi_context, 0);
+			ui_update_current_line(f_curr_line);
+
+			register_next = simapi_spirv_first_free_register(simapi_context);
+
+			// reset header
+			$("#btnStep").prop("disabled", simapi_spirv_execution_finished(simapi_context));
+
+			$("#content").css('visibility', '');
+		}
+
+		$("#btnLoad").on("click", function (event) {
+			ui_reset();
+
+			simapi_context = simapi_create_context();
+			simapi_spirv_load_file(simapi_context, 'examples/' + $( "#selFiles option:selected" ).text());
+			
+			ui_setup();
+		});
+
+		$("#inpFile").change(function() {
+			var reader = new FileReader();
+			reader.onload = function(event) {
+				simapi_context = simapi_create_context();
+				simapi_spirv_load_binary(simapi_context, new Uint8Array(event.target.result), event.target.result.byteLength);
+				ui_setup();
+			}
+
+			reader.readAsArrayBuffer(this.files[0]);
+		});
+
+		$("#btnStep").on("click", function (event) {
+			var f_curr_line = simapi_spirv_step(simapi_context);
+
+			// update header
+			$("#btnStep").prop("disabled", simapi_spirv_execution_finished(simapi_context));
+
+			// update source display
+			ui_update_current_line(f_curr_line);
+
+			// update output variables
+			$.each(variables_output, function(index, var_id) {
+				var var_data = parse_json(simapi_spirv_variable_data(simapi_context, var_id));
+				ui_update_var_display($($("#output div.variable")[index]), var_data);
+
+			});
+
+			// update register view
+			var first_free = simapi_spirv_first_free_register(simapi_context);
+			while (register_next < first_free) {
+				var reg_info = parse_json(simapi_spirv_register(simapi_context, register_next));
+				$("#regs").append(ui_create_register_display(reg_info));
+				register_next = register_next + 1;
+			}
+		});
+
+		$("#btnReset").on("click", function (event) {
+			simapi_spirv_reset(simapi_context);
+			$("#input input").blur();
+
+			// reset current line
+			var f_curr_line = simapi_spirv_select_entry_point(simapi_context, 0);
+			ui_update_current_line(f_curr_line);
+			register_next = simapi_spirv_first_free_register(simapi_context);
+
+			// reset header
+			$("#btnStep").prop("disabled", simapi_spirv_execution_finished(simapi_context));
+
+			// clear register view
+			$("#regs div").remove();
+		});
+
+	 	$("#btnAboutOpen").on("click", function (event) {
+			$("#about").show();	
+		});
+	 	$("#btnAboutClose").on("click", function (event) {
+			$("#about").hide();	
+		});
+	</script>
+  </body>
+</html>
+
