@@ -2,7 +2,7 @@
 
 ## Using the command line interface
 
-A shader generally needs quite a bit of input data to run. Specifying these on a command line gets old really quick. For this reason the cli uses JSON formatted files to parameterize the execution of the shader. The format is quite simple and there are only a few commands:
+A shader generally needs quite a bit of input data to run. Specifying these on a command line gets old really quick. For this reason the cli uses JSON formatted files to control the execution of the shader. The format is quite simple and there are only a few commands:
 
 - `associate_data` to set the values of input variables
 - `step`: execute one opcode

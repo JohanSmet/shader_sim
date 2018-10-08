@@ -34,5 +34,3 @@ The unit tests were written using the [µnit](https://nemequ.github.io/munit) fr
 
 - [Building](docs/building.md)
 - [Usage](docs/usage.md)
-- To do
-- FAQ
