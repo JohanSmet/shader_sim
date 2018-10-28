@@ -190,7 +190,7 @@ Module['FS_createPath']('/', 'examples', true, true);
   }
 
  }
- loadPackage({"files": [{"start": 0, "audio": 0, "end": 448, "filename": "/examples/simple_frag.spv"}, {"start": 448, "audio": 0, "end": 1368, "filename": "/examples/vert_arith.spv"}, {"start": 1368, "audio": 0, "end": 2000, "filename": "/examples/vert_arith_int.spv"}, {"start": 2000, "audio": 0, "end": 2532, "filename": "/examples/simple_vert.spv"}, {"start": 2532, "audio": 0, "end": 3320, "filename": "/examples/test_access_chain.spv"}, {"start": 3320, "audio": 0, "end": 3700, "filename": "/examples/fixed_color_frag.spv"}, {"start": 3700, "audio": 0, "end": 4748, "filename": "/examples/fixed_color_vert.spv"}], "remote_package_size": 4748, "package_uuid": "40794309-12b4-4f8b-af3d-a9452c1aaaab"});
+ loadPackage({"files": [{"start": 0, "audio": 0, "end": 448, "filename": "/examples/simple_frag.spv"}, {"start": 448, "audio": 0, "end": 1368, "filename": "/examples/vert_arith.spv"}, {"start": 1368, "audio": 0, "end": 2272, "filename": "/examples/test_aggregates.spv"}, {"start": 2272, "audio": 0, "end": 2904, "filename": "/examples/vert_arith_int.spv"}, {"start": 2904, "audio": 0, "end": 3436, "filename": "/examples/simple_vert.spv"}, {"start": 3436, "audio": 0, "end": 4224, "filename": "/examples/test_access_chain.spv"}, {"start": 4224, "audio": 0, "end": 4604, "filename": "/examples/fixed_color_frag.spv"}, {"start": 4604, "audio": 0, "end": 5652, "filename": "/examples/fixed_color_vert.spv"}], "remote_package_size": 5652, "package_uuid": "dca480a9-47be-4572-9247-5688cd59e571"});
 
 })();
 
@@ -1925,7 +1925,7 @@ var ASM_CONSTS = [];
 
 STATIC_BASE = GLOBAL_BASE;
 
-STATICTOP = STATIC_BASE + 133216;
+STATICTOP = STATIC_BASE + 133248;
 /* global initializers */  __ATINIT__.push();
 
 
@@ -1934,7 +1934,7 @@ STATICTOP = STATIC_BASE + 133216;
 
 
 
-var STATIC_BUMP = 133216;
+var STATIC_BUMP = 133248;
 Module["STATIC_BASE"] = STATIC_BASE;
 Module["STATIC_BUMP"] = STATIC_BUMP;
 
