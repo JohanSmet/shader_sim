@@ -49,8 +49,7 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module);
 void spirv_sim_variable_associate_data(
     SPIRV_simulator *sim, 
     VariableKind kind,
-    VariableInterface if_type, 
-    uint32_t if_index,
+    VariableAccess access, 
     uint8_t *data,
     size_t data_size
 );
@@ -58,7 +57,7 @@ void spirv_sim_select_entry_point(SPIRV_simulator *sim, uint32_t index);
 void spirv_sim_step(SPIRV_simulator *sim);
 
 SimRegister *spirv_sim_register_by_id(SPIRV_simulator *sim, uint32_t id);
-SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, VariableKind kind, VariableInterface if_type, int32_t if_index);
+SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, VariableKind kind, VariableAccess access);
 size_t spirv_register_to_string(SPIRV_simulator *sim, uint32_t reg_idx, char *out_str, size_t out_max);
 
 

@@ -27,11 +27,10 @@ static inline Constant *new_constant(SPIRV_module *module, Type *type) {
     return result;
 }
 
-static inline Variable *new_variable(SPIRV_module *module, uint32_t id, uint32_t member, Type *type) {
+static inline Variable *new_variable(SPIRV_module *module, uint32_t id, Type *type) {
     Variable *result = mem_arena_allocate(&module->allocator, sizeof(Variable));
     *result = (Variable) {
 		.id = id,
-		.member_id = member,
         .type = type,
         .array_elements = 1,
         .initializer_kind = InitializerNone
@@ -89,20 +88,40 @@ Variable *spirv_module_variable_by_id(SPIRV_module *module, uint32_t id) {
     return map_int_ptr_get(&module->variables, id);
 }
 
-Variable *spirv_module_variable_by_intf(SPIRV_module *module, VariableKind kind, VariableInterface if_type, uint32_t if_index) {
-    Variable **vars = map_int_ptr_get(&module->variables_kind, kind);
+bool spirv_module_variable_by_access(
+    SPIRV_module *module, 
+    VariableKind kind, 
+    VariableAccess access,
+    Variable **ret_var,
+    int32_t *ret_member
+) {
+    assert(module != NULL);
+    assert(ret_var != NULL);
+    assert(ret_member != NULL);
+
+    Variable **vars = map_int_ptr_get(&module->variables_sc, kind);
     
     if (!vars) {
-        return NULL;
+        return false;
     }
     
     for (Variable **var = vars; var != arr_end(vars); ++var) {
-        if ((*var)->if_type == if_type && (*var)->if_index == if_index) {
-            return *var;
+        if (memcmp(&(*var)->access, &access, sizeof(VariableAccess)) == 0) {
+            *ret_var = *var;
+            *ret_member = -1;
+            return true;
+        }
+
+        for (VariableAccess *mem = (*var)->member_access; mem != arr_end((*var)->member_access); ++mem) {
+            if (memcmp(mem, &access, sizeof(VariableAccess)) == 0) {
+                *ret_var = *var;
+                *ret_member = mem - (*var)->member_access;
+                return true;
+            }
         }
     }
     
-    return NULL;
+    return false;
 }
 
 static SPIRV_function *function_by_id(SPIRV_module *module, uint32_t id) {
@@ -133,10 +152,10 @@ static void define_name(SPIRV_module *module, uint32_t id, const char *name, int
     map_int_ptr_put(&module->names, id_member_to_key(id, member_index), (void *) name);
 }
 
-static void define_intf_variable(SPIRV_module *module, Variable *var) {
-    Variable **kind_vars = map_int_ptr_get(&module->variables_kind, var->kind);
+static void define_sc_variable(SPIRV_module *module, Variable *var) {
+    Variable **kind_vars = map_int_ptr_get(&module->variables_sc, var->kind);
     arr_push(kind_vars, var);
-    map_int_ptr_put(&module->variables_kind, var->kind, kind_vars);
+    map_int_ptr_put(&module->variables_sc, var->kind, kind_vars);
 }
 
 static inline bool is_opcode_type(SPIRV_opcode *op) {
@@ -288,51 +307,57 @@ static void handle_opcode_constant(SPIRV_module *module, SPIRV_opcode *op) {
     }
 }
 
-static Variable *create_variable(SPIRV_module *module, uint32_t id, uint32_t member, Type *type, uint32_t storage_class) {
-    
-    Variable *var = new_variable(module, id, member, type);
-    var->kind = storage_class;
-    
-    // optional name that was defined earlier
-    var->name = name_by_id(module, id, member);
-    
-    // aggregate types
-    Type *aggregate = NULL;
-    if (var->type->kind == TypeStructure) {
-        aggregate = var->type;
-    } else if (var->type->kind == TypePointer && var->type->base_type->kind == TypeStructure) {
-        aggregate = var->type->base_type;
-    }
-    
-    if (aggregate) {
-        for (int32_t i = 0; i < arr_len(aggregate->structure.members); ++i) {
-            Variable *mem_var = create_variable(
-                module, aggregate->id, i,
-                aggregate->structure.members[i],
-                storage_class);
-            arr_push(var->members, mem_var);
-        }
-    }
-    
-    // decoration
-    SPIRV_opcode **decorations = decoration_ops_by_id(module, id, member);
+static void variable_check_access_decorations(SPIRV_module *module, VariableAccess *access, uint32_t id, uint32_t member_id) {
+
+    SPIRV_opcode **decorations = decoration_ops_by_id(module, id, member_id);
+
+    access->kind = VarAccessNone;
+    access->index = -1;
     
     for (SPIRV_opcode **op = decorations; op != arr_end(decorations); ++op) {
         uint32_t dec_offset = ((*op)->op.kind == SpvOpDecorate) ? 1 : 2;
         uint32_t decoration = (*op)->optional[dec_offset];
         
         if (decoration == SpvDecorationBuiltIn) {
-            var->if_type = VarInterfaceBuiltIn;
-            var->if_index = (*op)->optional[dec_offset+1];
+            access->kind = VarAccessBuiltIn;
+            access->index = (*op)->optional[dec_offset+1];
         } else if (decoration == SpvDecorationLocation) {
-            var->if_type = VarInterfaceLocation;
-            var->if_index = (*op)->optional[dec_offset+1];
+            access->kind = VarAccessLocation;
+            access->index = (*op)->optional[dec_offset+1];
+        }
+    }
+}
+
+static Variable *create_variable(SPIRV_module *module, uint32_t id, Type *type, uint32_t storage_class) {
+    
+    Variable *var = new_variable(module, id, type);
+    var->kind = storage_class;
+    
+    // optional name that was defined earlier
+    var->name = name_by_id(module, id, -1);
+
+    // decorations
+    variable_check_access_decorations(module, &var->access, id, -1);
+    
+    // aggregate types
+    Type *aggregate_type = NULL;
+    if (var->type->kind == TypeStructure) {
+        aggregate_type = var->type;
+    } else if (var->type->kind == TypePointer && var->type->base_type->kind == TypeStructure) {
+        aggregate_type = var->type->base_type;
+    }
+    
+    if (aggregate_type) {
+        arr_reserve(var->member_access, arr_len(aggregate_type->structure.members));
+        arr_reserve(var->member_name,  arr_len(aggregate_type->structure.members));
+
+        for (int32_t i = 0; i < arr_len(aggregate_type->structure.members); ++i) {
+            variable_check_access_decorations(module, &var->member_access[i], aggregate_type->id, i);
+            var->member_name[i] = name_by_id(module, aggregate_type->id, i);
         }
     }
     
-    if (var->if_type != VarInterfaceNone) {
-        define_intf_variable(module, var);
-    }
+    define_sc_variable(module, var);
 
     return var;
 }
@@ -347,7 +372,7 @@ static void handle_opcode_variable(SPIRV_module *module, SPIRV_opcode *op) {
     
     // create variable
     Variable *var = create_variable(
-        module, var_id, -1,
+        module, var_id, 
         type,
         storage_class
     );
@@ -492,7 +517,7 @@ void spirv_module_free(SPIRV_module *module) {
         map_free(&module->types);
         map_free(&module->constants);
         map_free(&module->variables);
-        map_free(&module->variables_kind);
+        map_free(&module->variables_sc);
         map_free(&module->functions);
     }
 }

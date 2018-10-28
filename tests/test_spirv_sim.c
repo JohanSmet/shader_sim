@@ -154,8 +154,16 @@ MunitResult test_arithmetic_float32(const MunitParameter params[], void* user_da
     spirv_sim_init(&spirv_sim, &spirv_module);
     float data1[4] = {1.0f, 2.0f, 3.0f, 4.0f};
     float data2[4] = {3.5f, 6.6f, 8.0f, 11.0f};
-    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 0, (uint8_t *) data1, sizeof(data1));
-    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 1, (uint8_t *) data2, sizeof(data2));
+    spirv_sim_variable_associate_data(
+        &spirv_sim, 
+        VarKindInput, 
+        (VariableAccess) {VarAccessLocation, 0}, 
+        (uint8_t *) data1, sizeof(data1));
+    spirv_sim_variable_associate_data(
+        &spirv_sim, 
+        VarKindInput, 
+        (VariableAccess) {VarAccessLocation, 1}, 
+        (uint8_t *) data2, sizeof(data2));
 
     /* run simulator */
     while (!spirv_sim.finished && !spirv_sim.error_msg) {
@@ -225,8 +233,16 @@ MunitResult test_arithmetic_int32(const MunitParameter params[], void* user_data
     spirv_sim_init(&spirv_sim, &spirv_module);
     int32_t data1[4] = {1, 2, 3, 4};
     int32_t data2[4] = {3, 6, 8, 11};
-    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 0, (uint8_t *) data1, sizeof(data1));
-    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 1, (uint8_t *) data2, sizeof(data2));
+    spirv_sim_variable_associate_data(
+        &spirv_sim, 
+        VarKindInput, 
+        (VariableAccess) {VarAccessLocation, 0},
+        (uint8_t *) data1, sizeof(data1));
+    spirv_sim_variable_associate_data(
+        &spirv_sim, 
+        VarKindInput, 
+        (VariableAccess) {VarAccessLocation, 1}, 
+        (uint8_t *) data2, sizeof(data2));
     
     /* run simulator */
     while (!spirv_sim.finished && !spirv_sim.error_msg) {
@@ -292,8 +308,16 @@ MunitResult test_arithmetic_uint32(const MunitParameter params[], void* user_dat
     spirv_sim_init(&spirv_sim, &spirv_module);
     uint32_t data1[4] = {1, 2, 3, 4};
     uint32_t data2[4] = {3, 6, 8, 11};
-    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 0, (uint8_t *) data1, sizeof(data1));
-    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 1, (uint8_t *) data2, sizeof(data2));
+    spirv_sim_variable_associate_data(
+        &spirv_sim, 
+        VarKindInput, 
+        (VariableAccess) {VarAccessLocation, 0},
+        (uint8_t *) data1, sizeof(data1));
+    spirv_sim_variable_associate_data(
+        &spirv_sim, 
+        VarKindInput, 
+        (VariableAccess) {VarAccessLocation, 1},
+        (uint8_t *) data2, sizeof(data2));
     
     /* run simulator */
     while (!spirv_sim.finished && !spirv_sim.error_msg) {
@@ -374,9 +398,21 @@ MunitResult test_composite_float32(const MunitParameter params[], void* user_dat
     float data1[4] = {1.0f, 2.0f, 3.0f, 4.0f};
     float data2[4] = {3.5f, 6.6f, 8.0f, 11.0f};
     float data3 = 5.0f;
-    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 0, (uint8_t *) data1, sizeof(data1));
-    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 1, (uint8_t *) data2, sizeof(data2));
-    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 2, (uint8_t *) &data3, sizeof(data3));
+    spirv_sim_variable_associate_data(
+        &spirv_sim, 
+        VarKindInput, 
+        (VariableAccess) {VarAccessLocation, 0},
+        (uint8_t *) data1, sizeof(data1));
+    spirv_sim_variable_associate_data(
+        &spirv_sim, 
+        VarKindInput, 
+        (VariableAccess) {VarAccessLocation, 1},
+        (uint8_t *) data2, sizeof(data2));
+    spirv_sim_variable_associate_data(
+        &spirv_sim, 
+        VarKindInput, 
+        (VariableAccess) {VarAccessLocation, 2},
+        (uint8_t *) &data3, sizeof(data3));
     
     /* run simulator */
     while (!spirv_sim.finished && !spirv_sim.error_msg) {
@@ -495,9 +531,21 @@ MunitResult test_conversion(const MunitParameter params[], void* user_data_or_fi
     float data_f[4] = {1.3f, -2.0f, 3.7f, 4.0f};
     int32_t data_s[4] = {1, 2, -3, 4};
     uint32_t data_u[4] = {1, 2, 3, UINT32_MAX};
-    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 0, (uint8_t *) data_f, sizeof(data_f));
-    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 1, (uint8_t *) data_s, sizeof(data_s));
-    spirv_sim_variable_associate_data(&spirv_sim, VarKindInput, VarInterfaceLocation, 2, (uint8_t *) data_u, sizeof(data_u));
+    spirv_sim_variable_associate_data(
+        &spirv_sim, 
+        VarKindInput, 
+        (VariableAccess) {VarAccessLocation, 0},
+        (uint8_t *) data_f, sizeof(data_f));
+    spirv_sim_variable_associate_data(
+        &spirv_sim,
+        VarKindInput, 
+        (VariableAccess) {VarAccessLocation, 1},
+        (uint8_t *) data_s, sizeof(data_s));
+    spirv_sim_variable_associate_data(
+        &spirv_sim, 
+        VarKindInput, 
+        (VariableAccess) {VarAccessLocation, 2},
+        (uint8_t *) data_u, sizeof(data_u));
     
     /* run simulator */
     while (!spirv_sim.finished && !spirv_sim.error_msg) {
@@ -514,10 +562,108 @@ MunitResult test_conversion(const MunitParameter params[], void* user_data_or_fi
     ASSERT_REGISTER_SVEC4(&spirv_sim, ID(68), ==, 1, 2, 3, INT32_MAX);
     ASSERT_REGISTER_VEC4(&spirv_sim, ID(71), ==, data_f[0], data_f[1], data_f[2], data_f[3]);
 
-
     return MUNIT_OK;
 }
 
+MunitResult test_aggregate(const MunitParameter params[], void* user_data_or_fixture) {
+
+#pragma pack(push, 0)
+    typedef struct AggregateIn {
+        float f0;
+        float f1;
+        float v0[4];
+    } AggregateIn;
+
+    typedef struct AggregateOut {
+        float v0[4];
+        float f1;
+        float f0;
+    } AggregateOut;
+#pragma pop(push)
+ 
+    /* prepare binary */
+    SPIRV_binary spirv_bin;
+    spirv_bin_init(&spirv_bin, 1, 0);
+
+    spirv_common_header(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpMemberDecorate, ID(40), 0, SpvDecorationLocation, 0);
+    SPIRV_OP(&spirv_bin, SpvOpMemberDecorate, ID(40), 1, SpvDecorationLocation, 1);
+    SPIRV_OP(&spirv_bin, SpvOpMemberDecorate, ID(40), 2, SpvDecorationLocation, 2);
+    SPIRV_OP(&spirv_bin, SpvOpMemberDecorate, ID(45), 0, SpvDecorationLocation, 0);
+    SPIRV_OP(&spirv_bin, SpvOpMemberDecorate, ID(45), 1, SpvDecorationLocation, 1);
+    SPIRV_OP(&spirv_bin, SpvOpMemberDecorate, ID(45), 2, SpvDecorationLocation, 2);
+    spirv_common_types(&spirv_bin, TEST_TYPE_FLOAT32 | TEST_TYPE_UINT32);
+    SPIRV_OP(&spirv_bin, SpvOpTypeStruct, ID(40), ID(10), ID(10), ID(11));
+    SPIRV_OP(&spirv_bin, SpvOpTypePointer, ID(41), SpvStorageClassInput, ID(40));
+    SPIRV_OP(&spirv_bin, SpvOpTypeStruct, ID(45), ID(11), ID(10), ID(10));
+    SPIRV_OP(&spirv_bin, SpvOpTypePointer, ID(46), SpvStorageClassOutput, ID(45));
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(41), ID(50), SpvStorageClassInput);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(46), ID(51), SpvStorageClassOutput);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(60), 0);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(61), 1);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(62), 2);
+    spirv_common_function_header(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpAccessChain, ID(13), ID(70), ID(50), ID(60));
+    SPIRV_OP(&spirv_bin, SpvOpAccessChain, ID(13), ID(71), ID(50), ID(61));
+    SPIRV_OP(&spirv_bin, SpvOpAccessChain, ID(14), ID(72), ID(50), ID(62));
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(10), ID(75), ID(70));
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(10), ID(76), ID(71));
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(11), ID(77), ID(72));
+    SPIRV_OP(&spirv_bin, SpvOpAccessChain, ID(14), ID(80), ID(51), ID(60));
+    SPIRV_OP(&spirv_bin, SpvOpAccessChain, ID(13), ID(81), ID(51), ID(61));
+    SPIRV_OP(&spirv_bin, SpvOpAccessChain, ID(13), ID(82), ID(51), ID(62));
+    SPIRV_OP(&spirv_bin, SpvOpStore, ID(80), ID(77));
+    SPIRV_OP(&spirv_bin, SpvOpStore, ID(81), ID(76));
+    SPIRV_OP(&spirv_bin, SpvOpStore, ID(82), ID(75));
+    spirv_common_function_footer(&spirv_bin);
+    spirv_bin.header.bound_ids = 71;
+    spirv_bin_finalize(&spirv_bin);
+    
+    /* prepare simulator */
+    SPIRV_module spirv_module;
+    spirv_module_load(&spirv_module, &spirv_bin);
+    
+    SPIRV_simulator spirv_sim;
+    spirv_sim_init(&spirv_sim, &spirv_module);
+
+    AggregateIn data_in = {1.0f, 2.0f, {3.5f, 6.6f, 8.0f, 11.0f}};
+    spirv_sim_variable_associate_data(
+        &spirv_sim, VarKindInput, (VariableAccess) {VarAccessLocation, 0},
+        (uint8_t *) &data_in.f0, sizeof(data_in.f0)
+    );
+    spirv_sim_variable_associate_data(
+        &spirv_sim, VarKindInput, (VariableAccess) {VarAccessLocation, 1},
+        (uint8_t *) &data_in.f1, sizeof(data_in.f1)
+    );
+    spirv_sim_variable_associate_data(
+        &spirv_sim, VarKindInput, (VariableAccess) {VarAccessLocation, 2},
+        (uint8_t *) &data_in.v0, sizeof(data_in.v0)
+    );
+
+    SimPointer *ptr = spirv_sim_retrieve_intf_pointer(
+        &spirv_sim, VarKindOutput,
+        (VariableAccess) {VarAccessLocation, 0}
+    );
+    AggregateOut *data_out = ((AggregateOut *) (spirv_sim.memory + ptr->pointer));
+
+    /* run simulator */
+    while (!spirv_sim.finished && !spirv_sim.error_msg) {
+        munit_assert_null(spirv_sim.error_msg);
+        spirv_sim_step(&spirv_sim);
+    }
+
+    /* check registers */
+    ASSERT_REGISTER_FLOAT(&spirv_sim, ID(75), ==, data_in.f0);
+    ASSERT_REGISTER_FLOAT(&spirv_sim, ID(76), ==, data_in.f1);
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(77), ==, data_in.v0[0], data_in.v0[1], data_in.v0[2], data_in.v0[3]);
+
+    munit_assert_memory_equal(sizeof(data_in.v0), data_out->v0, data_in.v0);
+    munit_assert_float(data_out->f0, ==, data_in.f0);
+    munit_assert_float(data_out->f1, ==, data_in.f1);
+
+    return MUNIT_OK;
+}
+    
 
 MunitTest spirv_sim_tests[] = {
     { "/arithmetic_float32", test_arithmetic_float32, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
@@ -525,5 +671,6 @@ MunitTest spirv_sim_tests[] = {
     { "/arithmetic_uint32", test_arithmetic_uint32, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/composite_float32", test_composite_float32, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/conversion", test_conversion, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    { "/aggregate", test_aggregate, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };

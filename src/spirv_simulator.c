@@ -62,31 +62,44 @@ static inline bool spirv_sim_type_is_matrix(Type *type) {
     return type->kind == TypeMatrixInteger || type->kind == TypeMatrixFloat;
 }
 
-static inline uint64_t var_data_key(VariableKind kind, VariableInterface if_type, uint32_t if_index) {
-   return (uint64_t) kind << 48 | (uint64_t) if_type << 32 | if_index;
+static inline uint64_t var_data_key(VariableKind kind, VariableAccess *access) {
+   return (uint64_t) kind << 48 | (uint64_t) access->kind << 32 | access->index;
 }
 
 static void spirv_add_interface_pointers(SPIRV_simulator *sim, Variable *var_desc, uint32_t pointer) {
 
     // interface pointer to the entire type
-    if (var_desc->if_type != VarInterfaceNone) {
+    if (var_desc->access.kind != VarAccessNone) {
         map_int_ptr_put(
             &sim->intf_pointers,
-            var_data_key(var_desc->kind, var_desc->if_type, var_desc->if_index),
-            new_sim_pointer(sim, var_desc->type, pointer)
+            var_data_key(var_desc->kind, &var_desc->access),
+            new_sim_pointer(sim, var_desc->type->base_type, pointer)
         );
     }
     
     // interface pointer to members
-    size_t offset = 0;
-    
-    for (Variable **iter = var_desc->members; iter != arr_end(var_desc->members); ++iter) {
-        map_int_ptr_put(
-            &sim->intf_pointers,
-            var_data_key((*iter)->kind, (*iter)->if_type, (*iter)->if_index),
-            new_sim_pointer(sim, var_desc->type, pointer + offset)
-        );
-        offset += (*iter)->type->element_size * (*iter)->type->count;
+    Type *aggregate_type = NULL;
+    if (var_desc->type->kind == TypeStructure) {
+        aggregate_type = var_desc->type;
+    } else if (var_desc->type->kind == TypePointer && var_desc->type->base_type->kind == TypeStructure) {
+        aggregate_type = var_desc->type->base_type;
+    }
+
+    if (aggregate_type) {
+        size_t offset = 0;
+
+        for (uint32_t member = 0; member < arr_len(var_desc->member_access); ++member) {
+            Type *member_type = aggregate_type->structure.members[member]; 
+
+            if (var_desc->member_access[member].kind != VarAccessNone) {
+                map_int_ptr_put(
+                    &sim->intf_pointers,
+                    var_data_key(var_desc->kind, &var_desc->member_access[member]),
+                    new_sim_pointer(sim, member_type, pointer + offset));
+            }
+
+            offset += member_type->element_size * member_type->count;
+       }
     }
 }
 
@@ -136,17 +149,16 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
 void spirv_sim_variable_associate_data(
     SPIRV_simulator *sim, 
     VariableKind kind,
-    VariableInterface if_type, 
-    uint32_t if_index,
+    VariableAccess access, 
     uint8_t *data,
     size_t data_size
 ) {
     assert(sim);
     assert(data);
 
-    SimPointer *ptr = map_int_ptr_get(&sim->intf_pointers, var_data_key(kind, if_type, if_index));
+    SimPointer *ptr = map_int_ptr_get(&sim->intf_pointers, var_data_key(kind, &access));
     assert(ptr);
-    assert(data_size <= (ptr->type->base_type->element_size * ptr->type->base_type->count));
+    assert(data_size <= (ptr->type->element_size * ptr->type->count));
     
     memcpy(sim->memory + ptr->pointer, data, data_size);
 }
@@ -164,10 +176,10 @@ SimRegister *spirv_sim_register_by_id(SPIRV_simulator *sim, uint32_t id) {
     return &sim->temp_regs[map_int_int_get(&sim->assigned_regs, id)];
 }
 
-SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, VariableKind kind, VariableInterface if_type, int32_t if_index) {
+SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, VariableKind kind, VariableAccess access) {
     assert(sim);
     
-    SimPointer *result = map_int_ptr_get(&sim->intf_pointers, var_data_key(kind, if_type, if_index));
+    SimPointer *result = map_int_ptr_get(&sim->intf_pointers, var_data_key(kind, &access));
     return result;
 }
 

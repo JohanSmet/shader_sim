@@ -44,7 +44,7 @@ typedef struct RunnerCmd {
 typedef struct RunnerCmdAssociateData {
     RunnerCmd base;
     VariableKind var_kind;
-    VariableInterface var_if_type;
+    VariableAccessKind var_if_type;
     uint32_t var_if_index;
     uint8_t *data;
     size_t data_size;
@@ -62,7 +62,7 @@ typedef struct RunnerCmdCmpOutput {
     RunnerCmd base;
     RunnerCmpOp op;
     TypeKind data_type;
-    VariableInterface var_if_type;
+    VariableAccessKind var_if_type;
     uint32_t var_if_index;
     uint8_t *data;
     size_t data_size;

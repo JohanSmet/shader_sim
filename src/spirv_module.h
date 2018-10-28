@@ -89,15 +89,19 @@ typedef enum VariableKind {
     VarKindStorageBuffer,
 } VariableKind;
 
-typedef enum VariableInterface {
-    VarInterfaceNone = 0,
-    VarInterfaceBuiltIn = 1,
-    VarInterfaceLocation = 2,
-} VariableInterface;
+typedef enum VariableAccessKind {
+    VarAccessNone = 0,
+    VarAccessBuiltIn = 1,
+    VarAccessLocation = 2,
+} VariableAccessKind;
+
+typedef struct VariableAccess {
+    VariableAccessKind kind;
+    uint32_t index;
+} VariableAccess;
 
 typedef struct Variable {
 	uint32_t id;
-	uint32_t member_id;
     Type *type;                 // actual type the variable is pointing to
     const char *name;           // optional
     uint32_t array_elements;
@@ -106,10 +110,11 @@ typedef struct Variable {
         Constant *initializer_constant;
         struct Variable *initializer_variable;
     };
-    struct Variable **members;
-    VariableKind kind;      // spirv: storage class
-    VariableInterface if_type;
-    uint32_t if_index;
+    VariableKind kind; // spirv: storage class
+    VariableAccess access;
+
+    VariableAccess *member_access;  // dyn_array
+    const char **member_name;       // dyn_array
 } Variable;
 
 typedef struct Function {
@@ -148,7 +153,7 @@ typedef struct SPIRV_module {
     HashMap types;          // id (int) -> Type *
     HashMap constants;      // id (int) -> Constant *
     HashMap variables;      // id (int) -> Variable *
-    HashMap variables_kind; // kind (StorageClass) -> Variable ** (dyn_array)
+    HashMap variables_sc;   // kind (StorageClass) -> Variable ** (dyn_array)
     HashMap functions;      // id (int) -> SPIRV_function *
 
     EntryPoint *entry_points;       // dyn_array
@@ -163,7 +168,12 @@ Constant *spirv_module_constant_by_id(SPIRV_module *mpdule, uint32_t id);
 uint32_t spirv_module_variable_count(SPIRV_module *module);
 uint32_t spirv_module_variable_id(SPIRV_module *module, uint32_t index);
 Variable *spirv_module_variable_by_id(SPIRV_module *mpdule, uint32_t id);
-Variable *spirv_module_variable_by_intf(SPIRV_module *module, VariableKind kind, VariableInterface if_type, uint32_t if_index);
+bool spirv_module_variable_by_access(
+    SPIRV_module *module, 
+    VariableKind kind, 
+    VariableAccess access,
+    Variable **ret_var, 
+    int32_t *ret_member); 
 
 size_t spirv_module_opcode_count(SPIRV_module *module);
 struct SPIRV_opcode *spirv_module_opcode_by_index(SPIRV_module *module, uint32_t index);

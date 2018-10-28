@@ -28,7 +28,7 @@ RUNNER_FUNC_BEGIN(CmdAssociateData)
     spirv_sim_variable_associate_data(
         runner->spirv_sim,
         cmd->var_kind,
-        cmd->var_if_type, cmd->var_if_index,
+        (VariableAccess) {cmd->var_if_type, cmd->var_if_index},
         cmd->data, cmd->data_size);
     return true;
 
@@ -64,7 +64,7 @@ RUNNER_FUNC_BEGIN(CmdCmpOutput)
 
     SimPointer *result = spirv_sim_retrieve_intf_pointer(
         runner->spirv_sim, VarKindOutput,
-        cmd->var_if_type, cmd->var_if_index);
+        (VariableAccess) {cmd->var_if_type, cmd->var_if_index});
 
     char *error_msg = NULL;
 
@@ -219,22 +219,22 @@ static VariableKind parse_var_kind(const char *kind_str) {
     }
 }
 
-static VariableInterface parse_var_interface_type(const char *if_type_str) {
+static VariableAccessKind parse_var_interface_type(const char *if_type_str) {
     if (!strcmp(if_type_str, "builtin")) {
-        return VarInterfaceBuiltIn;
+        return VarAccessBuiltIn;
     } else if (!strcmp(if_type_str, "location")) {
-        return VarInterfaceLocation;
+        return VarAccessLocation;
     } else {
         fatal_error("Unknown interface type");
         return 0;
     }
 }
 
-static int32_t parse_var_interface_index(VariableInterface if_type, const cJSON *json_data) {
+static int32_t parse_var_interface_index(VariableAccessKind if_type, const cJSON *json_data) {
 
-    if (if_type == VarInterfaceLocation) {
+    if (if_type == VarAccessLocation) {
         return json_int_value(json_data, "if_index", 0);
-    } else if (if_type == VarInterfaceBuiltIn) {
+    } else if (if_type == VarAccessBuiltIn) {
         int32_t result;
         if (runner_lut_lookup_builtin(json_string_value(json_data, "if_index"), &result)) {
             return result;
@@ -244,12 +244,16 @@ static int32_t parse_var_interface_index(VariableInterface if_type, const cJSON 
     return 0;
 }
 
-static inline size_t allocate_data(Type *type, uint8_t **data) {
+static inline size_t allocate_data(Type *type, int32_t member, uint8_t **data) {
     assert(data);
     assert(type);
     
     if (type->kind == TypePointer) {
         type = type->base_type;
+    }
+
+    if (type->kind == TypeStructure && member != -1) {
+        type = type->structure.members[member];
     }
     
     size_t data_size = type->element_size * type->count;
@@ -257,10 +261,14 @@ static inline size_t allocate_data(Type *type, uint8_t **data) {
     return data_size;
 }
 
-static void parse_values(const cJSON *json_values, Type *type, uint8_t *data) {
+static void parse_values(const cJSON *json_values, Type *type, int32_t member, uint8_t *data) {
     
     if (type->kind == TypePointer) {
         type = type->base_type;
+    }
+
+    if (type->kind == TypeStructure && member != -1) {
+        type = type->structure.members[member];
     }
 
     if (type->kind == TypeInteger && cJSON_IsNumber(json_values)) {
@@ -283,7 +291,7 @@ static void parse_values(const cJSON *json_values, Type *type, uint8_t *data) {
         uint8_t *ptr = data;
         int32_t idx = 0;
         for (const cJSON *iter=json_values->child; iter && idx < type->count; iter=iter->next) {
-            parse_values(iter, type->base_type, ptr);
+            parse_values(iter, type->base_type, -1, ptr);
             ptr += type->element_size;
             ++idx;
         }
@@ -292,8 +300,8 @@ static void parse_values(const cJSON *json_values, Type *type, uint8_t *data) {
         int32_t idx = 0;
         
         for (const cJSON *iter=json_values->child; iter && idx < type->count; iter=iter->next) {
-            Type *mem_type = type->structure.members[idx++];
-            parse_values(iter, mem_type, ptr);
+            Type *mem_type = type->structure.members[idx];
+            parse_values(iter, type, idx++, ptr);
             ptr += mem_type->element_size * mem_type->count;
         }
     }
@@ -313,26 +321,28 @@ static RunnerCmpOp parse_cmp_op(const char *op_str) {
 
 static RunnerCmd *parse_command(Runner *runner, const char *cmd, const cJSON *json_data) {
 
+    Variable *var = NULL;
+    int32_t var_member = 0;
+
     if (!strcmp(cmd, "associate_data")) {
         RunnerCmdAssociateData *cmd = new_cmd_associate_data();
         cmd->var_kind = parse_var_kind(json_string_value(json_data, "kind"));
         cmd->var_if_type = parse_var_interface_type(json_string_value(json_data, "if_type"));
         cmd->var_if_index = parse_var_interface_index(cmd->var_if_type, json_data);
         
-        Variable *var = spirv_module_variable_by_intf(
-            &runner->spirv_module,
-            cmd->var_kind, cmd->var_if_type, cmd->var_if_index
-        );
-        
-        if (!var) {
+        if (!spirv_module_variable_by_access(
+                &runner->spirv_module,
+                cmd->var_kind, 
+                (VariableAccess) {cmd->var_if_type, cmd->var_if_index},
+                &var, &var_member)) {
             fatal_error("Unknown variable (%d/%d/%d)", cmd->var_kind, cmd->var_if_type, cmd->var_if_index);
             return 0;
         }
         
-        cmd->data_size = allocate_data(var->type, &cmd->data);
+        cmd->data_size = allocate_data(var->type, var_member, &cmd->data);   
         
         const cJSON *values = cJSON_GetObjectItemCaseSensitive(json_data, "value");
-        parse_values(values, var->type, cmd->data);
+        parse_values(values, var->type, var_member, cmd->data);
 
         return (RunnerCmd *) cmd;
     } else if (!strcmp(cmd, "run")) {
@@ -349,20 +359,19 @@ static RunnerCmd *parse_command(Runner *runner, const char *cmd, const cJSON *js
         cmd->var_if_type = parse_var_interface_type(json_string_value(json_data, "if_type"));
         cmd->var_if_index = parse_var_interface_index(cmd->var_if_type, json_data);
         
-        Variable *var = spirv_module_variable_by_intf(
-            &runner->spirv_module,
-            VarKindOutput, cmd->var_if_type, cmd->var_if_index
-        );
-        
-        if (!var) {
+        if (!spirv_module_variable_by_access(
+                &runner->spirv_module,
+                VarKindOutput, 
+                (VariableAccess) {cmd->var_if_type, cmd->var_if_index},
+                &var, &var_member)) {
             fatal_error("Unknown output variable (%d/%d)", cmd->var_if_type, cmd->var_if_index);
             return 0;
         }
         
-        cmd->data_size = allocate_data(var->type, &cmd->data);
+        cmd->data_size = allocate_data(var->type, var_member, &cmd->data);
 
         const cJSON *values = cJSON_GetObjectItemCaseSensitive(json_data, "value");
-        parse_values(values, var->type, cmd->data);
+        parse_values(values, var->type, var_member, cmd->data);
 
         return (RunnerCmd *) cmd;
     }
