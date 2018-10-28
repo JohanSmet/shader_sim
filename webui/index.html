@@ -300,10 +300,10 @@
 			if (var_data.access.hasOwnProperty('builtin')) {
 				result = var_data.access.kind + '.' + var_data.access.builtin;
 			} else {
-				result = var_data.access.kind + '[' + var_data.access.location + ']';
+				result = var_data.access.kind + ' ' + var_data.access.location;
 			}
 			if (var_data.hasOwnProperty('name')) {
-				result = result + ' (' + var_data.name + ')';
+				result = result + ': "' + var_data.name + '"';
 			}
 			return result;
 		}
