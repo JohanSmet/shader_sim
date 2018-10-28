@@ -56,7 +56,7 @@ Type *spirv_module_type_by_id(SPIRV_module *module, uint32_t id) {
     return map_int_ptr_get(&module->types, id);
 }
 
-static const char *name_by_id(SPIRV_module *module, uint32_t id, uint32_t member) {
+const char *spirv_module_name_by_id(SPIRV_module *module, uint32_t id, uint32_t member) {
     return map_int_ptr_get(&module->names, id_member_to_key(id, member));
 }
 
@@ -334,7 +334,7 @@ static Variable *create_variable(SPIRV_module *module, uint32_t id, Type *type, 
     var->kind = storage_class;
     
     // optional name that was defined earlier
-    var->name = name_by_id(module, id, -1);
+    var->name = spirv_module_name_by_id(module, id, -1);
 
     // decorations
     variable_check_access_decorations(module, &var->access, id, -1);
@@ -353,7 +353,7 @@ static Variable *create_variable(SPIRV_module *module, uint32_t id, Type *type, 
 
         for (int32_t i = 0; i < arr_len(aggregate_type->structure.members); ++i) {
             variable_check_access_decorations(module, &var->member_access[i], aggregate_type->id, i);
-            var->member_name[i] = name_by_id(module, aggregate_type->id, i);
+            var->member_name[i] = spirv_module_name_by_id(module, aggregate_type->id, i);
         }
     }
     
@@ -410,7 +410,7 @@ static void handle_opcode_function(SPIRV_module *module, SPIRV_opcode *op) {
     SPIRV_function *func = new_function(module, spirv_module_type_by_id(module, func_type), func_id);
 
     // optional name that was defined earlier
-    func->func.name = name_by_id(module, func_id, 0);
+    func->func.name = spirv_module_name_by_id(module, func_id, 0);
 
     // scan ahead to the first real instruction of the function
     func->fst_opcode = spirv_bin_opcode_next(module->spirv_bin);

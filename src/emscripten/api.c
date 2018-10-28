@@ -100,7 +100,7 @@ size_t simapi_spirv_variable_id(SimApiContext *context, uint32_t index) {
 	return spirv_module_variable_id(&context->spirv_module, index);
 }
 
-static inline void spirv_type_to_json(Type *type, char **output) {
+static inline void spirv_type_to_json(SPIRV_module *spirv_module, Type *type, char **output) {
 	arr_printf(*output, "{");
 	arr_printf(*output, "\"id\": %d,", type->id);
 	arr_printf(*output, "\"type\":\"%s%s\",", (type->is_signed && type->count == 1) ? "Signed" : "", lut_lookup_type_kind(type->kind));
@@ -108,21 +108,21 @@ static inline void spirv_type_to_json(Type *type, char **output) {
 	arr_printf(*output, "\"element_size\": %d", type->element_size);
 	if (type->base_type) {
 		arr_printf(*output, ",\"base_type\": ");
-		spirv_type_to_json(type->base_type, output);
+		spirv_type_to_json(spirv_module, type->base_type, output);
 	}
 	if (type->kind == TypeMatrixInteger || type->kind == TypeMatrixFloat) {
 		arr_printf(*output, ",\"matrix_rows\": %d", type->matrix.num_rows);
 		arr_printf(*output, ",\"matrix_cols\": %d", type->matrix.num_cols);
 	} else if (type->kind == TypeFunction) {
 		arr_printf(*output, ",\"return_type\": ");
-		spirv_type_to_json(type->function.return_type, output);
+		spirv_type_to_json(spirv_module, type->function.return_type, output);
 
 		arr_printf(*output, ",\"parameter_types\": [");
 		for (Type **param = type->function.parameter_types; param != arr_end(type->function.parameter_types); ++param) {
 			if (param != type->function.parameter_types) {
 				arr_printf(*output, ",");
 			}
-			spirv_type_to_json(*param, output);
+			spirv_type_to_json(spirv_module, *param, output);
 		}
 		arr_printf(*output, "]");
 	} else if (type->kind == TypeStructure) {
@@ -131,10 +131,15 @@ static inline void spirv_type_to_json(Type *type, char **output) {
 			if (member != type->structure.members) {
 				arr_printf(*output, ",");
 			}
-			spirv_type_to_json(*member, output);
+			spirv_type_to_json(spirv_module, *member, output);
 		}
 		arr_printf(*output, "]");
 	}
+	const char *name = spirv_module_name_by_id(spirv_module, type->id, -1);
+	if (name != NULL) {
+		arr_printf(*output, ",\"name\": \"%s\"", name);
+	}
+
 	arr_printf(*output, "}");
 }
 
@@ -150,11 +155,11 @@ static inline void spirv_variable_access_to_json(VariableAccess *access, char **
 	arr_printf(*output, "}");
 }
 
-static inline void spirv_variable_to_json(Variable *var, char **output) {
+static inline void spirv_variable_to_json(SPIRV_module *spirv_module, Variable *var, char **output) {
 	arr_printf(*output, "{");
 	arr_printf(*output, "\"id\": %d", var->id);
 	arr_printf(*output, ",\"type\": ");
-	spirv_type_to_json(var->type, output);
+	spirv_type_to_json(spirv_module, var->type, output);
 	if (var->name) {
 		arr_printf(*output, ",\"name\": \"%s\"", var->name);
 	}
@@ -198,7 +203,7 @@ const char *simapi_spirv_variable_desc(SimApiContext *context, uint32_t id) {
 	}
 	
 	char *json = NULL;
-	spirv_variable_to_json(var, &json);
+	spirv_variable_to_json(&context->spirv_module, var, &json);
 
 	return json;
 }
@@ -269,54 +274,71 @@ static inline void spirv_array_to_json(char **output, Type *type, void *data) {
 }
 
 EMSCRIPTEN_KEEPALIVE 
-const char *simapi_spirv_variable_data(SimApiContext *context, uint32_t id) {
+const char *simapi_spirv_variable_data(SimApiContext *context, uint32_t id, uint32_t member) {
 	Variable *var = spirv_module_variable_by_id(&context->spirv_module, id);
 
 	if (!var) {
 		return "";
 	}
 
+	VariableAccess *access = &var->access;
+	Type *data_type = var->type->base_type;
+		
+	if (data_type->kind == TypeStructure && member != -1) {
+		access = &var->member_access[member];
+		data_type = data_type->structure.members[member];
+	}
+
 	SimPointer *mem = spirv_sim_retrieve_intf_pointer(
 			&context->spirv_sim,
 			var->kind, 
-			var->access);
+			*access);
 
 	char *json = NULL;
 
-	Type *data_type = var->type->base_type;
 	spirv_array_to_json(&json, data_type, context->spirv_sim.memory + mem->pointer);
 	return json;
 }
 
 EMSCRIPTEN_KEEPALIVE
-void simapi_spirv_variable_data_set_float(SimApiContext *context, uint32_t id, uint32_t index, float value) {
+void simapi_spirv_variable_data_set_float(SimApiContext *context, uint32_t id, uint32_t member, uint32_t index, float value) {
 	Variable *var = spirv_module_variable_by_id(&context->spirv_module, id);
 
 	if (!var) {
 		return;
 	}
 
+	VariableAccess *access = &var->access;
+	if (var->type->base_type->kind == TypeStructure && member != -1) {
+		access = &var->member_access[member];
+	}
+
 	SimPointer *mem = spirv_sim_retrieve_intf_pointer(
 			&context->spirv_sim,
 			var->kind, 
-			var->access);
+			*access);
 
 	float *data = (float *) (context->spirv_sim.memory + mem->pointer);
 	data[index] = value;
 }
 
 EMSCRIPTEN_KEEPALIVE
-void simapi_spirv_variable_data_set_int(SimApiContext *context, uint32_t id, uint32_t index, int32_t value) {
+void simapi_spirv_variable_data_set_int(SimApiContext *context, uint32_t id, uint32_t member, uint32_t index, int32_t value) {
 	Variable *var = spirv_module_variable_by_id(&context->spirv_module, id);
 
 	if (!var) {
 		return;
 	}
 
+	VariableAccess *access = &var->access;
+	if (var->type->base_type->kind == TypeStructure && member != -1) {
+		access = &var->member_access[member];
+	}
+
 	SimPointer *mem = spirv_sim_retrieve_intf_pointer(
 			&context->spirv_sim,
 			var->kind, 
-			var->access);
+			*access);
 
 	int32_t *data = (int32_t *) (context->spirv_sim.memory + mem->pointer);
 	data[index] = value;
@@ -358,7 +380,7 @@ const char *simapi_spirv_register(SimApiContext *context, uint32_t reg_idx) {
 
 	arr_printf(json, "{\"id\": %d", reg->id);
 	arr_printf(json, ",\"type\":");
-	spirv_type_to_json(reg->type, &json);
+	spirv_type_to_json(&context->spirv_module, reg->type, &json);
 	arr_printf(json, ",\"value\": ");
 	spirv_array_to_json(&json, reg->type, reg->raw);
 	arr_printf(json, "}");

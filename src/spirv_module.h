@@ -164,6 +164,7 @@ void spirv_module_load(SPIRV_module *module, struct SPIRV_binary *binary);
 void spirv_module_free(SPIRV_module *module);
 
 Type *spirv_module_type_by_id(SPIRV_module *module, uint32_t id);
+const char *spirv_module_name_by_id(SPIRV_module *module, uint32_t id, uint32_t member);
 Constant *spirv_module_constant_by_id(SPIRV_module *mpdule, uint32_t id);
 uint32_t spirv_module_variable_count(SPIRV_module *module);
 uint32_t spirv_module_variable_id(SPIRV_module *module, uint32_t index);
