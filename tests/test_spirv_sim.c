@@ -586,6 +586,14 @@ MunitResult test_aggregate(const MunitParameter params[], void* user_data_or_fix
     spirv_bin_init(&spirv_bin, 1, 0);
 
     spirv_common_header(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpName, ID(40), S('d', 'a', 't', 'a'), S('_', 'i', 'n', 0));
+    SPIRV_OP(&spirv_bin, SpvOpMemberName, ID(40), 0, S('f', '0', 0, 0));
+    SPIRV_OP(&spirv_bin, SpvOpMemberName, ID(40), 1, S('f', '1', 0, 0));
+    SPIRV_OP(&spirv_bin, SpvOpMemberName, ID(40), 2, S('v', '0', 0, 0));
+    SPIRV_OP(&spirv_bin, SpvOpName, ID(45), S('d', 'a', 't', 'a'), S('_', 'o', 'u', 't'), S(0,0,0,0));
+    SPIRV_OP(&spirv_bin, SpvOpMemberName, ID(45), 0, S('v', '0', 0, 0));
+    SPIRV_OP(&spirv_bin, SpvOpMemberName, ID(45), 1, S('f', '1', 0, 0));
+    SPIRV_OP(&spirv_bin, SpvOpMemberName, ID(45), 2, S('f', '0', 0, 0));
     SPIRV_OP(&spirv_bin, SpvOpMemberDecorate, ID(40), 0, SpvDecorationLocation, 0);
     SPIRV_OP(&spirv_bin, SpvOpMemberDecorate, ID(40), 1, SpvDecorationLocation, 1);
     SPIRV_OP(&spirv_bin, SpvOpMemberDecorate, ID(40), 2, SpvDecorationLocation, 2);
