@@ -297,10 +297,10 @@
 
 		function var_description(var_data) {
 			result = '';
-			if (var_data.hasOwnProperty('builtin')) {
-				result = var_data.interface + '.' + var_data.builtin;
+			if (var_data.access.hasOwnProperty('builtin')) {
+				result = var_data.access.kind + '.' + var_data.access.builtin;
 			} else {
-				result = var_data.interface + '[' + var_data.location + ']';
+				result = var_data.access.kind + '[' + var_data.access.location + ']';
 			}
 			if (var_data.hasOwnProperty('name')) {
 				result = result + ' (' + var_data.name + ')';

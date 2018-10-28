@@ -138,32 +138,50 @@ static inline void spirv_type_to_json(Type *type, char **output) {
 	arr_printf(*output, "}");
 }
 
+static inline void spirv_variable_access_to_json(VariableAccess *access, char **output) {
+	arr_printf(*output, "{\"kind\": \"%s\"", lut_lookup_variable_access(access->kind));
+
+	if (access->kind == VarAccessLocation) {
+		arr_printf(*output, ",\"location\": %d", access->index);
+	} else if (access->kind == VarAccessBuiltIn) {
+		arr_printf(*output, ",\"builtin\": \"%s\"", lut_lookup_builtin(access->index));
+	}
+	
+	arr_printf(*output, "}");
+}
 
 static inline void spirv_variable_to_json(Variable *var, char **output) {
 	arr_printf(*output, "{");
 	arr_printf(*output, "\"id\": %d", var->id);
-	arr_printf(*output, ",\"member_id\": %d", var->member_id);
 	arr_printf(*output, ",\"type\": ");
 	spirv_type_to_json(var->type, output);
 	if (var->name) {
 		arr_printf(*output, ",\"name\": \"%s\"", var->name);
 	}
 	arr_printf(*output, ",\"kind\": \"%s\"", lut_lookup_variable_kind(var->kind));
-	arr_printf(*output, ",\"interface\": \"%s\"", lut_lookup_variable_interface(var->if_type));
-	if (var->if_type == VarInterfaceLocation) {
-		arr_printf(*output, ",\"location\": %d", var->if_index);
-	} else if (var->if_type == VarInterfaceBuiltIn) {
-		arr_printf(*output, ",\"builtin\": \"%s\"", lut_lookup_builtin(var->if_index));
-	}
 
-	if (var->members) {
-		arr_printf(*output, ",\"member_types\": [");
-		for (Variable **member = var->members; member != arr_end(var->members); ++member) {
-			if (member != var->members) {
+	arr_printf(*output, ",\"access\": ");
+	spirv_variable_access_to_json(&var->access, output);
+
+	/* aggregate type: iterate members */
+	if (arr_len(var->member_access) > 0) {
+		arr_printf(*output, ",\"members\": [");
+
+		for (uint32_t idx = 0; idx < arr_len(var->member_access); ++idx) {
+			if (idx > 0) {
 				arr_printf(*output, ",");
 			}
-			spirv_variable_to_json(*member, output);
+
+			arr_printf(*output, "{\"access\": ");
+			spirv_variable_access_to_json(&var->member_access[idx], output);
+
+			if (var->member_name[idx]) {
+				arr_printf(*output, ",\"name\": \"%s\"", var->member_name[idx]);
+			}
+			
+			arr_printf(*output, "}");
 		}
+
 		arr_printf(*output, "]");
 	}
 
@@ -261,8 +279,7 @@ const char *simapi_spirv_variable_data(SimApiContext *context, uint32_t id) {
 	SimPointer *mem = spirv_sim_retrieve_intf_pointer(
 			&context->spirv_sim,
 			var->kind, 
-			var->if_type, 
-			var->if_index);
+			var->access);
 
 	char *json = NULL;
 
@@ -282,8 +299,7 @@ void simapi_spirv_variable_data_set_float(SimApiContext *context, uint32_t id, u
 	SimPointer *mem = spirv_sim_retrieve_intf_pointer(
 			&context->spirv_sim,
 			var->kind, 
-			var->if_type, 
-			var->if_index);
+			var->access);
 
 	float *data = (float *) (context->spirv_sim.memory + mem->pointer);
 	data[index] = value;
@@ -300,8 +316,7 @@ void simapi_spirv_variable_data_set_int(SimApiContext *context, uint32_t id, uin
 	SimPointer *mem = spirv_sim_retrieve_intf_pointer(
 			&context->spirv_sim,
 			var->kind, 
-			var->if_type, 
-			var->if_index);
+			var->access);
 
 	int32_t *data = (int32_t *) (context->spirv_sim.memory + mem->pointer);
 	data[index] = value;

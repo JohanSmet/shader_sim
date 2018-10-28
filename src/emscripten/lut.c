@@ -156,13 +156,13 @@ const char *lut_lookup_variable_kind(VariableKind kind) {
 	}
 }
 
-const char *lut_lookup_variable_interface(VariableInterface if_type) {
-	switch (if_type) {
-		case VarInterfaceNone:
+const char *lut_lookup_variable_access(VariableAccessKind kind) {
+	switch (kind) {
+		case VarAccessNone:
 			return "None";
-		case VarInterfaceBuiltIn:
+		case VarAccessBuiltIn:
 			return "BuiltIn";
-		case VarInterfaceLocation:
+		case VarAccessLocation:
 			return "Location";
 	}
 }
