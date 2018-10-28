@@ -579,7 +579,7 @@ MunitResult test_aggregate(const MunitParameter params[], void* user_data_or_fix
         float f1;
         float f0;
     } AggregateOut;
-#pragma pop(push)
+#pragma pack(pop)
  
     /* prepare binary */
     SPIRV_binary spirv_bin;
