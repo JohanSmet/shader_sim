@@ -23,12 +23,13 @@ typedef struct ArrayHeader {
 char *arr__printf(char *array, const char *fmt, ...);
 void *arr__grow(const void *array, size_t new_len, size_t elem_size);
 
-#define arr__hdr(a) ((ArrayHeader *) ((char *)(a) - offsetof(ArrayHeader, data)))
+#define arr__hdr(a) ((ArrayHeader *) (void *) ((char *)(a) - offsetof(ArrayHeader, data)))
+#define arr__hdr_const(a) ((const ArrayHeader *) (const void *) ((const char *)(a) - offsetof(ArrayHeader, data)))
 #define arr__fits(a, n) ((arr_len(a) + (n) <= arr_cap(a)))
 #define arr__fit(a, n) (arr__fits(a, n) ? 0 : ((a) = arr__grow((a), arr_len(a) + (n), sizeof(*(a)))))
 
-#define arr_len(a) ((a) ? arr__hdr((a))->len : 0)
-#define arr_cap(a) ((a) ? arr__hdr((a))->cap : 0)
+#define arr_len(a) ((a) ? arr__hdr_const((a))->len : 0)
+#define arr_cap(a) ((a) ? arr__hdr_const((a))->cap : 0)
 #define arr_push(a, i) (arr__fit((a), 1), (a)[arr__hdr(a)->len++] = (i))
 #define arr_push_buf(a, b, n) (arr__fit((a), n), memcpy(arr_end(a), (b), (n) * sizeof(*(a))), arr__hdr(a)->len+= (n))
 #define arr_free(a) ((a) ? (free(arr__hdr(a)), (a) = NULL) : 0)
