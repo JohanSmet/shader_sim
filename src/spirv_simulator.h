@@ -58,7 +58,7 @@ void spirv_sim_step(SPIRV_simulator *sim);
 
 SimRegister *spirv_sim_register_by_id(SPIRV_simulator *sim, uint32_t id);
 SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, VariableKind kind, VariableAccess access);
-size_t spirv_register_to_string(SPIRV_simulator *sim, uint32_t reg_idx, char *out_str, size_t out_max);
+void spirv_register_to_string(SPIRV_simulator *sim, uint32_t reg_idx, char **out_str);
 
 
 #endif // JS_SHADER_SIM_SPIRV_SIMULATOR_H

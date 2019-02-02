@@ -36,13 +36,13 @@ RUNNER_FUNC_END
 
 RUNNER_FUNC_BEGIN(CmdStep)
 
-    char reg_str[256];
+    char *reg_str = NULL;
 
     if (!runner->spirv_sim->finished && !runner->spirv_sim->error_msg) {
         printf("Execute %s\n", spirv_text_opcode(spirv_bin_opcode_current(&runner->spirv_bin)));
         spirv_sim_step(runner->spirv_sim);
         for (uint32_t idx = 0; idx < runner->spirv_sim->reg_free_start; ++idx) {
-            spirv_register_to_string(runner->spirv_sim, idx, reg_str, sizeof(reg_str));
+            spirv_register_to_string(runner->spirv_sim, idx, &reg_str);
             printf("%s\n", reg_str);
         }
     }

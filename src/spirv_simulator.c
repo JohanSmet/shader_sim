@@ -183,26 +183,24 @@ SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, VariableKind k
     return result;
 }
 
-size_t spirv_register_to_string(SPIRV_simulator *sim, uint32_t reg_idx, char *out_str, size_t out_max) {
+void spirv_register_to_string(SPIRV_simulator *sim, uint32_t reg_idx, char **out_str) {
 
     SimRegister *reg = &sim->temp_regs[reg_idx];
-    size_t used = snprintf(out_str, out_max, "reg %2d (%%%d):", reg_idx, reg->id);
+    arr_printf(*out_str, "reg %2d (%%%d):", reg_idx, reg->id);
     
     for (uint32_t i = 0; i < reg->type->count; ++i) {
         if (spirv_sim_type_is_float(reg->type)) {
-            used += snprintf(out_str + used, out_max - used, " %.4f", reg->vec[i]);
+            arr_printf(*out_str, " %.4f", reg->vec[i]);
         } else if (spirv_sim_type_is_integer(reg->type)) {
             if (reg->type->is_signed) {
-                used += snprintf(out_str + used, out_max - used, " %d", reg->svec[i]);
+                arr_printf(*out_str, " %d", reg->svec[i]);
             } else {
-                used += snprintf(out_str + used, out_max - used, " %d", reg->uvec[i]);
+                arr_printf(*out_str, " %d", reg->uvec[i]);
             }
         } else if (reg->type->kind == TypePointer) {
-            used += snprintf(out_str + used, out_max - used, " ptr(%x)", reg->uvec[i]);
+            arr_printf(*out_str, " ptr(%x)", reg->uvec[i]);
         }
     }
-    
-    return used;
 }
 
 static inline uint32_t sign_extend(uint32_t data, uint32_t width) {
