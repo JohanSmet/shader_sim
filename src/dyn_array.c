@@ -6,6 +6,7 @@
 
 #include "dyn_array.h"
 
+__attribute__((__format__ (__printf__, 2, 0)))  /* to silence clang (non-constant format string for printf) */
 char *arr__printf(char *array, const char *fmt, ...) {
     va_list args;
     size_t avail = arr_cap(array) - arr_len(array);
