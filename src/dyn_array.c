@@ -9,17 +9,25 @@
 char *arr__printf(char *array, const char *fmt, ...) {
     va_list args;
     size_t avail = arr_cap(array) - arr_len(array);
+
     va_start(args, fmt);
-    size_t n = vsnprintf(arr_end(array), avail, fmt, args) + 1;
+    int result = vsnprintf(arr_end(array), avail, fmt, args);
     va_end(args);
+
+    assert(result >= 0);
+    size_t n = (size_t) result + 1;
 
     if (n > avail) {
         // array too small, grow and print again
         arr__fit(array, n);
-        size_t avail = arr_cap(array) - arr_len(array);
+        avail = arr_cap(array) - arr_len(array);
+
         va_start(args, fmt);
-        n = vsnprintf(arr_end(array), avail, fmt, args) + 1;
+        result = vsnprintf(arr_end(array), avail, fmt, args);
         va_end(args);
+
+        assert(result >= 0);
+        n = (size_t) result + 1;
     }
 
     // don't count zero-terminator in array length so it concatenates easily (terminator is always present!)
