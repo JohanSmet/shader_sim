@@ -104,7 +104,7 @@ if (EMSCRIPTEN)
 	target_link_libraries(${WASM_TARGET} ${LIB_TARGET} ${EXTRA_LIBS})
 	target_link_libraries(${WASM_TARGET} "--shell-file ${CMAKE_CURRENT_SOURCE_DIR}/src/emscripten/html_template/shell_minimal.html")
 	target_link_libraries(${WASM_TARGET} "-s EXTRA_EXPORTED_RUNTIME_METHODS='[\"ccall\", \"cwrap\"]'")
-	target_link_libraries(${WASM_TARGET} "--preload-file ${CMAKE_CURRENT_SOURCE_DIR}/examples@/examples --exclude-file *.json --exclude-file *.src")
+	target_link_libraries(${WASM_TARGET} "--preload-file ${CMAKE_CURRENT_SOURCE_DIR}/examples@/examples --exclude-file *.json --exclude-file *.src --exclude-file *.glsl")
 endif()
 
 
