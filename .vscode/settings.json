@@ -1,3 +1,14 @@
 {
-    "C_Cpp.default.configurationProvider": "vector-of-bool.cmake-tools"
+    "c-cpp-flylint.clang.language": "C",
+    "c-cpp-flylint.clang.standard": [
+        "c11"
+    ],
+    "c-cpp-flylint.clang.warnings": [
+        "all",
+        "extra",
+        "everything"
+    ],
+    "files.associations": {
+        "hash_map.h": "c"
+    }
 }
