@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.1)
 
 project(shader_sim)
 
-# force C99 for all targets
-set(CMAKE_C_STANDARD 99)
+# force C11 for all targets
+set(CMAKE_C_STANDARD 11)
 
 # platform detection
 string(TOUPPER ${CMAKE_SYSTEM_NAME} PLATFORM_NAME)
