@@ -8,13 +8,15 @@ At the moment only (a subset of) of SPIR-V has been implemented. Support for oth
 
 The short answer is that it seemed like a fun way to spend some free time.
 
-A slightly longer answer would be it's a combination of events. I was playing around with using SPIR-V shaders in OpenGL, and having some trouble figuring out what was going on in the shaders. At the same time I was kinda watching [bitwise](https://github.com/pervognsen/bitwise) building computer systems from scratch. So I thought it would be fun to try and write a SPIR-V simulator. I decided to use this opportunity to brush op on C.
+A slightly longer answer would be it's a combination of events. I was playing around with using SPIR-V shaders in OpenGL, and having some trouble figuring out what was going on in the shaders. At the same time I was watching [bitwise](https://github.com/pervognsen/bitwise) building computer systems from scratch. So I thought it would be fun to try and write a SPIR-V simulator. I decided to use this opportunity to brush up on my C. It had been a while since I wrote anything in pure C.
+
+The decision to do include a browser based front-end came about in the same way. Thought a UI could be useful, didn't feel like using Qt or WxWindows (been there, done that). So why experiment with Emscripten and WebAssembly. Another thing I can scratch of my bucket list ;-)
 
 It's definitely not ground breaking and might not be useful to many people. But I had a lot of fun and learned quite a bit while doing this.
 
 ## Structure
 
-The core of ShaderSim is implemented as a C99 library, with minimal external dependencies.
+The core of ShaderSim is implemented as a C11 library, with minimal external dependencies. The majority of the code should be compatible with C99, the only C11 feature in use are static_asserts.
 
 There's a command-line front-end that can be used to verify expected outputs from given inputs. The parameters of the execution are specified through a JSON file.
 
