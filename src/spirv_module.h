@@ -35,15 +35,15 @@ typedef enum MatrixKind {
 typedef struct Type {
     uint32_t id;
     TypeKind kind;
-    int count;                  // number of elements
-    int32_t element_size;       // in bytes
+    uint32_t count;             // number of elements
+    uint32_t element_size;      // in bytes
     bool is_signed;             // only for Integer/VectorInteger/MatrixInteger
     struct Type *base_type;     // only for Pointer/Array/Vector/Matrix
     union {
         struct {
             MatrixKind  kind;
-            int32_t     num_rows;
-            int32_t     num_cols;
+            uint32_t    num_rows;
+            uint32_t    num_cols;
         } matrix;
         struct {
             struct Type *return_type;
@@ -57,8 +57,10 @@ typedef struct Type {
 
 typedef union ConstantValue {
     int32_t as_int;
+    uint32_t as_uint;
     float   as_float;
     int32_t *as_int_array;
+    uint32_t *as_uint_array;
     float   *as_float_array;
 } ConstantValue;
 
@@ -97,7 +99,7 @@ typedef enum VariableAccessKind {
 
 typedef struct VariableAccess {
     VariableAccessKind kind;
-    uint32_t index;
+    int32_t index;
 } VariableAccess;
 
 typedef struct Variable {
@@ -164,7 +166,7 @@ void spirv_module_load(SPIRV_module *module, struct SPIRV_binary *binary);
 void spirv_module_free(SPIRV_module *module);
 
 Type *spirv_module_type_by_id(SPIRV_module *module, uint32_t id);
-const char *spirv_module_name_by_id(SPIRV_module *module, uint32_t id, uint32_t member);
+const char *spirv_module_name_by_id(SPIRV_module *module, uint32_t id, int32_t member);
 Constant *spirv_module_constant_by_id(SPIRV_module *mpdule, uint32_t id);
 uint32_t spirv_module_variable_count(SPIRV_module *module);
 uint32_t spirv_module_variable_id(SPIRV_module *module, uint32_t index);

@@ -63,7 +63,7 @@ static inline bool spirv_sim_type_is_matrix(Type *type) {
 }
 
 static inline uint64_t var_data_key(VariableKind kind, VariableAccess *access) {
-   return (uint64_t) kind << 48 | (uint64_t) access->kind << 32 | access->index;
+   return (uint64_t) kind << 48 | (uint64_t) access->kind << 32 | (uint32_t) access->index;
 }
 
 static void spirv_add_interface_pointers(SPIRV_simulator *sim, Variable *var_desc, uint32_t pointer) {
@@ -116,7 +116,7 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
    
     /* setup access to constants */
     for (int iter = map_begin(&module->constants); iter != map_end(&module->constants); iter = map_next(&module->constants, iter)) {
-        uint32_t id = map_key_int(&module->constants, iter);
+        uint32_t id = (uint32_t) map_key_int(&module->constants, iter);
         Constant *constant = map_val(&module->constants, iter);
         
         int32_t reg = spirv_sim_assign_register(sim, id, constant->type);
@@ -129,14 +129,14 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
     
     /* allocate memory for variables */
     for (int iter = map_begin(&module->variables); iter != map_end(&module->variables); iter = map_next(&module->variables, iter)) {
-        uint32_t id = map_key_int(&module->variables, iter);
+        uint32_t id = (int32_t) map_key_int(&module->variables, iter);
         Variable *var = map_val(&module->variables, iter);
         
         /* allocate memory */
         size_t total_size = var->array_elements * var->type->base_type->element_size * var->type->base_type->count;
-        arr_reserve(sim->memory, ALIGN_UP(total_size, 8));
+        arr_reserve(sim->memory, ALIGN_UP(total_size, 8u));
         uint32_t mem_ptr = sim->memory_free_start;
-        sim->memory_free_start += ALIGN_UP(total_size, 8);
+        sim->memory_free_start += ALIGN_UP(total_size, 8u);
         
         /* store pointer in a register */
         uint32_t reg_idx = spirv_sim_assign_register(sim, id, var->type);
@@ -227,7 +227,7 @@ static inline uint32_t count_set_bits(uint32_t data) {
     return result;
 }
 
-uint32_t aggregate_indices_offset(Type *type, uint32_t num_indices, uint32_t *indices) {
+static uint32_t aggregate_indices_offset(Type *type, uint32_t num_indices, uint32_t *indices) {
     
     uint32_t offset = 0;
     Type *cur_type = type;
@@ -337,7 +337,7 @@ OP_FUNC_BEGIN(SpvOpAccessChain) {
     uint32_t pointer = base->uvec[0];
     
     for (uint32_t idx = 3; idx < op->op.length - 1; ++idx) {
-        uint32_t field_offset = spirv_module_constant_by_id(sim->module, op->optional[idx])->value.as_int;
+        uint32_t field_offset = spirv_module_constant_by_id(sim->module, op->optional[idx])->value.as_uint;
         
         switch (cur_type->kind) {
             case TypeStructure:
@@ -460,7 +460,7 @@ OP_FUNC_RES_1OP(SpvOpSatConvertSToU) {
     assert(spirv_sim_type_is_signed_integer(op_reg->type));
     assert(spirv_sim_type_is_unsigned_integer(res_type));
 
-    uint32_t max_uint = (UINT64_C(1) << (res_type->element_size * 8)) - 1;
+    uint32_t max_uint = (uint32_t) (UINT64_C(1) << (res_type->element_size * 8)) - 1;
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = CLAMP(op_reg->svec[i], 0, max_uint);
@@ -473,7 +473,6 @@ OP_FUNC_RES_1OP(SpvOpSatConvertUToS) {
     assert(spirv_sim_type_is_unsigned_integer(op_reg->type));
     assert(spirv_sim_type_is_signed_integer(res_type));
 
-    int32_t min_sint = -(1 << ((res_type->element_size * 8) - 1));
     int32_t max_sint = (1 << ((res_type->element_size * 8) - 1)) - 1;
 
     for (int32_t i = 0; i < res_type->count; ++i) {
@@ -1600,7 +1599,7 @@ OP_FUNC_RES_2OP(SpvOpFUnordLessThanEqual) {
     assert(spirv_sim_type_is_float(op1_reg->type));
     assert(op1_reg->type == op2_reg->type);
     
-    for (int32_t i = 0; i < res_type->count; ++i) {
+    for (uint32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] =
         isunordered(op1_reg->vec[i], op2_reg->vec[i]) ||
         (op1_reg->vec[i] <= op2_reg->vec[i]);
@@ -1615,7 +1614,7 @@ OP_FUNC_RES_2OP(SpvOpFOrdGreaterThanEqual) {
     assert(spirv_sim_type_is_float(op1_reg->type));
     assert(op1_reg->type == op2_reg->type);
     
-    for (int32_t i = 0; i < res_type->count; ++i) {
+    for (uint32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] =
         !isunordered(op1_reg->vec[i], op2_reg->vec[i]) &&
         (op1_reg->vec[i] >= op2_reg->vec[i]);
@@ -1630,7 +1629,7 @@ OP_FUNC_RES_2OP(SpvOpFUnordGreaterThanEqual) {
     assert(spirv_sim_type_is_float(op1_reg->type));
     assert(op1_reg->type == op2_reg->type);
     
-    for (int32_t i = 0; i < res_type->count; ++i) {
+    for (uint32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] =
         isunordered(op1_reg->vec[i], op2_reg->vec[i]) ||
         (op1_reg->vec[i] >= op2_reg->vec[i]);

@@ -48,7 +48,7 @@ bool spirv_bin_load(SPIRV_binary *spirv, int8_t *data) {
     assert(data != NULL);
 
     // initialization
-    *spirv = (SPIRV_binary) {};
+    *spirv = (SPIRV_binary) {0};
 
     // do some basic validation on the binary
     if (arr_len(data) < 20) {

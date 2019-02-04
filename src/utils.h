@@ -7,7 +7,7 @@
 
 #include "types.h"
 
-void fatal_error(const char *fmt, ...);
+void fatal_error(const char *fmt, ...) __attribute__((noreturn));
 
 size_t file_load_binary(const char *filename, int8_t **buffer);
 size_t file_load_text(const char *filename, int8_t **buffer);
