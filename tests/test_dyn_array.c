@@ -87,6 +87,28 @@ MunitResult test_reserve(const MunitParameter params[], void* user_data_or_fixtu
     return MUNIT_OK;
 }
 
+MunitResult test_pop(const MunitParameter params[], void* user_data_or_fixture) {
+    int *test_array = NULL;
+
+    arr_push(test_array, 0);
+    arr_push(test_array, 1);
+    arr_push(test_array, 2);
+    arr_push(test_array, 3);
+
+    munit_assert_int(arr_len(test_array), ==, 4);
+    munit_assert_int(arr_pop(test_array), ==, 3);
+
+    munit_assert_int(arr_len(test_array), ==, 3);
+    munit_assert_int(arr_pop(test_array), ==, 2);
+
+    munit_assert_int(arr_len(test_array), ==, 2);
+    munit_assert_int(arr_pop(test_array), ==, 1);
+
+    munit_assert_int(arr_len(test_array), ==, 1);
+    munit_assert_int(arr_pop(test_array), ==, 0);
+
+    munit_assert_int(arr_len(test_array), ==, 0);
+}
 
 MunitTest dyn_array_tests[] = {
     { "/basic", test_basic, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
@@ -94,5 +116,6 @@ MunitTest dyn_array_tests[] = {
     { "/clear", test_clear, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/printf", test_printf, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/reserve", test_reserve, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    { "/pop", test_pop, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };

@@ -31,6 +31,7 @@ void *arr__grow(const void *array, size_t new_len, size_t elem_size);
 #define arr_len(a) ((a) ? arr__hdr_const((a))->len : 0)
 #define arr_cap(a) ((a) ? arr__hdr_const((a))->cap : 0)
 #define arr_push(a, i) (arr__fit((a), 1), (a)[arr__hdr(a)->len++] = (i))
+#define arr_pop(a) ((a)[--arr__hdr(a)->len]) 
 #define arr_push_buf(a, b, n) (arr__fit((a), n), memcpy(arr_end(a), (b), (n) * sizeof(*(a))), arr__hdr(a)->len+= (n))
 #define arr_free(a) ((a) ? (free(arr__hdr(a)), (a) = NULL) : 0)
 #define arr_clear(a) ((a) ? arr__hdr((a))->len = 0 : 0)
