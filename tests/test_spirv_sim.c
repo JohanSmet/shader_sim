@@ -19,6 +19,10 @@
 #define TEST_TYPE_INT32     2
 #define TEST_TYPE_UINT32    4
 
+static inline uint32_t FLOAT(float f) {
+    return *((uint32_t *) &f);
+}
+
 static inline float fremf(float v1, float v2) {
     /* The math.h remainder function rounds the quotient to the nearest integer value which means
        that two positive numbers can have a negative remainder (e.g. 3.5 / 1). This doesn't match
@@ -671,6 +675,48 @@ MunitResult test_aggregate(const MunitParameter params[], void* user_data_or_fix
 
     return MUNIT_OK;
 }
+MunitResult test_function(const MunitParameter params[], void* user_data_or_fixture) {
+
+    /* prepare binary */
+    SPIRV_binary spirv_bin;
+    spirv_bin_init(&spirv_bin, 1, 0);
+
+    spirv_common_header(&spirv_bin);
+    spirv_common_types(&spirv_bin, TEST_TYPE_FLOAT32);
+    SPIRV_OP(&spirv_bin, SpvOpTypePointer, ID(15), SpvStorageClassFunction, ID(10));
+    SPIRV_OP(&spirv_bin, SpvOpTypeFunction, ID(40), ID(10), ID(10));
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(45), FLOAT(5.5f));
+    spirv_common_function_header_main(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpFMul, ID(10), ID(44), ID(45), ID(45));
+    SPIRV_OP(&spirv_bin, SpvOpFunctionCall, ID(10), ID(61), ID(41), ID(45));
+    spirv_common_function_footer(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpFunction, ID(10), ID(41), SpvFunctionControlMaskNone, ID(40));
+    SPIRV_OP(&spirv_bin, SpvOpFunctionParameter, ID(10), ID(42));
+    SPIRV_OP(&spirv_bin, SpvOpLabel, ID(43));
+    SPIRV_OP(&spirv_bin, SpvOpFMul, ID(10), ID(52), ID(42), ID(42));
+    SPIRV_OP(&spirv_bin, SpvOpReturnValue, ID(52));
+    SPIRV_OP(&spirv_bin, SpvOpFunctionEnd);
+    spirv_bin.header.bound_ids = 62; 
+    spirv_bin_finalize(&spirv_bin);
+
+    /* prepare simulator */
+    SPIRV_module spirv_module;
+    spirv_module_load(&spirv_module, &spirv_bin);
+    
+    SPIRV_simulator spirv_sim;
+    spirv_sim_init(&spirv_sim, &spirv_module);
+
+    /* run simulator */
+    while (!spirv_sim.finished && !spirv_sim.error_msg) {
+        spirv_sim_step(&spirv_sim);
+        munit_assert_null(spirv_sim.error_msg);
+    }
+
+    /* check registers */
+    ASSERT_REGISTER_FLOAT(&spirv_sim, ID(61), ==, 5.5f * 5.5f);
+
+    return MUNIT_OK;
+} 
     
 
 MunitTest spirv_sim_tests[] = {
@@ -680,5 +726,6 @@ MunitTest spirv_sim_tests[] = {
     { "/composite_float32", test_composite_float32, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/conversion", test_conversion, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     { "/aggregate", test_aggregate, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    { "/function", test_function, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
