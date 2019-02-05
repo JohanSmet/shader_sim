@@ -432,7 +432,7 @@ MunitResult test_composite_float32(const MunitParameter params[], void* user_dat
                          data2[0], data1[1], data2[2], data1[3]);
     
     /* OpCompositeConstruct - struct */
-    SimRegister *c1_reg = &spirv_sim.temp_regs[map_int_int_get(&spirv_sim.assigned_regs, ID(66))];
+    SimRegister *c1_reg = spirv_sim_register_by_id(&spirv_sim, ID(66));
     CompositeStruct c1_expected = (CompositeStruct) {
         .f0 = data3,
         .f1 = data1[2],
@@ -442,7 +442,7 @@ MunitResult test_composite_float32(const MunitParameter params[], void* user_dat
     munit_assert_memory_equal(sizeof(CompositeStruct), c1_reg->raw, &c1_expected);
     
     /* OpCompositeConstruct - array */
-    SimRegister *c2_reg = &spirv_sim.temp_regs[map_int_int_get(&spirv_sim.assigned_regs, ID(67))];
+    SimRegister *c2_reg = spirv_sim_register_by_id(&spirv_sim, ID(67));
     float c2_expected[2][4] = {
         {data1[0], data1[1], data1[2], data1[3]},
         {data2[0], data2[1], data2[2], data2[3]}
@@ -450,12 +450,12 @@ MunitResult test_composite_float32(const MunitParameter params[], void* user_dat
     munit_assert_memory_equal(sizeof(float) * 8, c2_reg->raw, c2_expected);
     
     /* OpCompositeConstruct - vector */
-    SimRegister *c3_reg = &spirv_sim.temp_regs[map_int_int_get(&spirv_sim.assigned_regs, ID(68))];
+    SimRegister *c3_reg = spirv_sim_register_by_id(&spirv_sim, ID(68));
     float c3_expected[6] = {data3, data1[0], data1[1], data1[2], data1[3], data3};
     munit_assert_memory_equal(sizeof(float) * 6, c3_reg->raw, c3_expected);
     
     /* OpCompositeConstruct - matrix */
-    SimRegister *c4_reg = &spirv_sim.temp_regs[map_int_int_get(&spirv_sim.assigned_regs, ID(69))];
+    SimRegister *c4_reg = spirv_sim_register_by_id(&spirv_sim, ID(69));
     float c4_expected[4][4] = {
         {data1[0], data1[1], data1[2], data1[3]},
         {data2[0], data2[1], data2[2], data2[3]},
@@ -468,7 +468,7 @@ MunitResult test_composite_float32(const MunitParameter params[], void* user_dat
     ASSERT_REGISTER_FLOAT(&spirv_sim, ID(70), ==, c1_expected.v0[3]);
     
     /* OpCompositeInsert */
-    SimRegister *i1_reg = &spirv_sim.temp_regs[map_int_int_get(&spirv_sim.assigned_regs, ID(71))];
+    SimRegister *i1_reg = spirv_sim_register_by_id(&spirv_sim, ID(71));
     CompositeStruct i1_expected = (CompositeStruct) {
         .f0 = data3,
         .f1 = data1[2],
@@ -478,11 +478,11 @@ MunitResult test_composite_float32(const MunitParameter params[], void* user_dat
     munit_assert_memory_equal(sizeof(CompositeStruct), i1_reg->raw, &i1_expected);
     
     /* OpCopyObject */
-    SimRegister *o1_reg = &spirv_sim.temp_regs[map_int_int_get(&spirv_sim.assigned_regs, ID(72))];
+    SimRegister *o1_reg = spirv_sim_register_by_id(&spirv_sim, ID(72));
     munit_assert_memory_equal(sizeof(CompositeStruct), o1_reg->raw, i1_reg->raw);
     
     /* OpTranspose */
-    SimRegister *t1_reg = &spirv_sim.temp_regs[map_int_int_get(&spirv_sim.assigned_regs, ID(73))];
+    SimRegister *t1_reg = spirv_sim_register_by_id(&spirv_sim, ID(73));
     float t1_expected[4][4] = {
         {data1[0], data2[0], data1[0], data2[0]},
         {data1[1], data2[1], data3, data1[1]},

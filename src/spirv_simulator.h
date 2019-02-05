@@ -26,7 +26,10 @@ typedef struct SimRegister {
     Type *type;
 } SimRegister;
 
-#define SPIRV_SIM_MAX_TEMP_REGISTERS    4096
+typedef struct SPIRV_stackframe {
+    HashMap     regs;    // SPIRV id (uint32_t) -> SimRegister *
+    MemArena    memory;
+} SPIRV_stackframe;
 
 typedef struct SPIRV_simulator {
     SPIRV_module *module;
@@ -36,10 +39,9 @@ typedef struct SPIRV_simulator {
 
     HashMap intf_pointers;  // uint64_t -> SimPointer *
 
-    SimRegister temp_regs[SPIRV_SIM_MAX_TEMP_REGISTERS];
-    uint32_t reg_free_start;
-    HashMap assigned_regs;  // SPIRV id (uint32_t) -> register index (uint32_t)
-    MemArena reg_data;
+    /* stackframes */
+    SPIRV_stackframe global_frame;
+    SPIRV_stackframe *current_frame;
 
     bool finished;
     char *error_msg;        // NULL if no error, dynamic string otherwise
@@ -58,7 +60,7 @@ void spirv_sim_step(SPIRV_simulator *sim);
 
 SimRegister *spirv_sim_register_by_id(SPIRV_simulator *sim, uint32_t id);
 SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, VariableKind kind, VariableAccess access);
-void spirv_register_to_string(SPIRV_simulator *sim, uint32_t reg_idx, char **out_str);
+void spirv_register_to_string(SPIRV_simulator *sim, SimRegister *reg, char **out_str);
 
 
 #endif // JS_SHADER_SIM_SPIRV_SIMULATOR_H

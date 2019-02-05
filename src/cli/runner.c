@@ -34,16 +34,28 @@ RUNNER_FUNC_BEGIN(CmdAssociateData)
 
 RUNNER_FUNC_END
 
-RUNNER_FUNC_BEGIN(CmdStep)
-
+static void print_registers(SPIRV_simulator *sim, HashMap *reg_map) {
     char *reg_str = NULL;
+
+    // FIXME: sort output by ID
+    for (int iter = map_begin(reg_map); iter != map_end(reg_map); iter = map_next(reg_map, iter)) {
+        spirv_register_to_string(sim, map_val(reg_map, iter), &reg_str);
+        printf("%s\n", reg_str);
+        arr_clear(reg_str);
+    }
+
+    arr_free(reg_str);
+}
+
+RUNNER_FUNC_BEGIN(CmdStep)
 
     if (!runner->spirv_sim->finished && !runner->spirv_sim->error_msg) {
         printf("Execute %s\n", spirv_text_opcode(spirv_bin_opcode_current(&runner->spirv_bin)));
         spirv_sim_step(runner->spirv_sim);
-        for (uint32_t idx = 0; idx < runner->spirv_sim->reg_free_start; ++idx) {
-            spirv_register_to_string(runner->spirv_sim, idx, &reg_str);
-            printf("%s\n", reg_str);
+
+        print_registers(runner->spirv_sim, &runner->spirv_sim->global_frame.regs);
+        if (runner->spirv_sim->current_frame != NULL && runner->spirv_sim->current_frame != & runner->spirv_sim->global_frame) {
+            print_registers(runner->spirv_sim, &runner->spirv_sim->current_frame->regs);
         }
     }
     return true;

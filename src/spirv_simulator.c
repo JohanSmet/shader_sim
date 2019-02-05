@@ -18,15 +18,17 @@ static SimPointer *new_sim_pointer(SPIRV_simulator *sim, Type *type, uint32_t po
     return result;
 }
 
-static inline uint32_t spirv_sim_assign_register(SPIRV_simulator *sim, uint32_t id, Type *type) {
+static inline SimRegister *spirv_sim_assign_register(SPIRV_simulator *sim, uint32_t id, Type *type) {
     assert(sim);
-    uint32_t reg_idx = sim->reg_free_start++;
-    sim->temp_regs[reg_idx].vec = mem_arena_allocate(&sim->reg_data, type->element_size * type->count);
-    sim->temp_regs[reg_idx].id = id;
-    sim->temp_regs[reg_idx].type = type;
-    map_int_int_put(&sim->assigned_regs, id, reg_idx);
-    
-    return reg_idx;
+    assert(sim->current_frame);
+
+    SimRegister *reg = mem_arena_allocate(&sim->current_frame->memory, sizeof(SimRegister));
+    reg->vec = mem_arena_allocate(&sim->current_frame->memory, type->element_size * type->count);
+    reg->id = id;
+    reg->type = type;
+    map_int_ptr_put(&sim->current_frame->regs, id, reg);
+
+    return reg;
 }
 
 static inline bool spirv_sim_type_is_integer(Type *type) {
@@ -111,7 +113,11 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
         .module = module
     };
 
-    mem_arena_init(&sim->reg_data, 256 * 16, ARENA_DEFAULT_ALIGN);
+    /* setup stackframe for globals */
+    sim->current_frame = &sim->global_frame;
+    mem_arena_init(&sim->global_frame.memory, 256 * 16, ARENA_DEFAULT_ALIGN);
+
+    /* start at first defined entrypoint (for now -- FIXME) */
     spirv_sim_select_entry_point(sim, 0);
    
     /* setup access to constants */
@@ -119,18 +125,22 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
         uint32_t id = (uint32_t) map_key_int(&module->constants, iter);
         Constant *constant = map_val(&module->constants, iter);
         
-        int32_t reg = spirv_sim_assign_register(sim, id, constant->type);
+        SimRegister *reg = spirv_sim_assign_register(sim, id, constant->type);
         if (constant->type->count == 1) {
-            memcpy(sim->temp_regs[reg].vec, &constant->value.as_int, constant->type->element_size);
+            memcpy(reg->vec, &constant->value.as_int, constant->type->element_size);
         } else {
-            memcpy(sim->temp_regs[reg].vec, constant->value.as_int_array, constant->type->element_size * constant->type->count);
+            memcpy(reg->vec, constant->value.as_int_array, constant->type->element_size * constant->type->count);
         }
     }
     
-    /* allocate memory for variables */
+    /* allocate memory for global / pipeline variables */
     for (int iter = map_begin(&module->variables); iter != map_end(&module->variables); iter = map_next(&module->variables, iter)) {
         uint32_t id = (int32_t) map_key_int(&module->variables, iter);
         Variable *var = map_val(&module->variables, iter);
+
+        if (var->kind == VarKindFunction) {
+            continue;
+        }
         
         /* allocate memory */
         size_t total_size = var->array_elements * var->type->base_type->element_size * var->type->base_type->count;
@@ -139,8 +149,8 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
         sim->memory_free_start += ALIGN_UP(total_size, 8u);
         
         /* store pointer in a register */
-        uint32_t reg_idx = spirv_sim_assign_register(sim, id, var->type);
-        sim->temp_regs[reg_idx].uvec[0] = mem_ptr;
+        SimRegister *reg = spirv_sim_assign_register(sim, id, var->type);
+        reg->uvec[0] = mem_ptr;
         
         spirv_add_interface_pointers(sim, var, mem_ptr);
     }
@@ -173,7 +183,17 @@ void spirv_sim_select_entry_point(SPIRV_simulator *sim, uint32_t index) {
 
 SimRegister *spirv_sim_register_by_id(SPIRV_simulator *sim, uint32_t id) {
     assert(sim);
-    return &sim->temp_regs[map_int_int_get(&sim->assigned_regs, id)];
+
+    /* check the stack frame of the current function */
+    if (sim->current_frame) {
+        SimRegister *reg = map_int_ptr_get(&sim->current_frame->regs, id);
+        if (reg != NULL) {
+            return reg;
+        }
+    }
+
+    /* if not found: check the global frame */
+    return map_int_ptr_get(&sim->global_frame.regs, id);
 }
 
 SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, VariableKind kind, VariableAccess access) {
@@ -183,10 +203,11 @@ SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, VariableKind k
     return result;
 }
 
-void spirv_register_to_string(SPIRV_simulator *sim, uint32_t reg_idx, char **out_str) {
+void spirv_register_to_string(SPIRV_simulator *sim, SimRegister *reg, char **out_str) {
+    assert(sim);
+    assert(reg);
 
-    SimRegister *reg = &sim->temp_regs[reg_idx];
-    arr_printf(*out_str, "reg %2d (%%%d):", reg_idx, reg->id);
+    arr_printf(*out_str, "reg %%%d:", reg->id);
     
     for (uint32_t i = 0; i < reg->type->count; ++i) {
         if (spirv_sim_type_is_float(reg->type)) {
@@ -251,13 +272,12 @@ static uint32_t aggregate_indices_offset(Type *type, uint32_t num_indices, uint3
     return offset;
 }
 
-#define OP_REGISTER(reg, id) \
-    SimRegister *reg = &sim->temp_regs[map_int_int_get(&sim->assigned_regs, op->optional[id])];    \
+#define OP_REGISTER(reg, idx)                                            \
+    SimRegister *reg = spirv_sim_register_by_id(sim, op->optional[idx]); \
     assert(reg != NULL);
 
 #define OP_REGISTER_ASSIGN(reg, type, result_id) \
-    uint32_t reg##_idx = spirv_sim_assign_register(sim, result_id, type);  \
-    SimRegister *res_reg = &sim->temp_regs[reg##_idx];
+    SimRegister *res_reg = spirv_sim_assign_register(sim, result_id, type);  
 
 #define OP_FUNC_BEGIN(kind) \
     static inline void spirv_sim_op_##kind(SPIRV_simulator *sim, SPIRV_opcode *op) {    \
@@ -271,8 +291,7 @@ static uint32_t aggregate_indices_offset(Type *type, uint32_t num_indices, uint3
                                                     \
         /* assign a register to keep the data */    \
         Type *res_type = spirv_module_type_by_id(sim->module, result_type);     \
-        uint32_t res_idx = spirv_sim_assign_register(sim, result_id, res_type); \
-        SimRegister *res_reg = &sim->temp_regs[res_idx];                        \
+        SimRegister *res_reg = spirv_sim_assign_register(sim, result_id, res_type); \
                                                                                 \
         /* retrieve register used for operand */                                \
         OP_REGISTER(op_reg, 2);
@@ -285,8 +304,7 @@ static uint32_t aggregate_indices_offset(Type *type, uint32_t num_indices, uint3
                                                     \
         /* assign new register for the result */    \
         Type *res_type = spirv_module_type_by_id(sim->module, result_type);     \
-        uint32_t res_idx = spirv_sim_assign_register(sim, result_id, res_type); \
-        SimRegister *res_reg = &sim->temp_regs[res_idx];                        \
+        SimRegister *res_reg = spirv_sim_assign_register(sim, result_id, res_type); \
                                                                                 \
         /* retrieve register used for operand */                                \
         OP_REGISTER(op1_reg, 2);                                                \
@@ -577,7 +595,7 @@ OP_FUNC_BEGIN(SpvOpCompositeConstruct) {
         assert(arr_len(res_type->structure.members) == num_constituents);
         
         for (uint32_t c = 0, offset = 0; c < num_constituents; ++c) {
-            SimRegister *c_reg = &sim->temp_regs[map_int_int_get(&sim->assigned_regs, constituents[c])];
+            SimRegister *c_reg = spirv_sim_register_by_id(sim, constituents[c]);
             assert(res_type->structure.members[c] == c_reg->type);
             
             memcpy(res_reg->raw + offset, c_reg->raw, c_reg->type->count * c_reg->type->element_size);
@@ -587,7 +605,7 @@ OP_FUNC_BEGIN(SpvOpCompositeConstruct) {
         assert(res_type->count == num_constituents);
        
         for (uint32_t c = 0, offset = 0; c < num_constituents; ++c) {
-            SimRegister *c_reg = &sim->temp_regs[map_int_int_get(&sim->assigned_regs, constituents[c])];
+            SimRegister *c_reg = spirv_sim_register_by_id(sim, constituents[c]);
             assert(res_type->base_type == c_reg->type);
             
             memcpy(res_reg->raw + offset, c_reg->raw, c_reg->type->element_size * c_reg->type->count);
@@ -599,7 +617,7 @@ OP_FUNC_BEGIN(SpvOpCompositeConstruct) {
         uint32_t res_idx = 0;
         
         for (uint32_t c = 0; c < num_constituents; ++c) {
-            SimRegister *c_reg = &sim->temp_regs[map_int_int_get(&sim->assigned_regs, constituents[c])];
+            SimRegister *c_reg = spirv_sim_register_by_id(sim, constituents[c]);
             assert(c_reg->type == res_type->base_type || c_reg->type->base_type == res_type->base_type);
             
             for (uint32_t c_idx = 0; c_idx < c_reg->type->count; ++c_idx) {
@@ -613,7 +631,7 @@ OP_FUNC_BEGIN(SpvOpCompositeConstruct) {
         assert(res_type->matrix.num_cols == num_constituents);
         
         for (uint32_t c = 0, offset = 0; c < num_constituents; ++c) {
-            SimRegister *c_reg = &sim->temp_regs[map_int_int_get(&sim->assigned_regs, constituents[c])];
+            SimRegister *c_reg = spirv_sim_register_by_id(sim, constituents[c]);
             assert(res_type->base_type == c_reg->type);
             
             memcpy(res_reg->raw + offset, c_reg->raw, c_reg->type->count * c_reg->type->element_size);
