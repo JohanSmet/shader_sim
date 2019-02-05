@@ -75,7 +75,7 @@ static inline void spirv_common_types(SPIRV_binary *bin, uint32_t type_flags) {
     }
 }
 
-static inline void spirv_common_function_header(SPIRV_binary *bin) {
+static inline void spirv_common_function_header_main(SPIRV_binary *bin) {
     SPIRV_OP(bin, SpvOpFunction, ID(2), ID(4), SpvFunctionControlMaskNone, ID(3));
     SPIRV_OP(bin, SpvOpLabel, ID(5));
 }
@@ -130,7 +130,7 @@ MunitResult test_arithmetic_float32(const MunitParameter params[], void* user_da
     spirv_common_types(&spirv_bin, TEST_TYPE_FLOAT32);
     SPIRV_OP(&spirv_bin, SpvOpVariable, ID(14), ID(40), SpvStorageClassInput);
     SPIRV_OP(&spirv_bin, SpvOpVariable, ID(14), ID(41), SpvStorageClassInput);
-    spirv_common_function_header(&spirv_bin);
+    spirv_common_function_header_main(&spirv_bin);
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(11), ID(60), ID(40));
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(11), ID(61), ID(41));
     SPIRV_OP(&spirv_bin, SpvOpFNegate, ID(11), ID(62), ID(60));
@@ -209,7 +209,7 @@ MunitResult test_arithmetic_int32(const MunitParameter params[], void* user_data
     spirv_common_types(&spirv_bin, TEST_TYPE_INT32);
     SPIRV_OP(&spirv_bin, SpvOpVariable, ID(24), ID(40), SpvStorageClassInput);
     SPIRV_OP(&spirv_bin, SpvOpVariable, ID(24), ID(41), SpvStorageClassInput);
-    spirv_common_function_header(&spirv_bin);
+    spirv_common_function_header_main(&spirv_bin);
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(21), ID(60), ID(40));
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(21), ID(61), ID(41));
     SPIRV_OP(&spirv_bin, SpvOpSNegate, ID(21), ID(62), ID(60));
@@ -288,7 +288,7 @@ MunitResult test_arithmetic_uint32(const MunitParameter params[], void* user_dat
     spirv_common_types(&spirv_bin, TEST_TYPE_UINT32);
     SPIRV_OP(&spirv_bin, SpvOpVariable, ID(34), ID(40), SpvStorageClassInput);
     SPIRV_OP(&spirv_bin, SpvOpVariable, ID(34), ID(41), SpvStorageClassInput);
-    spirv_common_function_header(&spirv_bin);
+    spirv_common_function_header_main(&spirv_bin);
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(31), ID(60), ID(40));
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(31), ID(61), ID(41));
     SPIRV_OP(&spirv_bin, SpvOpIAdd, ID(31), ID(62), ID(61), ID(60));
@@ -370,7 +370,7 @@ MunitResult test_composite_float32(const MunitParameter params[], void* user_dat
     SPIRV_OP(&spirv_bin, SpvOpTypeStruct, ID(50), ID(10), ID(10), ID(11), ID(11));
     SPIRV_OP(&spirv_bin, SpvOpTypeArray, ID(51), ID(11), ID(45));
     SPIRV_OP(&spirv_bin, SpvOpTypeVector, ID(52), ID(10), 6);
-    spirv_common_function_header(&spirv_bin);
+    spirv_common_function_header_main(&spirv_bin);
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(11), ID(60), ID(40));
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(11), ID(61), ID(41));
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(10), ID(62), ID(42));
@@ -504,7 +504,7 @@ MunitResult test_conversion(const MunitParameter params[], void* user_data_or_fi
     SPIRV_OP(&spirv_bin, SpvOpVariable, ID(14), ID(40), SpvStorageClassInput);  /* float */
     SPIRV_OP(&spirv_bin, SpvOpVariable, ID(24), ID(41), SpvStorageClassInput);  /* signed int */
     SPIRV_OP(&spirv_bin, SpvOpVariable, ID(34), ID(42), SpvStorageClassInput);  /* unsigned int */
-    spirv_common_function_header(&spirv_bin);
+    spirv_common_function_header_main(&spirv_bin);
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(11), ID(60), ID(40));
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(21), ID(61), ID(41));
     SPIRV_OP(&spirv_bin, SpvOpLoad, ID(31), ID(62), ID(42));
@@ -610,7 +610,7 @@ MunitResult test_aggregate(const MunitParameter params[], void* user_data_or_fix
     SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(60), 0);
     SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(61), 1);
     SPIRV_OP(&spirv_bin, SpvOpConstant, ID(30), ID(62), 2);
-    spirv_common_function_header(&spirv_bin);
+    spirv_common_function_header_main(&spirv_bin);
     SPIRV_OP(&spirv_bin, SpvOpAccessChain, ID(13), ID(70), ID(50), ID(60));
     SPIRV_OP(&spirv_bin, SpvOpAccessChain, ID(13), ID(71), ID(50), ID(61));
     SPIRV_OP(&spirv_bin, SpvOpAccessChain, ID(14), ID(72), ID(50), ID(62));
