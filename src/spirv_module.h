@@ -124,6 +124,7 @@ typedef struct Function {
     Type *type;
     const char *name;
     uint32_t *parameter_ids;        // dyn_array
+    uint32_t *variable_ids;         // dyn_array
 } Function;
 
 typedef enum ProgramKind {

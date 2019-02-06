@@ -420,7 +420,9 @@ static void handle_opcode_function(SPIRV_module *module, SPIRV_opcode *op) {
             func->fst_opcode->op.kind == SpvOpVariable ||
             func->fst_opcode->op.kind == SpvOpFunctionParameter)) {
 
-        if (func->fst_opcode->op.kind == SpvOpFunctionParameter) {
+        if (func->fst_opcode->op.kind == SpvOpVariable) {
+            arr_push(func->func.variable_ids, func->fst_opcode->optional[1]);
+        } else if (func->fst_opcode->op.kind == SpvOpFunctionParameter) {
             arr_push(func->func.parameter_ids, func->fst_opcode->optional[1]);
         }
 

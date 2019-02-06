@@ -133,6 +133,23 @@ static SPIRV_stackframe *stackframe_new(SPIRV_simulator *sim) {
     return new_frame;
 }
 
+static uint32_t allocate_variable(SPIRV_simulator *sim, Variable *var) {
+
+    /* allocate memory */
+    size_t total_size = var->array_elements * var->type->base_type->element_size * var->type->base_type->count;
+    size_t alloc_size = ALIGN_UP(total_size, 8u);
+
+    arr_reserve(sim->memory, alloc_size);
+    uint32_t mem_ptr = sim->memory_free_start;
+    sim->memory_free_start += alloc_size;
+        
+    /* store pointer in a register */
+    SimRegister *reg = spirv_sim_assign_register(sim, var->id, var->type);
+    reg->uvec[0] = mem_ptr;
+
+    return mem_ptr;
+}
+
 void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
     assert(sim);
     assert(module);
@@ -171,15 +188,7 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
         }
         
         /* allocate memory */
-        size_t total_size = var->array_elements * var->type->base_type->element_size * var->type->base_type->count;
-        arr_reserve(sim->memory, ALIGN_UP(total_size, 8u));
-        uint32_t mem_ptr = sim->memory_free_start;
-        sim->memory_free_start += ALIGN_UP(total_size, 8u);
-        
-        /* store pointer in a register */
-        SimRegister *reg = spirv_sim_assign_register(sim, id, var->type);
-        reg->uvec[0] = mem_ptr;
-        
+        uint32_t mem_ptr = allocate_variable(sim, var);
         spirv_add_interface_pointers(sim, var, mem_ptr);
     }
 
@@ -420,7 +429,7 @@ OP_FUNC_BEGIN(SpvOpAccessChain) {
 
 OP_FUNC_BEGIN(SpvOpFunctionCall) {
 
-    Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
+    // Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
     uint32_t res_id = op->optional[1];
     uint32_t func_id = op->optional[2];
 
@@ -439,6 +448,7 @@ OP_FUNC_BEGIN(SpvOpFunctionCall) {
     /* when the function ends, return to the opcode right after the current opcode */
     new_frame->return_addr = spirv_bin_opcode_next(sim->module->spirv_bin);
     new_frame->return_id   = res_id;
+    new_frame->heap_start  = sim->memory_free_start;
 
     /* push parameters */
     for (int idx = 0; idx < arr_len(func->func.parameter_ids); ++idx) {
@@ -448,6 +458,12 @@ OP_FUNC_BEGIN(SpvOpFunctionCall) {
 
     /* make stackframe of the new function current */
     sim->current_frame = new_frame;
+
+    /* allocate local variables */
+    for (uint32_t idx = 0; idx < arr_len(func->func.variable_ids); ++idx) {
+        Variable *var = spirv_module_variable_by_id(sim->module, func->func.variable_ids[idx]);
+        allocate_variable(sim, var);
+    }
 
     /* jump to the start of the function */
     sim->jump_to_op = func->fst_opcode;
@@ -466,6 +482,12 @@ OP_FUNC_BEGIN(SpvOpReturn) {
         SPIRV_stackframe *old = &arr_pop(sim->func_frames);
         map_free(&old->regs);
         mem_arena_free(&old->memory);
+
+        /* free memory allocated for function variables */
+        if (sim->memory) {
+            arr_remove_back(sim->memory, sim->memory_free_start - old->heap_start);
+            sim->memory_free_start = old->heap_start;
+        }
 
         /* return to previous stackframe */
         sim->current_frame = sim->func_frames + (arr_len(sim->func_frames) - 1);

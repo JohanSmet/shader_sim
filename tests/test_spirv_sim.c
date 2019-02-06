@@ -675,6 +675,7 @@ MunitResult test_aggregate(const MunitParameter params[], void* user_data_or_fix
 
     return MUNIT_OK;
 }
+
 MunitResult test_function(const MunitParameter params[], void* user_data_or_fixture) {
 
     /* prepare binary */
@@ -685,18 +686,36 @@ MunitResult test_function(const MunitParameter params[], void* user_data_or_fixt
     spirv_common_types(&spirv_bin, TEST_TYPE_FLOAT32);
     SPIRV_OP(&spirv_bin, SpvOpTypePointer, ID(15), SpvStorageClassFunction, ID(10));
     SPIRV_OP(&spirv_bin, SpvOpTypeFunction, ID(40), ID(10), ID(10));
+    SPIRV_OP(&spirv_bin, SpvOpTypeFunction, ID(41), ID(10));
     SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(45), FLOAT(5.5f));
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(46), FLOAT(33.7f));
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(15), ID(42), SpvStorageClassOutput);
+    /* entry point */
     spirv_common_function_header_main(&spirv_bin);
-    SPIRV_OP(&spirv_bin, SpvOpFMul, ID(10), ID(44), ID(45), ID(45));
-    SPIRV_OP(&spirv_bin, SpvOpFunctionCall, ID(10), ID(61), ID(41), ID(45));
+    SPIRV_OP(&spirv_bin, SpvOpStore, ID(42), ID(46));
+    SPIRV_OP(&spirv_bin, SpvOpFunctionCall, ID(10), ID(81), ID(60), ID(45));
+    SPIRV_OP(&spirv_bin, SpvOpFunctionCall, ID(10), ID(82), ID(70));
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(10), ID(83), ID(42));
     spirv_common_function_footer(&spirv_bin);
-    SPIRV_OP(&spirv_bin, SpvOpFunction, ID(10), ID(41), SpvFunctionControlMaskNone, ID(40));
-    SPIRV_OP(&spirv_bin, SpvOpFunctionParameter, ID(10), ID(42));
-    SPIRV_OP(&spirv_bin, SpvOpLabel, ID(43));
-    SPIRV_OP(&spirv_bin, SpvOpFMul, ID(10), ID(52), ID(42), ID(42));
-    SPIRV_OP(&spirv_bin, SpvOpReturnValue, ID(52));
+    /* function float f40(float) */
+    SPIRV_OP(&spirv_bin, SpvOpFunction, ID(10), ID(60), SpvFunctionControlMaskNone, ID(40));
+    SPIRV_OP(&spirv_bin, SpvOpFunctionParameter, ID(10), ID(61));
+    SPIRV_OP(&spirv_bin, SpvOpLabel, ID(62));
+    SPIRV_OP(&spirv_bin, SpvOpFMul, ID(10), ID(63), ID(61), ID(61));
+    SPIRV_OP(&spirv_bin, SpvOpReturnValue, ID(63));
     SPIRV_OP(&spirv_bin, SpvOpFunctionEnd);
-    spirv_bin.header.bound_ids = 62; 
+    /* function float f41(void) */
+    SPIRV_OP(&spirv_bin, SpvOpFunction, ID(10), ID(70), SpvFunctionControlMaskNone, ID(41));
+    SPIRV_OP(&spirv_bin, SpvOpLabel, ID(71));
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(15), ID(72), SpvStorageClassFunction);
+    SPIRV_OP(&spirv_bin, SpvOpStore, ID(72), ID(45));
+    SPIRV_OP(&spirv_bin, SpvOpFAdd, ID(10), ID(73), ID(45), ID(45));
+    SPIRV_OP(&spirv_bin, SpvOpStore, ID(72), ID(73));
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(10), ID(74), ID(72));
+    SPIRV_OP(&spirv_bin, SpvOpFMul, ID(10), ID(75), ID(74), ID(45));
+    SPIRV_OP(&spirv_bin, SpvOpReturnValue, ID(75));
+    SPIRV_OP(&spirv_bin, SpvOpFunctionEnd);
+    spirv_bin.header.bound_ids = 84; 
     spirv_bin_finalize(&spirv_bin);
 
     /* prepare simulator */
@@ -713,7 +732,9 @@ MunitResult test_function(const MunitParameter params[], void* user_data_or_fixt
     }
 
     /* check registers */
-    ASSERT_REGISTER_FLOAT(&spirv_sim, ID(61), ==, 5.5f * 5.5f);
+    ASSERT_REGISTER_FLOAT(&spirv_sim, ID(81), ==, 5.5f * 5.5f);
+    ASSERT_REGISTER_FLOAT(&spirv_sim, ID(82), ==, (5.5f + 5.5f) * 5.5f);
+    ASSERT_REGISTER_FLOAT(&spirv_sim, ID(83), ==, 33.7f);
 
     return MUNIT_OK;
 } 

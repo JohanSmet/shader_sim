@@ -30,6 +30,7 @@ typedef struct SPIRV_stackframe {
     HashMap                regs;        // SPIRV id (uint32_t) -> SimRegister *
     struct SPIRV_opcode    *return_addr;
     uint32_t                return_id;
+    uint32_t                heap_start;
     MemArena                memory;
 } SPIRV_stackframe;
 
