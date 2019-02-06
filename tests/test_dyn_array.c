@@ -108,7 +108,45 @@ MunitResult test_pop(const MunitParameter params[], void* user_data_or_fixture) 
     munit_assert_int(arr_pop(test_array), ==, 0);
 
     munit_assert_int(arr_len(test_array), ==, 0);
+    return MUNIT_OK;
 }
+
+MunitResult test_remove_back(const MunitParameter params[], void* user_data_or_fixture) {
+    int *test_array = NULL;
+
+    arr_push(test_array, 0);
+    arr_push(test_array, 1);
+    arr_push(test_array, 2);
+    arr_push(test_array, 3);
+    arr_push(test_array, 4);
+    arr_push(test_array, 5);
+
+    munit_assert_int(arr_len(test_array), ==, 6);
+    size_t cap = arr_cap(test_array);
+
+    arr_remove_back(test_array, 0);
+    munit_assert_int(arr_len(test_array), ==, 6);
+    munit_assert_int(arr_cap(test_array), ==, cap);
+
+    arr_remove_back(test_array, 2);
+    munit_assert_int(arr_len(test_array), ==, 4);
+    munit_assert_int(arr_cap(test_array), ==, cap);
+
+    arr_remove_back(test_array, 3);
+    munit_assert_int(arr_len(test_array), ==, 1);
+    munit_assert_int(arr_cap(test_array), ==, cap);
+
+    arr_remove_back(test_array, 3);
+    munit_assert_int(arr_len(test_array), ==, 0);
+    munit_assert_int(arr_cap(test_array), ==, cap);
+
+    arr_remove_back(test_array, 3);
+    munit_assert_int(arr_len(test_array), ==, 0);
+    munit_assert_int(arr_cap(test_array), ==, cap);
+
+    return MUNIT_OK;
+}
+
 
 MunitTest dyn_array_tests[] = {
     { "/basic", test_basic, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
@@ -117,5 +155,6 @@ MunitTest dyn_array_tests[] = {
     { "/printf", test_printf, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
     { "/reserve", test_reserve, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     { "/pop", test_pop, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    { "/remove_back", test_remove_back, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
