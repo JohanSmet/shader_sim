@@ -123,6 +123,7 @@ typedef struct Function {
     uint32_t id;
     Type *type;
     const char *name;
+    uint32_t *parameter_ids;        // dyn_array
 } Function;
 
 typedef enum ProgramKind {
@@ -177,6 +178,8 @@ bool spirv_module_variable_by_access(
     VariableAccess access,
     Variable **ret_var, 
     int32_t *ret_member); 
+
+SPIRV_function *spirv_module_function_by_id(SPIRV_module *module, uint32_t id);
 
 size_t spirv_module_opcode_count(SPIRV_module *module);
 struct SPIRV_opcode *spirv_module_opcode_by_index(SPIRV_module *module, uint32_t index);

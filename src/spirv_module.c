@@ -124,7 +124,7 @@ bool spirv_module_variable_by_access(
     return false;
 }
 
-static SPIRV_function *function_by_id(SPIRV_module *module, uint32_t id) {
+SPIRV_function *spirv_module_function_by_id(SPIRV_module *module, uint32_t id) {
     return map_int_ptr_get(&module->functions, id);
 }
 
@@ -417,7 +417,13 @@ static void handle_opcode_function(SPIRV_module *module, SPIRV_opcode *op) {
 
     while (func->fst_opcode != NULL &&
            (func->fst_opcode->op.kind == SpvOpLabel ||
+            func->fst_opcode->op.kind == SpvOpVariable ||
             func->fst_opcode->op.kind == SpvOpFunctionParameter)) {
+
+        if (func->fst_opcode->op.kind == SpvOpFunctionParameter) {
+            arr_push(func->func.parameter_ids, func->fst_opcode->optional[1]);
+        }
+
         func->fst_opcode = spirv_bin_opcode_next(module->spirv_bin);
     }
 
@@ -478,7 +484,7 @@ void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary) {
 
     for (SPIRV_opcode *op = spirv_bin_opcode_rewind(binary); op != spirv_bin_opcode_end(binary); op = spirv_bin_opcode_next(binary)) {
 	
-	arr_push(module->opcode_array, op);
+	    arr_push(module->opcode_array, op);
 
         if (op->op.kind == SpvOpName) {
             define_name(module, 
@@ -505,7 +511,7 @@ void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary) {
     }
 
     for (EntryPoint *ep = module->entry_points; ep != arr_end(module->entry_points); ++ep) {
-        ep->function = function_by_id(module, ep->func_id);
+        ep->function = spirv_module_function_by_id(module, ep->func_id);
     }
 }
 

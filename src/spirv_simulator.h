@@ -27,8 +27,10 @@ typedef struct SimRegister {
 } SimRegister;
 
 typedef struct SPIRV_stackframe {
-    HashMap     regs;    // SPIRV id (uint32_t) -> SimRegister *
-    MemArena    memory;
+    HashMap                regs;        // SPIRV id (uint32_t) -> SimRegister *
+    struct SPIRV_opcode    *return_addr;
+    uint32_t                return_id;
+    MemArena                memory;
 } SPIRV_stackframe;
 
 typedef struct SPIRV_simulator {
@@ -41,7 +43,9 @@ typedef struct SPIRV_simulator {
 
     /* stackframes */
     SPIRV_stackframe global_frame;
+    SPIRV_stackframe *func_frames;      // dyn_array
     SPIRV_stackframe *current_frame;
+    struct SPIRV_opcode *jump_to_op;
 
     bool finished;
     char *error_msg;        // NULL if no error, dynamic string otherwise

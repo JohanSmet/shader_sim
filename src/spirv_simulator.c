@@ -31,6 +31,22 @@ static inline SimRegister *spirv_sim_assign_register(SPIRV_simulator *sim, uint3
     return reg;
 }
 
+static inline SimRegister *spirv_sim_clone_register(SPIRV_simulator *sim, SPIRV_stackframe *frame, uint32_t id, SimRegister *src) {
+
+    assert(sim);
+    assert(frame);
+    assert(src);
+
+    SimRegister *reg = mem_arena_allocate(&frame->memory, sizeof(SimRegister));
+    reg->vec = mem_arena_allocate(&frame->memory, src->type->element_size * src->type->count);
+    memcpy(reg->vec, src->vec, src->type->element_size * src->type->count);
+    reg->id = id;
+    reg->type = src->type;
+
+    map_int_ptr_put(&frame->regs, id, reg);
+    return reg;
+}
+
 static inline bool spirv_sim_type_is_integer(Type *type) {
     return type->kind == TypeInteger ||
            type->kind == TypeVectorInteger ||
@@ -105,6 +121,18 @@ static void spirv_add_interface_pointers(SPIRV_simulator *sim, Variable *var_des
     }
 }
 
+static void stackframe_init(SPIRV_stackframe *frame) {
+    memset(frame, 0, sizeof(SPIRV_stackframe));
+    mem_arena_init(&frame->memory, 256 * 16, ARENA_DEFAULT_ALIGN);
+}
+
+static SPIRV_stackframe *stackframe_new(SPIRV_simulator *sim) {
+    arr_reserve(sim->func_frames, 1);
+    SPIRV_stackframe *new_frame = sim->func_frames + (arr_len(sim->func_frames) - 1);
+    stackframe_init(new_frame);
+    return new_frame;
+}
+
 void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
     assert(sim);
     assert(module);
@@ -114,8 +142,8 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
     };
 
     /* setup stackframe for globals */
+    stackframe_init(&sim->global_frame);
     sim->current_frame = &sim->global_frame;
-    mem_arena_init(&sim->global_frame.memory, 256 * 16, ARENA_DEFAULT_ALIGN);
 
     /* start at first defined entrypoint (for now -- FIXME) */
     spirv_sim_select_entry_point(sim, 0);
@@ -154,6 +182,9 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
         
         spirv_add_interface_pointers(sim, var, mem_ptr);
     }
+
+    /* setup stackframe for the entrypoint */
+    stackframe_new(sim);
 }
 
 void spirv_sim_variable_associate_data(
@@ -380,6 +411,79 @@ OP_FUNC_BEGIN(SpvOpAccessChain) {
     }
     
     res_reg->uvec[0] = pointer;
+
+} OP_FUNC_END
+
+/*
+ * function instructions
+ */
+
+OP_FUNC_BEGIN(SpvOpFunctionCall) {
+
+    Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
+    uint32_t res_id = op->optional[1];
+    uint32_t func_id = op->optional[2];
+
+    /* retrieve the function */
+    SPIRV_function *func = spirv_module_function_by_id(sim->module, func_id);
+    if (func == NULL) {
+        arr_printf(sim->error_msg, "Unknown function with id [%%%d]", func_id);
+        return;
+    }
+
+    assert(arr_len(func->func.parameter_ids) == op->op.length - 4);
+
+    /* create new stack frame */
+    SPIRV_stackframe *new_frame = stackframe_new(sim);
+
+    /* when the function ends, return to the opcode right after the current opcode */
+    new_frame->return_addr = spirv_bin_opcode_next(sim->module->spirv_bin);
+    new_frame->return_id   = res_id;
+
+    /* push parameters */
+    for (int idx = 0; idx < arr_len(func->func.parameter_ids); ++idx) {
+        SimRegister *arg_reg = spirv_sim_register_by_id(sim, op->optional[3 + idx]);
+        spirv_sim_clone_register(sim, new_frame, func->func.parameter_ids[idx], arg_reg);
+    }
+
+    /* make stackframe of the new function current */
+    sim->current_frame = new_frame;
+
+    /* jump to the start of the function */
+    sim->jump_to_op = func->fst_opcode;
+
+} OP_FUNC_END
+
+OP_FUNC_BEGIN(SpvOpReturn) {
+
+    sim->jump_to_op = sim->current_frame->return_addr;
+
+    /* simulation is done when we're returning from the entrypoint */
+    sim->finished = arr_len(sim->func_frames) == 1;
+
+    if (!sim->finished) {
+        /* remove current stackframe */
+        SPIRV_stackframe *old = &arr_pop(sim->func_frames);
+        map_free(&old->regs);
+        mem_arena_free(&old->memory);
+
+        /* return to previous stackframe */
+        sim->current_frame = sim->func_frames + (arr_len(sim->func_frames) - 1);
+    }
+
+} OP_FUNC_END
+
+
+OP_FUNC_BEGIN(SpvOpReturnValue) {
+    OP_REGISTER(value, 0);
+
+    /* copy the return value to a register in the calling frame */
+    if (arr_len(sim->func_frames) > 1) {
+        SPIRV_stackframe *calling_frame = sim->func_frames + (arr_len(sim->func_frames) - 2);
+        spirv_sim_clone_register(sim, calling_frame, sim->current_frame->return_id, value);
+    }
+
+    spirv_sim_op_SpvOpReturn(sim, op);
 
 } OP_FUNC_END
 
@@ -1656,9 +1760,6 @@ OP_FUNC_RES_2OP(SpvOpFUnordGreaterThanEqual) {
     
 } OP_FUNC_END
 
-OP_FUNC_BEGIN(SpvOpReturn)
-    sim->finished = true;
-OP_FUNC_END
 
 #undef OP_FUNC_BEGIN
 #undef OP_FUNC_RES_1OP
@@ -1673,6 +1774,7 @@ void spirv_sim_step(SPIRV_simulator *sim) {
     }
 
     SPIRV_opcode *op = spirv_bin_opcode_current(sim->module->spirv_bin);
+    sim->jump_to_op = NULL;
 
 
 #define OP_IGNORE(kind)                 \
@@ -1703,6 +1805,11 @@ void spirv_sim_step(SPIRV_simulator *sim) {
         OP_DEFAULT(SpvOpArrayLength)
         OP_DEFAULT(SpvOpGenericPtrMemSemantics)
         OP_DEFAULT(SpvOpInBoundsPtrAccessChain)
+
+        // function instructions
+        OP(SpvOpFunctionCall)
+        OP(SpvOpReturn)
+        OP(SpvOpReturnValue)
             
         // conversion instructions
         OP(SpvOpConvertFToU)
@@ -1815,8 +1922,6 @@ void spirv_sim_step(SPIRV_simulator *sim) {
         OP(SpvOpFOrdGreaterThanEqual)
         OP(SpvOpFUnordGreaterThanEqual)
 
-        OP(SpvOpReturn)
-
         default:
             arr_printf(sim->error_msg, "Unsupported opcode [%s]", spirv_op_name(op->op.kind));
     }
@@ -1825,5 +1930,9 @@ void spirv_sim_step(SPIRV_simulator *sim) {
 #undef OP
 #undef OP_DEFAULT
 
-    spirv_bin_opcode_next(sim->module->spirv_bin);
+    if (sim->jump_to_op != NULL) {
+        spirv_bin_opcode_jump_to(sim->module->spirv_bin, sim->jump_to_op);
+    } else {
+        spirv_bin_opcode_next(sim->module->spirv_bin);
+    }
 }
