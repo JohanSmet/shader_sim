@@ -48,39 +48,6 @@ static inline SimRegister *spirv_sim_clone_register(SPIRV_simulator *sim, SPIRV_
     return reg;
 }
 
-static inline bool spirv_sim_type_is_integer(Type *type) {
-    return type->kind == TypeInteger ||
-           type->kind == TypeVectorInteger ||
-           type->kind == TypeMatrixInteger;
-}
-
-static inline bool spirv_sim_type_is_signed_integer(Type *type) {
-    return spirv_sim_type_is_integer(type ) && type->is_signed;
-}
-
-static inline bool spirv_sim_type_is_unsigned_integer(Type *type) {
-    return spirv_sim_type_is_integer(type ) && !type->is_signed;
-}
-
-static inline bool spirv_sim_type_is_float(Type *type) {
-    return type->kind == TypeFloat ||
-           type->kind == TypeVectorFloat ||
-           type->kind == TypeMatrixFloat;
-}
-
-static inline bool spirv_sim_type_is_scalar(Type *type) {
-   return (type->kind == TypeInteger || type->kind == TypeFloat || type->kind == TypeBool) &&
-          type->count == 1;
-}
-
-static inline bool spirv_sim_type_is_vector(Type *type) {
-    return type->kind == TypeVectorInteger || type->kind == TypeVectorFloat;
-}
-
-static inline bool spirv_sim_type_is_matrix(Type *type) {
-    return type->kind == TypeMatrixInteger || type->kind == TypeMatrixFloat;
-}
-
 static inline uint64_t var_data_key(VariableKind kind, VariableAccess *access) {
    return (uint64_t) kind << 48 | (uint64_t) access->kind << 32 | (uint32_t) access->index;
 }
@@ -288,9 +255,9 @@ void spirv_register_to_string(SPIRV_simulator *sim, SimRegister *reg, char **out
     arr_printf(*out_str, "reg %%%d:", reg->id);
     
     for (uint32_t i = 0; i < reg->type->count; ++i) {
-        if (spirv_sim_type_is_float(reg->type)) {
+        if (spirv_type_is_float(reg->type)) {
             arr_printf(*out_str, " %.4f", reg->vec[i]);
-        } else if (spirv_sim_type_is_integer(reg->type)) {
+        } else if (spirv_type_is_integer(reg->type)) {
             if (reg->type->is_signed) {
                 arr_printf(*out_str, " %d", reg->svec[i]);
             } else {
@@ -338,8 +305,8 @@ static uint32_t aggregate_indices_offset(Type *type, uint32_t num_indices, uint3
             }
             cur_type = cur_type->structure.members[indices[idx]];
         } else if (cur_type->kind == TypeArray ||
-                   spirv_sim_type_is_vector(cur_type) ||
-                   spirv_sim_type_is_matrix(cur_type)) {
+                   spirv_type_is_vector(cur_type) ||
+                   spirv_type_is_matrix(cur_type)) {
             offset += cur_type->element_size * indices[idx];
             cur_type = cur_type->base_type;
         } else {
@@ -551,8 +518,8 @@ OP_FUNC_BEGIN(SpvOpReturnValue) {
 
 OP_FUNC_RES_1OP(SpvOpConvertFToU) {
     /* Convert (value preserving) from floating point to unsigned integer, with round toward 0.0. */
-    assert(spirv_sim_type_is_float(op_reg->type));
-    assert(spirv_sim_type_is_unsigned_integer(res_type));
+    assert(spirv_type_is_float(op_reg->type));
+    assert(spirv_type_is_unsigned_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = (uint32_t) CLAMP(op_reg->vec[i], 0, UINT32_MAX);
@@ -562,8 +529,8 @@ OP_FUNC_RES_1OP(SpvOpConvertFToU) {
 
 OP_FUNC_RES_1OP(SpvOpConvertFToS) {
     /* Convert (value preserving) from floating point to signed integer, with round toward 0.0. */
-    assert(spirv_sim_type_is_float(op_reg->type));
-    assert(spirv_sim_type_is_signed_integer(res_type));
+    assert(spirv_type_is_float(op_reg->type));
+    assert(spirv_type_is_signed_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->svec[i] = (int32_t) CLAMP(op_reg->vec[i], INT32_MIN, INT32_MAX);
@@ -573,8 +540,8 @@ OP_FUNC_RES_1OP(SpvOpConvertFToS) {
 
 OP_FUNC_RES_1OP(SpvOpConvertSToF) {
     /* Convert (value preserving) from signed integer to floating point. */
-    assert(spirv_sim_type_is_signed_integer(op_reg->type));
-    assert(spirv_sim_type_is_float(res_type));
+    assert(spirv_type_is_signed_integer(op_reg->type));
+    assert(spirv_type_is_float(res_type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->vec[i] = (float) op_reg->svec[i];
@@ -585,8 +552,8 @@ OP_FUNC_RES_1OP(SpvOpConvertSToF) {
 
 OP_FUNC_RES_1OP(SpvOpConvertUToF) {
     /* Convert (value preserving) from unsigned integer to floating point. */
-    assert(spirv_sim_type_is_unsigned_integer(op_reg->type));
-    assert(spirv_sim_type_is_float(res_type));
+    assert(spirv_type_is_unsigned_integer(op_reg->type));
+    assert(spirv_type_is_float(res_type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->vec[i] = (float) op_reg->uvec[i];
@@ -596,8 +563,8 @@ OP_FUNC_RES_1OP(SpvOpConvertUToF) {
 
 OP_FUNC_RES_1OP(SpvOpUConvert) {
     /* Convert (value preserving) unsigned width. This is either a truncate or a zero extend. */
-    assert(spirv_sim_type_is_unsigned_integer(op_reg->type));
-    assert(spirv_sim_type_is_unsigned_integer(res_type));
+    assert(spirv_type_is_unsigned_integer(op_reg->type));
+    assert(spirv_type_is_unsigned_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op_reg->uvec[i];
@@ -607,8 +574,8 @@ OP_FUNC_RES_1OP(SpvOpUConvert) {
 
 OP_FUNC_RES_1OP(SpvOpSConvert) {
     /* Convert (value preserving) signed width. This is either a truncate or a sign extend. */
-    assert(spirv_sim_type_is_signed_integer(op_reg->type));
-    assert(spirv_sim_type_is_signed_integer(res_type));
+    assert(spirv_type_is_signed_integer(op_reg->type));
+    assert(spirv_type_is_signed_integer(res_type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->svec[i] = op_reg->svec[i];
@@ -617,8 +584,8 @@ OP_FUNC_RES_1OP(SpvOpSConvert) {
 
 OP_FUNC_RES_1OP(SpvOpFConvert) {
     /* Convert (value preserving) floating-point width. */
-    assert(spirv_sim_type_is_float(op_reg->type));
-    assert(spirv_sim_type_is_float(res_type));
+    assert(spirv_type_is_float(op_reg->type));
+    assert(spirv_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->vec[i] = op_reg->vec[i];
@@ -629,7 +596,7 @@ OP_FUNC_RES_1OP(SpvOpFConvert) {
 
 OP_FUNC_RES_1OP(SpvOpConvertPtrToU) {
 /* Convert a pointer to an unsigned integer type */
-    assert(spirv_sim_type_is_unsigned_integer(res_type));
+    assert(spirv_type_is_unsigned_integer(res_type));
     assert(op_reg->type->kind == TypePointer);
 
     res_reg->uvec[0] = op_reg->uvec[0];
@@ -637,8 +604,8 @@ OP_FUNC_RES_1OP(SpvOpConvertPtrToU) {
 
 OP_FUNC_RES_1OP(SpvOpSatConvertSToU) {
 /* Convert a signed integer to unsigned integer. */
-    assert(spirv_sim_type_is_signed_integer(op_reg->type));
-    assert(spirv_sim_type_is_unsigned_integer(res_type));
+    assert(spirv_type_is_signed_integer(op_reg->type));
+    assert(spirv_type_is_unsigned_integer(res_type));
 
     uint32_t max_uint = (uint32_t) (UINT64_C(1) << (res_type->element_size * 8)) - 1;
 
@@ -650,8 +617,8 @@ OP_FUNC_RES_1OP(SpvOpSatConvertSToU) {
 
 OP_FUNC_RES_1OP(SpvOpSatConvertUToS) {
 /* Convert an unsigned integer to signed integer.  */
-    assert(spirv_sim_type_is_unsigned_integer(op_reg->type));
-    assert(spirv_sim_type_is_signed_integer(res_type));
+    assert(spirv_type_is_unsigned_integer(op_reg->type));
+    assert(spirv_type_is_signed_integer(res_type));
 
     int32_t max_sint = (1 << ((res_type->element_size * 8) - 1)) - 1;
 
@@ -664,7 +631,7 @@ OP_FUNC_RES_1OP(SpvOpSatConvertUToS) {
 OP_FUNC_RES_1OP(SpvOpConvertUToPtr) {
 /* Convert an integer to pointer */
 
-    assert(spirv_sim_type_is_unsigned_integer(op_reg->type));
+    assert(spirv_type_is_unsigned_integer(op_reg->type));
     assert(res_type->kind == TypePointer);
 
     res_reg->uvec[0] = op_reg->uvec[0];
@@ -685,8 +652,8 @@ OP_FUNC_RES_1OP(SpvOpBitcast)
 OP_FUNC_RES_2OP(SpvOpVectorExtractDynamic) {
 /* Extract a single, dynamically selected, component of a vector. */
     
-    assert(spirv_sim_type_is_scalar(res_type));
-    assert(spirv_sim_type_is_vector(op1_reg->type));
+    assert(spirv_type_is_scalar(res_type));
+    assert(spirv_type_is_vector(op1_reg->type));
     assert(op1_reg->type->base_type == res_type);
     assert(op2_reg->type->kind == TypeInteger);
     
@@ -703,7 +670,7 @@ OP_FUNC_BEGIN(SpvOpVectorInsertDynamic) {
     OP_REGISTER(component, 3);
     OP_REGISTER(index, 4);
     
-    assert(spirv_sim_type_is_vector(res_type));
+    assert(spirv_type_is_vector(res_type));
     assert(vector->type == res_type);
     assert(component->type == res_type->base_type);
     assert(index->type->kind == TypeInteger);
@@ -723,11 +690,11 @@ OP_FUNC_BEGIN(SpvOpVectorShuffle) {
     uint32_t num_components = op->op.length - 5;
     uint32_t *components = &op->optional[4];
     
-    assert(spirv_sim_type_is_vector(res_type));
+    assert(spirv_type_is_vector(res_type));
     assert(res_type->count == num_components);
-    assert(spirv_sim_type_is_vector(vector_1->type));
+    assert(spirv_type_is_vector(vector_1->type));
     assert(vector_1->type->base_type == res_type->base_type);
-    assert(spirv_sim_type_is_vector(vector_2->type));
+    assert(spirv_type_is_vector(vector_2->type));
     assert(vector_2->type->base_type == res_type->base_type);
     
     for (uint32_t c = 0; c < num_components; ++c) {
@@ -773,7 +740,7 @@ OP_FUNC_BEGIN(SpvOpCompositeConstruct) {
             memcpy(res_reg->raw + offset, c_reg->raw, c_reg->type->element_size * c_reg->type->count);
             offset += c_reg->type->element_size * c_reg->type->count;
         }
-    } else if (spirv_sim_type_is_vector(res_type)) {
+    } else if (spirv_type_is_vector(res_type)) {
         /* for constructing a vector a contiguous subset of the scalars consumed can be represented by a vector operand */
         
         uint32_t res_idx = 0;
@@ -789,7 +756,7 @@ OP_FUNC_BEGIN(SpvOpCompositeConstruct) {
         
         assert(res_idx == res_type->count);
         
-    } else if (spirv_sim_type_is_matrix(res_type)) {
+    } else if (spirv_type_is_matrix(res_type)) {
         assert(res_type->matrix.num_cols == num_constituents);
         
         for (uint32_t c = 0, offset = 0; c < num_constituents; ++c) {
@@ -845,8 +812,8 @@ OP_FUNC_RES_1OP(SpvOpCopyObject) {
 OP_FUNC_RES_1OP(SpvOpTranspose) {
 /* Transpose a matrix. */
     
-    assert(spirv_sim_type_is_matrix(res_reg->type));
-    assert(spirv_sim_type_is_matrix(op_reg->type));
+    assert(spirv_type_is_matrix(res_reg->type));
+    assert(spirv_type_is_matrix(op_reg->type));
     assert(res_reg->type->base_type == op_reg->type->base_type);
     assert(res_reg->type->matrix.num_cols == op_reg->type->matrix.num_rows);
     assert(res_reg->type->matrix.num_rows == op_reg->type->matrix.num_cols);
@@ -866,7 +833,7 @@ OP_FUNC_RES_1OP(SpvOpTranspose) {
 
 OP_FUNC_RES_1OP(SpvOpSNegate)
 
-    assert(spirv_sim_type_is_integer(res_type));
+    assert(spirv_type_is_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->svec[i] = -op_reg->svec[i];
@@ -876,7 +843,7 @@ OP_FUNC_END
 
 OP_FUNC_RES_1OP(SpvOpFNegate)
 
-    assert(spirv_sim_type_is_float(res_type));
+    assert(spirv_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->vec[i] = -op_reg->vec[i];
@@ -886,7 +853,7 @@ OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpIAdd)
 
-    assert(spirv_sim_type_is_integer(res_type));
+    assert(spirv_type_is_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->svec[i] = op1_reg->svec[i] + op2_reg->svec[i];
@@ -896,7 +863,7 @@ OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpFAdd)
 
-    assert(spirv_sim_type_is_float(res_type));
+    assert(spirv_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->vec[i] = op1_reg->vec[i] + op2_reg->vec[i];
@@ -906,7 +873,7 @@ OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpISub)
 
-    assert(spirv_sim_type_is_integer(res_type));
+    assert(spirv_type_is_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->svec[i] = op1_reg->svec[i] - op2_reg->svec[i];
@@ -916,7 +883,7 @@ OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpFSub)
 
-    assert(spirv_sim_type_is_float(res_type));
+    assert(spirv_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->vec[i] = op1_reg->vec[i] - op2_reg->vec[i];
@@ -926,7 +893,7 @@ OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpIMul)
 
-    assert(spirv_sim_type_is_integer(res_type));
+    assert(spirv_type_is_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->svec[i] = op1_reg->svec[i] * op2_reg->svec[i];
@@ -936,7 +903,7 @@ OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpFMul)
 
-    assert(spirv_sim_type_is_float(res_type));
+    assert(spirv_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->vec[i] = op1_reg->vec[i] * op2_reg->vec[i];
@@ -946,7 +913,7 @@ OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpUDiv)
 
-    assert(spirv_sim_type_is_unsigned_integer(res_type));
+    assert(spirv_type_is_unsigned_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op1_reg->uvec[i] / op2_reg->uvec[i];
@@ -956,7 +923,7 @@ OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpSDiv)
 
-    assert(spirv_sim_type_is_signed_integer(res_type));
+    assert(spirv_type_is_signed_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->svec[i] = op1_reg->svec[i] / op2_reg->svec[i];
@@ -966,7 +933,7 @@ OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpFDiv)
 
-    assert(spirv_sim_type_is_float(res_type));
+    assert(spirv_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->vec[i] = op1_reg->vec[i] / op2_reg->vec[i];
@@ -976,7 +943,7 @@ OP_FUNC_END
 
 OP_FUNC_RES_2OP(SpvOpUMod)
 
-    assert(spirv_sim_type_is_unsigned_integer(res_type));
+    assert(spirv_type_is_unsigned_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op1_reg->uvec[i] % op2_reg->uvec[i];
@@ -987,7 +954,7 @@ OP_FUNC_END
 OP_FUNC_RES_2OP(SpvOpSRem)
 /* Signed remainder operation of Operand 1 divided by Operand 2. The sign of a non-0 result comes from Operand 1. */
 
-    assert(spirv_sim_type_is_signed_integer(res_type));
+    assert(spirv_type_is_signed_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         int32_t v1 = op1_reg->svec[i];
@@ -1000,7 +967,7 @@ OP_FUNC_END
 OP_FUNC_RES_2OP(SpvOpSMod)
 /* Signed modulo operation of Operand 1 modulo Operand 2. The sign of a non-0 result comes from Operand 2. */
 
-    assert(spirv_sim_type_is_signed_integer(res_type));
+    assert(spirv_type_is_signed_integer(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         int32_t v1 = op1_reg->svec[i];
@@ -1013,7 +980,7 @@ OP_FUNC_END
 OP_FUNC_RES_2OP(SpvOpFRem)
 /* Floating-point remainder operation of Operand 1 divided by Operand 2. The sign of a non-0 result comes from Operand 1. */
 
-    assert(spirv_sim_type_is_float(res_type));
+    assert(spirv_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         float v1 = op1_reg->vec[i];
@@ -1026,7 +993,7 @@ OP_FUNC_END
 OP_FUNC_RES_2OP(SpvOpFMod)
 /* Floating-point modulo operation of Operand 1 divided by Operand 2. The sign of a non-0 result comes from Operand 2. */
 
-    assert(spirv_sim_type_is_float(res_type));
+    assert(spirv_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         float v1 = op1_reg->vec[i];
@@ -1039,7 +1006,7 @@ OP_FUNC_END
 OP_FUNC_RES_2OP(SpvOpVectorTimesScalar)
 /* Scale a floating-point vector. */
 
-    assert(spirv_sim_type_is_float(res_type));
+    assert(spirv_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->vec[i] = op1_reg->vec[i] * op2_reg->vec[0];
@@ -1050,7 +1017,7 @@ OP_FUNC_END
 OP_FUNC_RES_2OP(SpvOpMatrixTimesScalar)
 /* Scale a floating-point matrix. */
 
-    assert(spirv_sim_type_is_float(res_type));
+    assert(spirv_type_is_float(res_type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->vec[i] = op1_reg->vec[i] * op2_reg->vec[0];
@@ -1177,9 +1144,9 @@ OP_FUNC_RES_2OP(SpvOpShiftLeftLogical) {
 
 OP_FUNC_RES_2OP(SpvOpBitwiseOr) {
     
-    assert(spirv_sim_type_is_integer(res_type));
-    assert(spirv_sim_type_is_integer(op1_reg->type));
-    assert(spirv_sim_type_is_integer(op2_reg->type));
+    assert(spirv_type_is_integer(res_type));
+    assert(spirv_type_is_integer(op1_reg->type));
+    assert(spirv_type_is_integer(op2_reg->type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op1_reg->uvec[i] | op2_reg->uvec[i];
@@ -1189,9 +1156,9 @@ OP_FUNC_RES_2OP(SpvOpBitwiseOr) {
 
 OP_FUNC_RES_2OP(SpvOpBitwiseXor) {
     
-    assert(spirv_sim_type_is_integer(res_type));
-    assert(spirv_sim_type_is_integer(op1_reg->type));
-    assert(spirv_sim_type_is_integer(op2_reg->type));
+    assert(spirv_type_is_integer(res_type));
+    assert(spirv_type_is_integer(op1_reg->type));
+    assert(spirv_type_is_integer(op2_reg->type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op1_reg->uvec[i] ^ op2_reg->uvec[i];
@@ -1201,9 +1168,9 @@ OP_FUNC_RES_2OP(SpvOpBitwiseXor) {
 
 OP_FUNC_RES_2OP(SpvOpBitwiseAnd) {
     
-    assert(spirv_sim_type_is_integer(res_type));
-    assert(spirv_sim_type_is_integer(op1_reg->type));
-    assert(spirv_sim_type_is_integer(op2_reg->type));
+    assert(spirv_type_is_integer(res_type));
+    assert(spirv_type_is_integer(op1_reg->type));
+    assert(spirv_type_is_integer(op2_reg->type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op1_reg->uvec[i] & op2_reg->uvec[i];
@@ -1213,8 +1180,8 @@ OP_FUNC_RES_2OP(SpvOpBitwiseAnd) {
 
 OP_FUNC_RES_1OP(SpvOpNot) {
     
-    assert(spirv_sim_type_is_integer(res_type));
-    assert(spirv_sim_type_is_integer(op_reg->type));
+    assert(spirv_type_is_integer(res_type));
+    assert(spirv_type_is_integer(op_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = ~ op_reg->uvec[i];
@@ -1231,8 +1198,8 @@ OP_FUNC_BEGIN(SpvOpBitFieldInsert) {
     OP_REGISTER(offset_reg, 4);
     OP_REGISTER(count_reg, 5);
 
-    assert(spirv_sim_type_is_integer(offset_reg->type));
-    assert(spirv_sim_type_is_integer(count_reg->type));
+    assert(spirv_type_is_integer(offset_reg->type));
+    assert(spirv_type_is_integer(count_reg->type));
     
     uint32_t base_mask = ((1 << count_reg->uvec[0]) - 1) << offset_reg->uvec[0];
     uint32_t insert_mask = ~base_mask;
@@ -1329,7 +1296,7 @@ OP_FUNC_RES_1OP(SpvOpIsNan) {
 /* Result is true if x is an IEEE NaN, otherwise result is false. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op_reg->type));
+    assert(spirv_type_is_float(op_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = isnan(op_reg->vec[i]);
@@ -1341,7 +1308,7 @@ OP_FUNC_RES_1OP(SpvOpIsInf) {
 /* Result is true if x is an IEEE Inf, otherwise result is false. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op_reg->type));
+    assert(spirv_type_is_float(op_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = isinf(op_reg->vec[i]);
@@ -1353,7 +1320,7 @@ OP_FUNC_RES_1OP(SpvOpIsFinite) {
 /* Result is true if x is an IEEE finite number, otherwise result is false. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op_reg->type));
+    assert(spirv_type_is_float(op_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = isfinite(op_reg->vec[i]);
@@ -1365,7 +1332,7 @@ OP_FUNC_RES_1OP(SpvOpIsNormal) {
 /* Result is true if x is an IEEE normal number, otherwise result is false. */
 
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op_reg->type));
+    assert(spirv_type_is_float(op_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = isnormal(op_reg->vec[i]);
@@ -1377,7 +1344,7 @@ OP_FUNC_RES_1OP(SpvOpSignBitSet) {
 /* Result is true if x has its sign bit set, otherwise result is false. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op_reg->type));
+    assert(spirv_type_is_float(op_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = signbit(op_reg->vec[i]);
@@ -1389,8 +1356,8 @@ OP_FUNC_RES_2OP(SpvOpLessOrGreater) {
 /* Result is true if x < y or x > y, where IEEE comparisons are used, otherwise result is false. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
-    assert(spirv_sim_type_is_float(op2_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = islessgreater(op1_reg->vec[i], op2_reg->vec[i]);
@@ -1402,8 +1369,8 @@ OP_FUNC_RES_2OP(SpvOpOrdered) {
 /* Result is true if both x == x and y == y are true, where IEEE comparison is used, otherwise result is false. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
-    assert(spirv_sim_type_is_float(op2_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = !isunordered(op1_reg->vec[i], op2_reg->vec[i]);
@@ -1415,8 +1382,8 @@ OP_FUNC_RES_2OP(SpvOpUnordered) {
 /* Result is true if either x or y is an IEEE NaN, otherwise result is false. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
-    assert(spirv_sim_type_is_float(op2_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = isunordered(op1_reg->vec[i], op2_reg->vec[i]);
@@ -1428,8 +1395,8 @@ OP_FUNC_RES_2OP(SpvOpLogicalEqual) {
 /* Result is true if Operand 1 and Operand 2 have the same value. Result is false if Operand 1 and Operand 2 have different values. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
-    assert(spirv_sim_type_is_float(op2_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op1_reg->uvec[i] == op2_reg->uvec[i];
@@ -1441,8 +1408,8 @@ OP_FUNC_RES_2OP(SpvOpLogicalNotEqual) {
 /* Result is true if Operand 1 and Operand 2 have different values. Result is false if Operand 1 and Operand 2 have the same value. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
-    assert(spirv_sim_type_is_float(op2_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op1_reg->uvec[i] != op2_reg->uvec[i];
@@ -1454,8 +1421,8 @@ OP_FUNC_RES_2OP(SpvOpLogicalOr) {
 /* Result is true if either Operand 1 or Operand 2 is true. Result is false if both Operand 1 and Operand 2 are false. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
-    assert(spirv_sim_type_is_float(op2_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op1_reg->uvec[i] || op2_reg->uvec[i];
@@ -1467,8 +1434,8 @@ OP_FUNC_RES_2OP(SpvOpLogicalAnd) {
 /* Result is true if both Operand 1 and Operand 2 are true. Result is false if either Operand 1 or Operand 2 are false. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
-    assert(spirv_sim_type_is_float(op2_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op1_reg->uvec[i] && op2_reg->uvec[i];
@@ -1510,8 +1477,8 @@ OP_FUNC_RES_2OP(SpvOpIEqual) {
 /* Integer comparison for equality. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_integer(op1_reg->type));
-    assert(spirv_sim_type_is_integer(op2_reg->type));
+    assert(spirv_type_is_integer(op1_reg->type));
+    assert(spirv_type_is_integer(op2_reg->type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op1_reg->uvec[i] == op2_reg->uvec[i];
@@ -1523,8 +1490,8 @@ OP_FUNC_RES_2OP(SpvOpINotEqual) {
 /* Integer comparison for inequality. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_integer(op1_reg->type));
-    assert(spirv_sim_type_is_integer(op2_reg->type));
+    assert(spirv_type_is_integer(op1_reg->type));
+    assert(spirv_type_is_integer(op2_reg->type));
     
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op1_reg->uvec[i] != op2_reg->uvec[i];
@@ -1536,8 +1503,8 @@ OP_FUNC_RES_2OP(SpvOpUGreaterThan) {
 /* Unsigned-integer comparison if Operand 1 is greater than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_unsigned_integer(op1_reg->type));
-    assert(spirv_sim_type_is_unsigned_integer(op2_reg->type));
+    assert(spirv_type_is_unsigned_integer(op1_reg->type));
+    assert(spirv_type_is_unsigned_integer(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op1_reg->uvec[i] > op2_reg->uvec[i];
@@ -1549,8 +1516,8 @@ OP_FUNC_RES_2OP(SpvOpSGreaterThan) {
 /* Signed-integer comparison if Operand 1 is greater than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_signed_integer(op1_reg->type));
-    assert(spirv_sim_type_is_signed_integer(op2_reg->type));
+    assert(spirv_type_is_signed_integer(op1_reg->type));
+    assert(spirv_type_is_signed_integer(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->svec[i] = op1_reg->svec[i] > op2_reg->svec[i];
@@ -1562,8 +1529,8 @@ OP_FUNC_RES_2OP(SpvOpUGreaterThanEqual) {
 /* Unsigned-integer comparison if Operand 1 is greater than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_unsigned_integer(op1_reg->type));
-    assert(spirv_sim_type_is_unsigned_integer(op2_reg->type));
+    assert(spirv_type_is_unsigned_integer(op1_reg->type));
+    assert(spirv_type_is_unsigned_integer(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op1_reg->uvec[i] >= op2_reg->uvec[i];
@@ -1575,8 +1542,8 @@ OP_FUNC_RES_2OP(SpvOpSGreaterThanEqual) {
 /* Signed-integer comparison if Operand 1 is greater than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_signed_integer(op1_reg->type));
-    assert(spirv_sim_type_is_signed_integer(op2_reg->type));
+    assert(spirv_type_is_signed_integer(op1_reg->type));
+    assert(spirv_type_is_signed_integer(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->svec[i] = op1_reg->svec[i] >= op2_reg->svec[i];
@@ -1588,8 +1555,8 @@ OP_FUNC_RES_2OP(SpvOpULessThan) {
 /* Unsigned-integer comparison if Operand 1 is less than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_unsigned_integer(op1_reg->type));
-    assert(spirv_sim_type_is_unsigned_integer(op2_reg->type));
+    assert(spirv_type_is_unsigned_integer(op1_reg->type));
+    assert(spirv_type_is_unsigned_integer(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op1_reg->uvec[i] < op2_reg->uvec[i];
@@ -1601,8 +1568,8 @@ OP_FUNC_RES_2OP(SpvOpSLessThan) {
 /* Signed-integer comparison if Operand 1 is less than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_signed_integer(op1_reg->type));
-    assert(spirv_sim_type_is_signed_integer(op2_reg->type));
+    assert(spirv_type_is_signed_integer(op1_reg->type));
+    assert(spirv_type_is_signed_integer(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->svec[i] = op1_reg->svec[i] < op2_reg->svec[i];
@@ -1614,8 +1581,8 @@ OP_FUNC_RES_2OP(SpvOpULessThanEqual) {
 /* Unsigned-integer comparison if Operand 1 is less than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_unsigned_integer(op1_reg->type));
-    assert(spirv_sim_type_is_unsigned_integer(op2_reg->type));
+    assert(spirv_type_is_unsigned_integer(op1_reg->type));
+    assert(spirv_type_is_unsigned_integer(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->uvec[i] = op1_reg->uvec[i] <= op2_reg->uvec[i];
@@ -1627,8 +1594,8 @@ OP_FUNC_RES_2OP(SpvOpSLessThanEqual) {
 /* Signed-integer comparison if Operand 1 is less than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_signed_integer(op1_reg->type));
-    assert(spirv_sim_type_is_signed_integer(op2_reg->type));
+    assert(spirv_type_is_signed_integer(op1_reg->type));
+    assert(spirv_type_is_signed_integer(op2_reg->type));
 
     for (int32_t i = 0; i < res_type->count; ++i) {
         res_reg->svec[i] = op1_reg->svec[i] <= op2_reg->svec[i];
@@ -1640,7 +1607,7 @@ OP_FUNC_RES_2OP(SpvOpFOrdEqual) {
 /* Floating-point comparison for being ordered and equal. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
     assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
@@ -1655,7 +1622,7 @@ OP_FUNC_RES_2OP(SpvOpFUnordEqual) {
 /* Floating-point comparison for being unordered or equal. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
     assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
@@ -1670,7 +1637,7 @@ OP_FUNC_RES_2OP(SpvOpFOrdNotEqual) {
 /* Floating-point comparison for being ordered and not equal. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
     assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
@@ -1685,7 +1652,7 @@ OP_FUNC_RES_2OP(SpvOpFUnordNotEqual) {
 /* Floating-point comparison for being unordered or not equal. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
     assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
@@ -1700,7 +1667,7 @@ OP_FUNC_RES_2OP(SpvOpFOrdLessThan) {
 /* Floating-point comparison if operands are ordered and Operand 1 is less than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
     assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
@@ -1715,7 +1682,7 @@ OP_FUNC_RES_2OP(SpvOpFUnordLessThan) {
 /* Floating-point comparison if operands are unordered or Operand 1 is less than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
     assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
@@ -1730,7 +1697,7 @@ OP_FUNC_RES_2OP(SpvOpFOrdGreaterThan) {
 /* Floating-point comparison if operands are ordered and Operand 1 is greater than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
     assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
@@ -1745,7 +1712,7 @@ OP_FUNC_RES_2OP(SpvOpFUnordGreaterThan) {
 /* Floating-point comparison if operands are unordered or Operand 1 is greater than Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
     assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
@@ -1761,7 +1728,7 @@ OP_FUNC_RES_2OP(SpvOpFOrdLessThanEqual) {
 /* Floating-point comparison if operands are ordered and Operand 1 is less than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
     assert(op1_reg->type == op2_reg->type);
     
     for (int32_t i = 0; i < res_type->count; ++i) {
@@ -1776,7 +1743,7 @@ OP_FUNC_RES_2OP(SpvOpFUnordLessThanEqual) {
 /* Floating-point comparison if operands are unordered or Operand 1 is less than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
     assert(op1_reg->type == op2_reg->type);
     
     for (uint32_t i = 0; i < res_type->count; ++i) {
@@ -1791,7 +1758,7 @@ OP_FUNC_RES_2OP(SpvOpFOrdGreaterThanEqual) {
 /* Floating-point comparison if operands are ordered and Operand 1 is greater than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
     assert(op1_reg->type == op2_reg->type);
     
     for (uint32_t i = 0; i < res_type->count; ++i) {
@@ -1806,7 +1773,7 @@ OP_FUNC_RES_2OP(SpvOpFUnordGreaterThanEqual) {
 /* Floating-point comparison if operands are unordered or Operand 1 is greater than or equal to Operand 2. */
     
     assert(res_type->kind == TypeBool);
-    assert(spirv_sim_type_is_float(op1_reg->type));
+    assert(spirv_type_is_float(op1_reg->type));
     assert(op1_reg->type == op2_reg->type);
     
     for (uint32_t i = 0; i < res_type->count; ++i) {

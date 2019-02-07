@@ -187,4 +187,38 @@ size_t spirv_module_opcode_count(SPIRV_module *module);
 struct SPIRV_opcode *spirv_module_opcode_by_index(SPIRV_module *module, uint32_t index);
 uint32_t spirv_module_index_for_opcode(SPIRV_module *module, struct SPIRV_opcode *op);
 
+static inline bool spirv_type_is_integer(Type *type) {
+    return type->kind == TypeInteger ||
+           type->kind == TypeVectorInteger ||
+           type->kind == TypeMatrixInteger;
+}
+
+static inline bool spirv_type_is_signed_integer(Type *type) {
+    return spirv_type_is_integer(type ) && type->is_signed;
+}
+
+static inline bool spirv_type_is_unsigned_integer(Type *type) {
+    return spirv_type_is_integer(type ) && !type->is_signed;
+}
+
+static inline bool spirv_type_is_float(Type *type) {
+    return type->kind == TypeFloat ||
+           type->kind == TypeVectorFloat ||
+           type->kind == TypeMatrixFloat;
+}
+
+static inline bool spirv_type_is_scalar(Type *type) {
+   return (type->kind == TypeInteger || type->kind == TypeFloat || type->kind == TypeBool) &&
+          type->count == 1;
+}
+
+static inline bool spirv_type_is_vector(Type *type) {
+    return type->kind == TypeVectorInteger || type->kind == TypeVectorFloat;
+}
+
+static inline bool spirv_type_is_matrix(Type *type) {
+    return type->kind == TypeMatrixInteger || type->kind == TypeMatrixFloat;
+}
+
+
 #endif // JS_SHADER_SIM_SPIRV_MODULE_H

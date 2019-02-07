@@ -14,6 +14,7 @@
 EXTINST_RES_1OP(GLSLstd450Normalize) {
 /* Result is the vector in the same direction as x but with a length of 1. */
     assert(res_reg->type == op_reg->type);
+    assert(spirv_type_is_float(op_reg->type));
     // assert(spirv_sim_type_is_float(op_reg->type));
 
     float len = 0.0f;
