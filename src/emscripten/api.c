@@ -368,15 +368,14 @@ bool simapi_spirv_execution_finished(SimApiContext *context) {
 }
 
 EMSCRIPTEN_KEEPALIVE
-uint32_t simapi_spirv_first_free_register(SimApiContext *context) {
-	return context->spirv_sim.reg_free_start;
-}
-
-EMSCRIPTEN_KEEPALIVE
-const char *simapi_spirv_register(SimApiContext *context, uint32_t reg_idx) {
+const char *simapi_spirv_register_by_id(SimApiContext *context, uint32_t id) {
 
 	char *json = NULL;
-	SimRegister *reg = &context->spirv_sim.temp_regs[reg_idx];
+
+	SimRegister *reg = map_int_ptr_get(&context->spirv_sim.current_frame->regs, id);
+	if (!reg) {
+		return NULL;
+	}
 
 	arr_printf(json, "{\"id\": %d", reg->id);
 	arr_printf(json, ",\"type\":");
@@ -385,5 +384,23 @@ const char *simapi_spirv_register(SimApiContext *context, uint32_t reg_idx) {
 	spirv_array_to_json(&json, reg->type, reg->raw);
 	arr_printf(json, "}");
 
+	return json;
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char *simapi_spirv_local_register_ids(SimApiContext *context) {
+
+	HashMap *regs = &context->spirv_sim.current_frame->regs;
+
+	char *json = NULL;
+	const char *fmt = "%d";
+	arr_printf(json, "[");
+
+	for (int iter = map_begin(regs); iter != map_end(regs); iter = map_next(regs, iter)) {
+		arr_printf(json, fmt, ((SimRegister *) map_val(regs, iter))->id);
+		fmt = ",%d";
+	}
+
+	arr_printf(json, "]");
 	return json;
 }

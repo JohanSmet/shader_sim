@@ -241,13 +241,13 @@
 		var simapi_spirv_select_entry_point = null;
 		var simapi_spirv_step = null;
 		var simapi_spirv_execution_finished = null;
-		var simapi_spirv_first_free_register = null;
-		var simapi_spirv_register = null;
+		var simapi_spirv_register_by_id = null;
+		var simapi_spirv_local_register_ids = null;
 
 		// global variables
 		var simapi_context = null;
 		var variable_windows = variable_windows_empty();
-		var register_next = 0;
+		var local_register_ids = [];
 
 		// functions
 		function wasm_wrap_functions() {
@@ -269,8 +269,8 @@
 			simapi_spirv_select_entry_point = Module.cwrap('simapi_spirv_select_entry_point', 'number', ['number', 'number']);
 			simapi_spirv_step = Module.cwrap('simapi_spirv_step', 'number', ['number']);
 			simapi_spirv_execution_finished = Module.cwrap('simapi_spirv_execution_finished', 'number', ['number']);
-			simapi_spirv_first_free_register = Module.cwrap('simapi_spirv_first_free_register', 'number', ['number']);
-			simapi_spirv_register = Module.cwrap('simapi_spirv_register', 'string', ['number', 'number']);
+			simapi_spirv_register_by_id = Module.cwrap('simapi_spirv_register_by_id', 'string', ['number', 'number']);
+			simapi_spirv_local_register_ids = Module.cwrap('simapi_spirv_local_register_ids', 'string', ['number']);
 		}
 
 		function wasm_included_files() {
@@ -491,7 +491,7 @@
 			if (simapi_context != null) {
 				simapi_release_context(simapi_context);
 				variable_windows = variable_windows_empty();
-				register_next = 0;
+				local_register_ids = [];
 			}
 		}
 
@@ -516,8 +516,6 @@
 			// current line
 			var f_curr_line = simapi_spirv_select_entry_point(simapi_context, 0);
 			ui_update_current_line(f_curr_line);
-
-			register_next = simapi_spirv_first_free_register(simapi_context);
 
 			// reset header
 			$("#btnStep").prop("disabled", simapi_spirv_execution_finished(simapi_context));
@@ -575,12 +573,13 @@
 			ui_refresh_variables_output();
 
 			// update register view
-			var first_free = simapi_spirv_first_free_register(simapi_context);
-			while (register_next < first_free) {
-				var reg_info = parse_json(simapi_spirv_register(simapi_context, register_next));
+	 		var all_regs = parse_json(simapi_spirv_local_register_ids(simapi_context));
+		 	var new_regs = all_regs.filter(x => !local_register_ids.includes(x));
+			for (var idx = 0; idx < new_regs.length; ++idx) {
+				var reg_info = parse_json(simapi_spirv_register_by_id(simapi_context, new_regs[idx]));
 				$("#regs").append(ui_create_register_display(reg_info));
-				register_next = register_next + 1;
 			}
+		 	local_register_ids = all_regs;
 		});
 
 		$("#btnReset").on("click", function (event) {
@@ -590,13 +589,13 @@
 			// reset current line
 			var f_curr_line = simapi_spirv_select_entry_point(simapi_context, 0);
 			ui_update_current_line(f_curr_line);
-			register_next = simapi_spirv_first_free_register(simapi_context);
 
 			// reset header
 			$("#btnStep").prop("disabled", simapi_spirv_execution_finished(simapi_context));
 
-			// clear register view
+			// clear register view 
 			$("#regs div").remove();
+		 	local_register_ids = [];
 		});
 
 	 	$("#btnAboutOpen").on("click", function (event) {
