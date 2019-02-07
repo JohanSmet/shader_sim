@@ -38,6 +38,7 @@ set (LIB_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_binary.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_text.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_module.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_sim_ext_glsl.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/spirv_simulator.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/utils.c"
 )

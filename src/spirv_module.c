@@ -148,6 +148,10 @@ static bool id_has_decoration (SPIRV_module *module, uint32_t target, int32_t me
     return false;
 }
 
+static void define_extinst_set(SPIRV_module *module, uint32_t id, const char *name) {
+    map_int_str_put(&module->extinst_sets, id, name);
+}
+
 static void define_name(SPIRV_module *module, uint32_t id, const char *name, int member_index) {
     map_int_str_put(&module->names, id_member_to_key(id, member_index), name);
 }
@@ -488,7 +492,9 @@ void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary) {
 	
 	    arr_push(module->opcode_array, op);
 
-        if (op->op.kind == SpvOpName) {
+        if (op->op.kind == SpvOpExtInstImport) {
+            define_extinst_set(module, op->optional[0], (const char *) &op->optional[1]);
+        } else if (op->op.kind == SpvOpName) {
             define_name(module, 
                         op->optional[0], 
                         (const char *) &op->optional[1], -1);

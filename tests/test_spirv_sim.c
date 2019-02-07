@@ -8,6 +8,7 @@
 #include "spirv_module.h"
 #include "spirv_simulator.h"
 #include "spirv/spirv.h"
+#include "spirv/GLSL.std.450.h"
 
 #include <math.h>
 
@@ -45,8 +46,7 @@ static inline uint32_t urem(uint32_t v1, uint32_t v2) {
 
 static inline void spirv_common_header(SPIRV_binary *bin) {
     SPIRV_OP(bin, SpvOpCapability,  SpvCapabilityShader);
-    SPIRV_OP(bin, SpvOpExtInstImport, ID(1), S('G','L','S','L'), S('.','s','t','d'), S('.','4','5','0'), S(0,0,0,0));
-    SPIRV_OP(bin, SpvOpMemoryModel, SpvAddressingModelLogical, SpvMemoryModelGLSL450);
+    SPIRV_OP(bin, SpvOpMemoryModel, SpvAddressingModelLogical, SpvMemoryModelSimple);
     SPIRV_OP(bin, SpvOpEntryPoint, SpvExecutionModelVertex, 4, S('m','a','i','n'), S(0,0,0,0));
 }
 
@@ -738,6 +738,46 @@ MunitResult test_function(const MunitParameter params[], void* user_data_or_fixt
 
     return MUNIT_OK;
 } 
+
+MunitResult test_GLSL_std_450(const MunitParameter params[], void* user_data_or_fixture) {
+
+    /* prepare binary */
+    SPIRV_binary spirv_bin;
+    spirv_bin_init(&spirv_bin, 1, 0);
+
+    spirv_common_header(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpExtInstImport, ID(1), S('G','L','S','L'), S('.','s','t','d'), S('.','4','5','0'), S(0,0,0,0));
+    spirv_common_types(&spirv_bin, TEST_TYPE_FLOAT32);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(40), FLOAT(0.0f));
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(41), FLOAT(1.0f));
+    SPIRV_OP(&spirv_bin, SpvOpConstantComposite, ID(11), ID(42), ID(41), ID(41), ID(41), ID(40));
+    spirv_common_function_header_main(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(81), ID(1), GLSLstd450Normalize, ID(42));
+    spirv_common_function_footer(&spirv_bin);
+    spirv_bin.header.bound_ids = 84; 
+    spirv_bin_finalize(&spirv_bin);
+
+    /* prepare simulator */
+    SPIRV_module spirv_module;
+    spirv_module_load(&spirv_module, &spirv_bin);
+    
+    SPIRV_simulator spirv_sim;
+    spirv_sim_init(&spirv_sim, &spirv_module);
+
+    /* run simulator */
+    while (!spirv_sim.finished && !spirv_sim.error_msg) {
+        spirv_sim_step(&spirv_sim);
+        munit_assert_null(spirv_sim.error_msg);
+    }
+
+    /* check registers */
+    float v = 1.0f / sqrtf(3.0f);
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(81), ==, v, v, v, 0.0f);
+
+
+    return MUNIT_OK;
+
+}
     
 
 MunitTest spirv_sim_tests[] = {
@@ -748,5 +788,6 @@ MunitTest spirv_sim_tests[] = {
     { "/conversion", test_conversion, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     { "/aggregate", test_aggregate, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     { "/function", test_function, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    { "/ext_GLSL_std_450", test_GLSL_std_450, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };

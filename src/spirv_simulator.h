@@ -36,6 +36,7 @@ typedef struct SPIRV_stackframe {
 
 typedef struct SPIRV_simulator {
     SPIRV_module *module;
+    HashMap extinst_funcs;  // id (uint32_t) -> SPIRV_SIM_EXTINST_FUNC *
     
     uint8_t *memory;            // dyn_array
     uint32_t memory_free_start;

@@ -152,6 +152,7 @@ typedef struct SPIRV_module {
 
     struct SPIRV_opcode **opcode_array;	// dyn_array
 
+    HashMap extinst_sets;   // id (int) -> const char *
     HashMap names;          // id (int) -> const char *
     HashMap decorations;    // id (int) -> SPIRV_opcode ** (dyn_array)
     HashMap types;          // id (int) -> Type *

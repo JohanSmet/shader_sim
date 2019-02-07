@@ -2,6 +2,7 @@
 
 #include "spirv_simulator.h"
 #include "spirv_binary.h"
+#include "spirv_sim_ext.h"
 #include "spirv/spirv_names.h"
 #include "dyn_array.h"
 
@@ -183,6 +184,18 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
     *sim = (SPIRV_simulator) {
         .module = module
     };
+
+    /* load imported extension instructions */
+    for (int iter = map_begin(&module->extinst_sets); iter != map_end(&module->extinst_sets); iter = map_next(&module->extinst_sets, iter)) {
+        uint32_t id = map_key_int(&module->extinst_sets, iter);
+        const char *ext = map_val_str(&module->extinst_sets, iter);
+
+        if (!strcmp(ext, "GLSL.std.450")) {
+            map_int_ptr_put(&sim->extinst_funcs, id, &spirv_sim_extension_GLSL_std_450);
+        } else {
+            arr_printf(sim->error_msg, "Unsupported extension [%s]", ext);
+        }
+    }
 
     /* setup stackframe for globals */
     stackframe_init(&sim->global_frame);
@@ -377,6 +390,18 @@ static uint32_t aggregate_indices_offset(Type *type, uint32_t num_indices, uint3
 
 
 #define OP_FUNC_END   }
+
+OP_FUNC_BEGIN (SpvOpExtInst) {
+    Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
+    OP_REGISTER_ASSIGN(res_reg, res_type, op->optional[1]);
+    uint32_t set_id = op->optional[2];
+
+    SPIRV_SIM_EXTINST_FUNC extinst_func = (SPIRV_SIM_EXTINST_FUNC) map_int_ptr_get(&sim->extinst_funcs, set_id);
+    assert(extinst_func);
+
+    extinst_func(sim, op);
+
+} OP_FUNC_END
 
 OP_FUNC_BEGIN(SpvOpLoad)
     Type *res_type = spirv_module_type_by_id(sim->module, op->optional[0]);
@@ -1824,6 +1849,9 @@ void spirv_sim_step(SPIRV_simulator *sim) {
         OP_IGNORE(SpvOpNop)
         OP_DEFAULT(SpvOpUndef)
         OP_DEFAULT(SpvOpSizeOf)
+
+        // extension instructions
+        OP(SpvOpExtInst);
             
         // memory instructions
         OP_DEFAULT(SpvOpVariable)
