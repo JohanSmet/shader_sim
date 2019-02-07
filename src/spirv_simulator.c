@@ -193,7 +193,7 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
     }
 
     /* setup stackframe for the entrypoint */
-    stackframe_new(sim);
+    sim->current_frame = stackframe_new(sim);
 }
 
 void spirv_sim_variable_associate_data(
