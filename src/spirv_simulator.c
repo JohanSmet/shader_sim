@@ -150,6 +150,32 @@ static uint32_t allocate_variable(SPIRV_simulator *sim, Variable *var) {
     return mem_ptr;
 }
 
+static void setup_function_call(SPIRV_simulator *sim, SPIRV_function *func, uint32_t result_id, uint32_t *param_ids, SPIRV_opcode *return_addr) {
+
+    /* create new stack frame */
+    SPIRV_stackframe *new_frame = stackframe_new(sim);
+
+    /* when the function ends, return to the opcode right after the current opcode */
+    new_frame->return_addr = return_addr;
+    new_frame->return_id   = result_id;
+    new_frame->heap_start  = sim->memory_free_start;
+
+    /* push parameters */
+    for (uint32_t idx = 0; idx < arr_len(func->func.parameter_ids); ++idx) {
+        SimRegister *arg_reg = spirv_sim_register_by_id(sim, param_ids[idx]);
+        spirv_sim_clone_register(sim, new_frame, func->func.parameter_ids[idx], arg_reg);
+    }
+
+    /* make stackframe of the new function current */
+    sim->current_frame = new_frame;
+
+    /* allocate local variables */
+    for (uint32_t idx = 0; idx < arr_len(func->func.variable_ids); ++idx) {
+        Variable *var = spirv_module_variable_by_id(sim->module, func->func.variable_ids[idx]);
+        allocate_variable(sim, var);
+    }
+}
+
 void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
     assert(sim);
     assert(module);
@@ -162,9 +188,6 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
     stackframe_init(&sim->global_frame);
     sim->current_frame = &sim->global_frame;
 
-    /* start at first defined entrypoint (for now -- FIXME) */
-    spirv_sim_select_entry_point(sim, 0);
-   
     /* setup access to constants */
     for (int iter = map_begin(&module->constants); iter != map_end(&module->constants); iter = map_next(&module->constants, iter)) {
         uint32_t id = (uint32_t) map_key_int(&module->constants, iter);
@@ -192,8 +215,8 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
         spirv_add_interface_pointers(sim, var, mem_ptr);
     }
 
-    /* setup stackframe for the entrypoint */
-    sim->current_frame = stackframe_new(sim);
+    /* start at first defined entrypoint (for now -- FIXME) */
+    spirv_sim_select_entry_point(sim, 0);
 }
 
 void spirv_sim_variable_associate_data(
@@ -218,6 +241,8 @@ void spirv_sim_select_entry_point(SPIRV_simulator *sim, uint32_t index) {
     assert(index < arr_len(sim->module->entry_points));
 
     SPIRV_function *func = sim->module->entry_points[index].function;
+
+    setup_function_call(sim, func, 0, NULL, NULL);
     spirv_bin_opcode_jump_to(sim->module->spirv_bin, func->fst_opcode);
 }
 
@@ -442,28 +467,14 @@ OP_FUNC_BEGIN(SpvOpFunctionCall) {
 
     assert(arr_len(func->func.parameter_ids) == op->op.length - 4);
 
-    /* create new stack frame */
-    SPIRV_stackframe *new_frame = stackframe_new(sim);
-
-    /* when the function ends, return to the opcode right after the current opcode */
-    new_frame->return_addr = spirv_bin_opcode_next(sim->module->spirv_bin);
-    new_frame->return_id   = res_id;
-    new_frame->heap_start  = sim->memory_free_start;
-
-    /* push parameters */
-    for (int idx = 0; idx < arr_len(func->func.parameter_ids); ++idx) {
-        SimRegister *arg_reg = spirv_sim_register_by_id(sim, op->optional[3 + idx]);
-        spirv_sim_clone_register(sim, new_frame, func->func.parameter_ids[idx], arg_reg);
+    /* get pointer to the parameter ids */
+    uint32_t *params = NULL;
+    if (op->op.length > 4) {
+        params = op->optional + 3;
     }
 
-    /* make stackframe of the new function current */
-    sim->current_frame = new_frame;
-
-    /* allocate local variables */
-    for (uint32_t idx = 0; idx < arr_len(func->func.variable_ids); ++idx) {
-        Variable *var = spirv_module_variable_by_id(sim->module, func->func.variable_ids[idx]);
-        allocate_variable(sim, var);
-    }
+    /* setup the function call */
+    setup_function_call(sim, func, res_id, params, spirv_bin_opcode_next(sim->module->spirv_bin));
 
     /* jump to the start of the function */
     sim->jump_to_op = func->fst_opcode;
