@@ -750,9 +750,14 @@ MunitResult test_GLSL_std_450(const MunitParameter params[], void* user_data_or_
     spirv_common_types(&spirv_bin, TEST_TYPE_FLOAT32);
     SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(40), FLOAT(0.0f));
     SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(41), FLOAT(1.0f));
-    SPIRV_OP(&spirv_bin, SpvOpConstantComposite, ID(11), ID(42), ID(41), ID(41), ID(41), ID(40));
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(42), FLOAT(2.0f));
+    SPIRV_OP(&spirv_bin, SpvOpConstantComposite, ID(11), ID(51), ID(41), ID(41), ID(41), ID(40));
+    SPIRV_OP(&spirv_bin, SpvOpConstantComposite, ID(11), ID(52), ID(42), ID(41), ID(41), ID(40));
     spirv_common_function_header_main(&spirv_bin);
-    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(81), ID(1), GLSLstd450Normalize, ID(42));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(10), ID(80), ID(1), GLSLstd450Length,    ID(51));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(10), ID(81), ID(1), GLSLstd450Distance,  ID(51), ID(52));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(82), ID(1), GLSLstd450Normalize, ID(51));
+
     spirv_common_function_footer(&spirv_bin);
     spirv_bin.header.bound_ids = 84; 
     spirv_bin_finalize(&spirv_bin);
@@ -772,7 +777,9 @@ MunitResult test_GLSL_std_450(const MunitParameter params[], void* user_data_or_
 
     /* check registers */
     float v = 1.0f / sqrtf(3.0f);
-    ASSERT_REGISTER_VEC4(&spirv_sim, ID(81), ==, v, v, v, 0.0f);
+    ASSERT_REGISTER_FLOAT(&spirv_sim, ID(80), ==, sqrtf(3.0f));
+    ASSERT_REGISTER_FLOAT(&spirv_sim, ID(81), ==, 1.0f);
+    ASSERT_REGISTER_VEC4(&spirv_sim, ID(82), ==, v, v, v, 0.0f);
 
 
     return MUNIT_OK;

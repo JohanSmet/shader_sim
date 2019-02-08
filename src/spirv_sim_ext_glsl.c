@@ -10,18 +10,48 @@
 #define SPIRV_SIM_EXT_INTERNAL
 #include "spirv_sim_ext.h"
 
+static inline float vec_length(float *vec, size_t n) {
+    float len2 = 0.0f;
+
+    for (uint32_t i = 0; i < n; ++i) {
+        len2 += vec[i] * vec[i];
+    }
+
+    return sqrtf(len2);
+}
+
+EXTINST_RES_1OP(GLSLstd450Length) {
+/* Result is the length of vector */ 
+    assert(spirv_type_is_float(op_reg->type));
+    assert(op_reg->type->base_type == res_reg->type);
+
+    res_reg->vec[0] = vec_length(op_reg->vec, op_reg->type->count);
+
+} EXTINST_END
+
+EXTINST_RES_2OP(GLSLstd450Distance) {
+/* Result is the distance between p0 and p1, i.e., length(p0 - p1). */
+    assert(spirv_type_is_float(op1_reg->type));
+    assert(op1_reg->type == op2_reg->type);
+    assert(op1_reg->type->base_type == res_reg->type);
+
+    float dist2 = 0.0f;
+
+    for (uint32_t i = 0; i < op1_reg->type->count; ++i) {
+        float diff = op1_reg->vec[i] - op2_reg->vec[i];
+        dist2 += diff * diff;
+    }
+
+    res_reg->vec[0] = sqrtf(dist2);
+
+} EXTINST_END
 
 EXTINST_RES_1OP(GLSLstd450Normalize) {
 /* Result is the vector in the same direction as x but with a length of 1. */
     assert(res_reg->type == op_reg->type);
     assert(spirv_type_is_float(op_reg->type));
-    // assert(spirv_sim_type_is_float(op_reg->type));
 
-    float len = 0.0f;
-    for (uint32_t i = 0; i < op_reg->type->count; ++i) {
-        len += op_reg->vec[i] * op_reg->vec[i];
-    }
-    len = sqrtf(len);
+    float len = vec_length(op_reg->vec, op_reg->type->count);
 
     for (uint32_t i = 0; i < op_reg->type->count; ++i) {
         res_reg->vec[i] = op_reg->vec[i] / len;
@@ -115,8 +145,8 @@ void spirv_sim_extension_GLSL_std_450(SPIRV_simulator *sim, SPIRV_opcode *op) {
         OP_DEFAULT(GLSLstd450UnpackUnorm4x8)
         OP_DEFAULT(GLSLstd450UnpackDouble2x32)
 
-        OP_DEFAULT(GLSLstd450Length)
-        OP_DEFAULT(GLSLstd450Distance)
+        OP(GLSLstd450Length)
+        OP(GLSLstd450Distance)
         OP_DEFAULT(GLSLstd450Cross)
         OP(GLSLstd450Normalize)
         OP_DEFAULT(GLSLstd450FaceForward)

@@ -38,6 +38,16 @@ void spirv_sim_extension_GLSL_std_450(struct SPIRV_simulator *sim, struct SPIRV_
         /* retrieve register used for operand */    \
         EXTINST_REGISTER(op_reg, EXTINST_PARAM(op, 0));
 
+#define EXTINST_RES_2OP(kind)   \
+    EXTINST_BEGIN(kind)         \
+        /* assign a register to keep the data */        \
+        EXTINST_REGISTER(res_reg, op->optional[1]);     \
+                                                        \
+        /* retrieve registers used for operands */      \
+        EXTINST_REGISTER(op1_reg, EXTINST_PARAM(op, 0));\
+        EXTINST_REGISTER(op2_reg, EXTINST_PARAM(op, 1));
+
+
 #define EXTINST_END     }
 
 #endif // SPIRV_SIM_EXT_INTERNAL
