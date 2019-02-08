@@ -152,6 +152,176 @@ EXTINST_RES_1OP(GLSLstd450Fract) {
 
 } EXTINST_END
 
+ /* 
+  * trigonometric functions 
+  */
+
+EXTINST_RES_1OP(GLSLstd450Radians) {
+/* Converts degrees to radians */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < op_reg->type->count; ++i) {
+        res_reg->vec[i] = (op_reg->vec[i] * PI_F) / 180.0f;
+    }
+
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Degrees) {
+/* Converts radians to degrees */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < op_reg->type->count; ++i) {
+        res_reg->vec[i] = (op_reg->vec[i] * 180.0f) /  PI_F;
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Sin) {
+/* The standard trigonometric sine of x radians. */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < op_reg->type->count; ++i) {
+        res_reg->vec[i] = sinf(op_reg->vec[i]);
+    }
+
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Cos) {
+/* The standard trigonometric cosine of x radians. */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < op_reg->type->count; ++i) {
+        res_reg->vec[i] = cosf(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Tan) {
+/* The standard trigonometric tangent of x radians. */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < op_reg->type->count; ++i) {
+        res_reg->vec[i] = tanf(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Asin) {
+/* Arc sine. Result is an angle, in radians, whose sine is x. */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < op_reg->type->count; ++i) {
+        res_reg->vec[i] = asinf(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Acos) {
+/* Arc cosine. Result is an angle, in radians, whose cosine is x.     */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < op_reg->type->count; ++i) {
+        res_reg->vec[i] = acosf(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Atan) {
+/* Arc tangent. Result is an angle, in radians, whose tangent is y_over_x. */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < op_reg->type->count; ++i) {
+        res_reg->vec[i] = atanf(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Sinh) {
+/* Hyperbolic sine of x radians. */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < op_reg->type->count; ++i) {
+        res_reg->vec[i] = sinhf(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Cosh) {
+/* Hyperbolic cosine of x radians. */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < op_reg->type->count; ++i) {
+        res_reg->vec[i] = coshf(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Tanh) {
+/* Hyperbolic tangent of x radians. */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < op_reg->type->count; ++i) {
+        res_reg->vec[i] = tanhf(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Asinh) {
+/* Arc hyperbolic sine; result is the inverse of sinh. */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < op_reg->type->count; ++i) {
+        res_reg->vec[i] = asinhf(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Acosh) {
+/* Arc hyperbolic cosine; Result is the non-negative inverse of cosh. */    
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < op_reg->type->count; ++i) {
+        res_reg->vec[i] = acoshf(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Atanh) {
+/* Arc hyperbolic tangent; result is the inverse of tanh. Result is undefined if abs x ≥ 1. */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < op_reg->type->count; ++i) {
+        res_reg->vec[i] = atanhf(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_2OP(GLSLstd450Atan2) {
+/* Arc tangent. Result is an angle, in radians, whose tangent is y / x. */
+    assert(spirv_type_is_float(op1_reg->type));
+    assert(op2_reg->type == op1_reg->type);
+    assert(res_reg->type == op1_reg->type);
+
+    for (uint32_t i = 0; i < res_reg->type->count; ++i) {
+        res_reg->vec[i] = atan2f(op1_reg->vec[i], op2_reg->vec[i]);
+    }
+
+} EXTINST_END
+
 
 
 
@@ -219,22 +389,23 @@ void spirv_sim_extension_GLSL_std_450(SPIRV_simulator *sim, SPIRV_opcode *op) {
         OP(GLSLstd450Floor)
         OP(GLSLstd450Ceil)
         OP(GLSLstd450Fract)
-        OP_DEFAULT(GLSLstd450Radians)
-        OP_DEFAULT(GLSLstd450Degrees)
-        OP_DEFAULT(GLSLstd450Sin)
-        OP_DEFAULT(GLSLstd450Cos)
-        OP_DEFAULT(GLSLstd450Tan)
-        OP_DEFAULT(GLSLstd450Asin)
-        OP_DEFAULT(GLSLstd450Acos)
-        OP_DEFAULT(GLSLstd450Atan)
-        OP_DEFAULT(GLSLstd450Sinh)
-        OP_DEFAULT(GLSLstd450Cosh)
-        OP_DEFAULT(GLSLstd450Tanh)
-        OP_DEFAULT(GLSLstd450Asinh)
-        OP_DEFAULT(GLSLstd450Acosh)
-        OP_DEFAULT(GLSLstd450Atanh)
-        OP_DEFAULT(GLSLstd450Atan2)
 
+        /* trigonometric functions */
+        OP(GLSLstd450Radians)
+        OP(GLSLstd450Degrees)
+        OP(GLSLstd450Sin)
+        OP(GLSLstd450Cos)
+        OP(GLSLstd450Tan)
+        OP(GLSLstd450Asin)
+        OP(GLSLstd450Acos)
+        OP(GLSLstd450Atan)
+        OP(GLSLstd450Sinh)
+        OP(GLSLstd450Cosh)
+        OP(GLSLstd450Tanh)
+        OP(GLSLstd450Asinh)
+        OP(GLSLstd450Acosh)
+        OP(GLSLstd450Atanh)
+        OP(GLSLstd450Atan2)
         OP_DEFAULT(GLSLstd450Pow)
         OP_DEFAULT(GLSLstd450Exp)
         OP_DEFAULT(GLSLstd450Log)

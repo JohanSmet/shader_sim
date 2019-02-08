@@ -17,3 +17,6 @@
 
 #define PTR_ALIGN_DOWN(x, a) ((void *) ALIGN_DOWN((uintptr_t) (x), (a)))
 #define PTR_ALIGN_UP(x, a) ((void *) ALIGN_UP((uintptr_t) (x), (a)))
+
+#define PI 3.14159265358979323846
+#define PI_F 3.141592653f

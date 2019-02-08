@@ -818,6 +818,76 @@ MunitResult test_GLSL_std_450_basic_math(const MunitParameter params[], void* us
     return MUNIT_OK;
 }
 
+MunitResult test_GLSL_std_450_trig(const MunitParameter params[], void* user_data_or_fixture) {
+
+    /* prepare binary */
+    SPIRV_binary spirv_bin;
+    spirv_bin_init(&spirv_bin, 1, 0);
+
+    spirv_common_header(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpExtInstImport, ID(1), S('G','L','S','L'), S('.','s','t','d'), S('.','4','5','0'), S(0,0,0,0));
+    spirv_common_types(&spirv_bin, TEST_TYPE_FLOAT32);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(40), FLOAT(0.0f));
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(41), FLOAT(PI_F / 2.0f));
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(42), FLOAT(PI_F));
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(43), FLOAT((3.0f * PI_F) / 2.0f));
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(44), FLOAT(PI_F / 4.0f));
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(45), FLOAT((3.0f * PI_F) / 4.0f));
+    SPIRV_OP(&spirv_bin, SpvOpConstantComposite, ID(11), ID(51), ID(40), ID(41), ID(42), ID(43));
+    SPIRV_OP(&spirv_bin, SpvOpConstantComposite, ID(11), ID(52), ID(40), ID(44), ID(45), ID(42));
+    spirv_common_function_header_main(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(80), ID(1), GLSLstd450Degrees, ID(51));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(81), ID(1), GLSLstd450Radians, ID(80));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(82), ID(1), GLSLstd450Sin,     ID(51));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(83), ID(1), GLSLstd450Cos,     ID(51));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(84), ID(1), GLSLstd450Tan,     ID(52));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(85), ID(1), GLSLstd450Asin,    ID(82));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(86), ID(1), GLSLstd450Acos,    ID(83));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(87), ID(1), GLSLstd450Atan,    ID(84));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(88), ID(1), GLSLstd450Sinh,    ID(51));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(89), ID(1), GLSLstd450Cosh,    ID(51));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(90), ID(1), GLSLstd450Tanh,    ID(52));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(91), ID(1), GLSLstd450Asinh,   ID(88));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(92), ID(1), GLSLstd450Acosh,   ID(89));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(93), ID(1), GLSLstd450Atanh,   ID(90));
+
+    spirv_common_function_footer(&spirv_bin);
+    spirv_bin.header.bound_ids = 90; 
+    spirv_bin_finalize(&spirv_bin);
+
+
+    /* prepare simulator */
+    SPIRV_module spirv_module;
+    spirv_module_load(&spirv_module, &spirv_bin);
+    
+    SPIRV_simulator spirv_sim;
+    spirv_sim_init(&spirv_sim, &spirv_module);
+
+    /* run simulator */
+    while (!spirv_sim.finished && !spirv_sim.error_msg) {
+        spirv_sim_step(&spirv_sim);
+        munit_assert_null(spirv_sim.error_msg);
+    }
+
+    /* check registers */
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 80, 0.0f, 90.0f, 180.0f, 270.0f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 81, 0.0f, PI_F / 2.0f, PI_F, (3.0f * PI_F) / 2.0f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 82, 0.0f, 1.0f, 0.0f, -1.0f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 83, 1.0f, 0.0f, -1.0f, 0.0f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 84, 0.0f, 1.0f, -1.0f, 0.0f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 85, 0.0f, PI_F / 2.0f, 0, -PI_F / 2.0f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 86, 0.0f, PI_F / 2.0f, PI_F, PI_F / 2.0f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 87, 0.0f, PI_F / 4.0f, - PI_F / 4.0f, 0);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 88, 0.0f, 2.3013f, 11.5487394f, 55.6544f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 89, 1.0f, 2.50917864f, 11.5919552f, 55.6633797f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 90, 0.0f, 0.655794263f, 0.982193351f, 0.996272087f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 91, 0.0f, PI_F / 2.0f, PI_F, 3.0f * (PI_F / 2.0f));
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 92, 0.0f, PI_F / 2.0f, PI_F, 3.0f * (PI_F / 2.0f));
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 93, 0.0f, PI_F / 4.0f, 3.0f *  (PI_F / 4.0f), PI_F);
+
+    return MUNIT_OK;
+}
+
 MunitResult test_GLSL_std_450(const MunitParameter params[], void* user_data_or_fixture) {
 
     /* prepare binary */
@@ -874,5 +944,6 @@ MunitTest spirv_sim_tests[] = {
     {"/aggregate", test_aggregate, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/function", test_function, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/ext_GLSL_std_450_basic_math", test_GLSL_std_450_basic_math, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {"/ext_GLSL_std_450_trig", test_GLSL_std_450_trig, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/ext_GLSL_std_450", test_GLSL_std_450, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
