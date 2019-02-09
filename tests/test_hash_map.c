@@ -4,12 +4,12 @@
 #include "hash_map.h"
 
 static MunitResult test_pointer(const MunitParameter params[], void* user_data_or_fixture) {
-    char *key1 = strdup("key");
-    char *val1 = strdup("val");
-    char *key2 = strdup("another_key");
-    char *val2 = strdup("and another val");
-    char *key3 = strdup("third");
-    char *val3 = strdup("moar");
+    char *key1 = "key";
+    char *val1 = "val";
+    char *key2 = "another_key";
+    char *val2 = "and another val";
+    char *key3 = "third";
+    char *val3 = "moar";
 
     HashMap map = {0};
     map_ptr_ptr_put(&map, key1, val1);
@@ -20,6 +20,8 @@ static MunitResult test_pointer(const MunitParameter params[], void* user_data_o
     munit_assert_string_equal(map_ptr_ptr_get(&map, key1), val1);
     munit_assert_string_equal(map_ptr_ptr_get(&map, key2), val2);
     munit_assert_string_equal(map_ptr_ptr_get(&map, key3), val3);
+
+    map_free(&map);
 
     return MUNIT_OK;
 }
@@ -43,6 +45,8 @@ static MunitResult test_integer(const MunitParameter params[], void* user_data_o
         munit_assert_int((int64_t) map_int_int_get(&map, idx), ==, idx * idx);
     }
 
+    map_free(&map);
+
     return MUNIT_OK;
 }
 
@@ -59,6 +63,8 @@ static MunitResult test_string(const MunitParameter params[], void* user_data_or
     map_str_int_put(&map, "first", 10);
     munit_assert_int(map_len(&map), ==, 2);
     munit_assert_int(map_str_int_get(&map, "first"), ==, 10);
+
+    map_free(&map);
 
     return MUNIT_OK;
 }
@@ -92,6 +98,8 @@ static MunitResult test_iteration(const MunitParameter params[], void* user_data
     munit_assert_int(check[0], ==, 2);
     munit_assert_int(check[1], ==, 2);
     munit_assert_int(check[2], ==, 2);
+
+    map_free(&map);
 
     return MUNIT_OK;
 }
