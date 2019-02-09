@@ -96,6 +96,7 @@ static void stackframe_init(SPIRV_stackframe *frame) {
 
 static SPIRV_stackframe *stackframe_new(SPIRV_simulator *sim) {
     arr_reserve(sim->func_frames, 1);
+    sim->current_frame = sim->func_frames + (arr_len(sim->func_frames) - 2);
     SPIRV_stackframe *new_frame = sim->func_frames + (arr_len(sim->func_frames) - 1);
     stackframe_init(new_frame);
     return new_frame;
