@@ -380,7 +380,7 @@ int map_end(HashMap *map) {
 int map_next(HashMap *map, int cur) {
     int result = cur + 1;
 
-    while (map->meta[result] != META_IN_USE && result < (int) map->cap) {
+    while (result < (int) map->cap && map->meta[result] != META_IN_USE) {
         ++result;
     }
 
