@@ -850,9 +850,8 @@ MunitResult test_GLSL_std_450_trig(const MunitParameter params[], void* user_dat
     SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(91), ID(1), GLSLstd450Asinh,   ID(88));
     SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(92), ID(1), GLSLstd450Acosh,   ID(89));
     SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(93), ID(1), GLSLstd450Atanh,   ID(90));
-
     spirv_common_function_footer(&spirv_bin);
-    spirv_bin.header.bound_ids = 90; 
+    spirv_bin.header.bound_ids = 94; 
     spirv_bin_finalize(&spirv_bin);
 
 
@@ -884,6 +883,61 @@ MunitResult test_GLSL_std_450_trig(const MunitParameter params[], void* user_dat
     ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 91, 0.0f, PI_F / 2.0f, PI_F, 3.0f * (PI_F / 2.0f));
     ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 92, 0.0f, PI_F / 2.0f, PI_F, 3.0f * (PI_F / 2.0f));
     ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 93, 0.0f, PI_F / 4.0f, 3.0f *  (PI_F / 4.0f), PI_F);
+
+    return MUNIT_OK;
+}
+
+MunitResult test_GLSL_std_450_exp_power(const MunitParameter params[], void* user_data_or_fixture) {
+
+    /* prepare binary */
+    SPIRV_binary spirv_bin;
+    spirv_bin_init(&spirv_bin, 1, 0);
+
+    spirv_common_header(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpExtInstImport, ID(1), S('G','L','S','L'), S('.','s','t','d'), S('.','4','5','0'), S(0,0,0,0));
+    spirv_common_types(&spirv_bin, TEST_TYPE_FLOAT32);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(40), FLOAT(0.0f));
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(41), FLOAT(1.0f));
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(42), FLOAT(2.0f));
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(43), FLOAT(3.0f));
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(44), FLOAT(4.0f));
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(45), FLOAT(5.0f));
+    SPIRV_OP(&spirv_bin, SpvOpConstantComposite, ID(11), ID(51), ID(41), ID(42), ID(43), ID(44));
+    SPIRV_OP(&spirv_bin, SpvOpConstantComposite, ID(11), ID(52), ID(40), ID(43), ID(44), ID(45));
+    spirv_common_function_header_main(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(80), ID(1), GLSLstd450Pow, ID(51), ID(52));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(81), ID(1), GLSLstd450Exp, ID(51));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(82), ID(1), GLSLstd450Log, ID(81));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(83), ID(1), GLSLstd450Exp2, ID(51));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(84), ID(1), GLSLstd450Log2, ID(83));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(85), ID(1), GLSLstd450Sqrt, ID(51));
+    SPIRV_OP(&spirv_bin, SpvOpExtInst, ID(11), ID(86), ID(1), GLSLstd450InverseSqrt, ID(51));
+
+    spirv_common_function_footer(&spirv_bin);
+    spirv_bin.header.bound_ids = 90; 
+    spirv_bin_finalize(&spirv_bin);
+
+    /* prepare simulator */
+    SPIRV_module spirv_module;
+    spirv_module_load(&spirv_module, &spirv_bin);
+    
+    SPIRV_simulator spirv_sim;
+    spirv_sim_init(&spirv_sim, &spirv_module);
+
+    /* run simulator */
+    while (!spirv_sim.finished && !spirv_sim.error_msg) {
+        spirv_sim_step(&spirv_sim);
+        munit_assert_null(spirv_sim.error_msg);
+    }
+
+    /* check registers */
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 80, 1.0f, 8.0f, 81.0f, 1024.0f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 81, 2.718281828f, 7.389056099f, 20.085536923f, 54.598150033f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 82, 1.0f, 2.0f, 3.0f, 4.0f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 83, 2.0f, 4.0f, 8.0f, 16.0f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 84, 1.0f, 2.0f, 3.0f, 4.0f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 85, 1.0f, 1.414213562f, 1.732050808f, 2.0f);
+    ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 86, 1.0f, 0.707106781f, 0.577350269f, 0.5f);
 
     return MUNIT_OK;
 }
@@ -945,5 +999,6 @@ MunitTest spirv_sim_tests[] = {
     {"/function", test_function, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/ext_GLSL_std_450_basic_math", test_GLSL_std_450_basic_math, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/ext_GLSL_std_450_trig", test_GLSL_std_450_trig, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {"/ext_GLSL_std_450_exp_power", test_GLSL_std_450_exp_power, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/ext_GLSL_std_450", test_GLSL_std_450, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};

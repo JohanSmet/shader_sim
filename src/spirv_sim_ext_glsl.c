@@ -322,6 +322,89 @@ EXTINST_RES_2OP(GLSLstd450Atan2) {
 
 } EXTINST_END
 
+/* 
+ * exponential/power functions 
+ */
+
+EXTINST_RES_2OP(GLSLstd450Pow) {
+/* Result is x raised to the y power */
+    assert(spirv_type_is_float(op1_reg->type));
+    assert(op2_reg->type == op1_reg->type);
+    assert(res_reg->type == op1_reg->type);
+
+    for (uint32_t i = 0; i < res_reg->type->count; ++i) {
+        res_reg->vec[i] = powf(op1_reg->vec[i], op2_reg->vec[i]);
+    }
+
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Exp) {
+/* Result is the natural exponentiation of x */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < res_reg->type->count; ++i) {
+        res_reg->vec[i] = expf(op_reg->vec[i]);
+    }
+
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Log) {
+/* Result is the natural logarithm of x */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < res_reg->type->count; ++i) {
+        res_reg->vec[i] = logf(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Exp2) {
+/* Result is 2 raised to the x power */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < res_reg->type->count; ++i) {
+        res_reg->vec[i] = exp2f(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Log2) {
+/* Result is the base-2 logarithm of x */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < res_reg->type->count; ++i) {
+        res_reg->vec[i] = log2f(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450Sqrt) {
+/* Result is the square root of x */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < res_reg->type->count; ++i) {
+        res_reg->vec[i] = sqrtf(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+EXTINST_RES_1OP(GLSLstd450InverseSqrt) {
+/* Result is the reciprocal of sqrt x */
+    assert(spirv_type_is_float(op_reg->type));
+    assert(res_reg->type == op_reg->type);
+
+    for (uint32_t i = 0; i < res_reg->type->count; ++i) {
+        res_reg->vec[i] = 1.0f / sqrtf(op_reg->vec[i]);
+    }
+    
+} EXTINST_END
+
+
 
 
 
@@ -406,13 +489,15 @@ void spirv_sim_extension_GLSL_std_450(SPIRV_simulator *sim, SPIRV_opcode *op) {
         OP(GLSLstd450Acosh)
         OP(GLSLstd450Atanh)
         OP(GLSLstd450Atan2)
-        OP_DEFAULT(GLSLstd450Pow)
-        OP_DEFAULT(GLSLstd450Exp)
-        OP_DEFAULT(GLSLstd450Log)
-        OP_DEFAULT(GLSLstd450Exp2)
-        OP_DEFAULT(GLSLstd450Log2)
-        OP_DEFAULT(GLSLstd450Sqrt)
-        OP_DEFAULT(GLSLstd450InverseSqrt)
+
+        /* exponential/power functions */
+        OP(GLSLstd450Pow)
+        OP(GLSLstd450Exp)
+        OP(GLSLstd450Log)
+        OP(GLSLstd450Exp2)
+        OP(GLSLstd450Log2)
+        OP(GLSLstd450Sqrt)
+        OP(GLSLstd450InverseSqrt)
 
         OP_DEFAULT(GLSLstd450Determinant)
         OP_DEFAULT(GLSLstd450MatrixInverse)
