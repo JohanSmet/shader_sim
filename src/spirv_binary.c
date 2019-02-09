@@ -79,6 +79,12 @@ bool spirv_bin_load(SPIRV_binary *spirv, int8_t *data) {
     return true;
 }
 
+void spirv_bin_free(SPIRV_binary *spirv) {
+    if (spirv) {
+        arr_free(spirv->binary_data);
+    }
+}
+
 SPIRV_header *spirv_bin_header(SPIRV_binary *spirv) {
     assert(spirv != NULL);
     return &spirv->header;

@@ -207,6 +207,11 @@ MunitResult test_arithmetic_float32(const MunitParameter params[], void* user_da
         fremf(data2[0], -data1[0]), fremf(data2[1], -data1[1]),
         fremf(data2[2], -data1[2]), fremf(data2[3], -data1[3]));
 
+    /* clean-up */
+    spirv_sim_shutdown(&spirv_sim);
+    spirv_module_free(&spirv_module);
+    spirv_bin_free(&spirv_bin);
+
     return MUNIT_OK;
 }
 
@@ -286,6 +291,11 @@ MunitResult test_arithmetic_int32(const MunitParameter params[], void* user_data
                          srem(data2[0], -data1[0]), srem(data2[1], -data1[1]),
                          srem(data2[2], -data1[2]), srem(data2[3], -data1[3]));
 
+    /* clean-up */
+    spirv_sim_shutdown(&spirv_sim);
+    spirv_module_free(&spirv_module);
+    spirv_bin_free(&spirv_bin);
+
     return MUNIT_OK;
 }
 
@@ -349,6 +359,11 @@ MunitResult test_arithmetic_uint32(const MunitParameter params[], void* user_dat
     ASSERT_REGISTER_UVEC4(&spirv_sim, ID(66), ==,                        /* OpUMod */
                           urem(data2[0], data1[0]), urem(data2[1], data1[1]),
                           urem(data2[2], data1[2]), urem(data2[3], data1[3]));
+
+    /* clean-up */
+    spirv_sim_shutdown(&spirv_sim);
+    spirv_module_free(&spirv_module);
+    spirv_bin_free(&spirv_bin);
 
     return MUNIT_OK;
 }
@@ -499,6 +514,11 @@ MunitResult test_composite_float32(const MunitParameter params[], void* user_dat
         {data1[3], data2[3], data1[3], data1[3]}
     };
     munit_assert_memory_equal(sizeof(float) * 16, t1_reg->raw, t1_expected);
+
+    /* clean-up */
+    spirv_sim_shutdown(&spirv_sim);
+    spirv_module_free(&spirv_module);
+    spirv_bin_free(&spirv_bin);
     
     return MUNIT_OK;
 }
@@ -574,6 +594,11 @@ MunitResult test_conversion(const MunitParameter params[], void* user_data_or_fi
     ASSERT_REGISTER_UVEC4(&spirv_sim, ID(67), ==, 1, 2, 0, 4);
     ASSERT_REGISTER_SVEC4(&spirv_sim, ID(68), ==, 1, 2, 3, INT32_MAX);
     ASSERT_REGISTER_VEC4(&spirv_sim, ID(71), ==, data_f[0], data_f[1], data_f[2], data_f[3]);
+
+    /* clean-up */
+    spirv_sim_shutdown(&spirv_sim);
+    spirv_module_free(&spirv_module);
+    spirv_bin_free(&spirv_bin);
 
     return MUNIT_OK;
 }
@@ -682,6 +707,11 @@ MunitResult test_aggregate(const MunitParameter params[], void* user_data_or_fix
     munit_assert_float(data_out->f0, ==, data_in.f0);
     munit_assert_float(data_out->f1, ==, data_in.f1);
 
+    /* clean-up */
+    spirv_sim_shutdown(&spirv_sim);
+    spirv_module_free(&spirv_module);
+    spirv_bin_free(&spirv_bin);
+
     return MUNIT_OK;
 }
 
@@ -744,6 +774,11 @@ MunitResult test_function(const MunitParameter params[], void* user_data_or_fixt
     ASSERT_REGISTER_FLOAT(&spirv_sim, ID(81), ==, 5.5f * 5.5f);
     ASSERT_REGISTER_FLOAT(&spirv_sim, ID(82), ==, (5.5f + 5.5f) * 5.5f);
     ASSERT_REGISTER_FLOAT(&spirv_sim, ID(83), ==, 33.7f);
+
+    /* clean-up */
+    spirv_sim_shutdown(&spirv_sim);
+    spirv_module_free(&spirv_module);
+    spirv_bin_free(&spirv_bin);
 
     return MUNIT_OK;
 } 
@@ -815,6 +850,11 @@ MunitResult test_GLSL_std_450_basic_math(const MunitParameter params[], void* us
     ASSERT_REGISTER_SVEC4(&spirv_sim, 88, ==, 6, 0, 5, 5);
     ASSERT_REGISTER_SVEC4(&spirv_sim, 89, ==, -1, 0, 1, 1);
 
+    /* clean-up */
+    spirv_sim_shutdown(&spirv_sim);
+    spirv_module_free(&spirv_module);
+    spirv_bin_free(&spirv_bin);
+
     return MUNIT_OK;
 }
 
@@ -884,6 +924,11 @@ MunitResult test_GLSL_std_450_trig(const MunitParameter params[], void* user_dat
     ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 92, 0.0f, PI_F / 2.0f, PI_F, 3.0f * (PI_F / 2.0f));
     ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 93, 0.0f, PI_F / 4.0f, 3.0f *  (PI_F / 4.0f), PI_F);
 
+    /* clean-up */
+    spirv_sim_shutdown(&spirv_sim);
+    spirv_module_free(&spirv_module);
+    spirv_bin_free(&spirv_bin);
+
     return MUNIT_OK;
 }
 
@@ -939,6 +984,11 @@ MunitResult test_GLSL_std_450_exp_power(const MunitParameter params[], void* use
     ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 85, 1.0f, 1.414213562f, 1.732050808f, 2.0f);
     ASSERT_REGISTER_VEC4_EQUAL(&spirv_sim, 86, 1.0f, 0.707106781f, 0.577350269f, 0.5f);
 
+    /* clean-up */
+    spirv_sim_shutdown(&spirv_sim);
+    spirv_module_free(&spirv_module);
+    spirv_bin_free(&spirv_bin);
+
     return MUNIT_OK;
 }
 
@@ -984,6 +1034,10 @@ MunitResult test_GLSL_std_450(const MunitParameter params[], void* user_data_or_
     ASSERT_REGISTER_FLOAT(&spirv_sim, ID(81), ==, 1.0f);
     ASSERT_REGISTER_VEC4(&spirv_sim, ID(82), ==, v, v, v, 0.0f);
 
+    /* clean-up */
+    spirv_sim_shutdown(&spirv_sim);
+    spirv_module_free(&spirv_module);
+    spirv_bin_free(&spirv_bin);
 
     return MUNIT_OK;
 

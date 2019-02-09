@@ -54,6 +54,7 @@ typedef struct SPIRV_simulator {
 } SPIRV_simulator;
 
 void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module);
+void spirv_sim_shutdown(SPIRV_simulator *sim);
 void spirv_sim_variable_associate_data(
     SPIRV_simulator *sim, 
     VariableKind kind,

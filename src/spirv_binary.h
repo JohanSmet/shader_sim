@@ -45,6 +45,7 @@ typedef struct SPIRV_binary {
 void spirv_bin_init(SPIRV_binary *spirv, uint8_t version_high, uint8_t version_low);
 void spirv_bin_finalize(SPIRV_binary *spirv);
 bool spirv_bin_load(SPIRV_binary *spirv, int8_t *data);
+void spirv_bin_free(SPIRV_binary *spirv);
 
 SPIRV_header *spirv_bin_header(SPIRV_binary *spirv);
 SPIRV_opcode *spirv_bin_opcode_rewind(SPIRV_binary *spirv);

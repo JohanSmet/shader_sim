@@ -101,6 +101,11 @@ static SPIRV_stackframe *stackframe_new(SPIRV_simulator *sim) {
     return new_frame;
 }
 
+static void stackframe_free(SPIRV_stackframe *frame) {
+    map_free(&frame->regs);
+    mem_arena_free(&frame->memory);
+}
+
 static uint32_t allocate_variable(SPIRV_simulator *sim, Variable *var) {
 
     /* allocate memory */
@@ -197,6 +202,29 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
 
     /* start at first defined entrypoint (for now -- FIXME) */
     spirv_sim_select_entry_point(sim, 0);
+}
+
+void spirv_sim_shutdown(SPIRV_simulator *sim) {
+    assert(sim);
+
+    /* extensions */
+    map_free(&sim->extinst_funcs);
+
+    /* heap */
+    arr_free(sim->memory);
+
+    /* interface pointers */
+    map_free(&sim->intf_pointers);
+
+    /* stackframes */
+    stackframe_free(&sim->global_frame);
+    for (SPIRV_stackframe *frame = sim->func_frames; frame != arr_end(sim->func_frames); ++frame) {
+        stackframe_free(frame);
+    }
+    arr_free(sim->func_frames);
+
+    /* error message */
+    arr_free(sim->error_msg);
 }
 
 void spirv_sim_variable_associate_data(
@@ -483,8 +511,7 @@ OP_FUNC_BEGIN(SpvOpReturn) {
     if (!sim->finished) {
         /* remove current stackframe */
         SPIRV_stackframe *old = &arr_pop(sim->func_frames);
-        map_free(&old->regs);
-        mem_arena_free(&old->memory);
+        stackframe_free(old);
 
         /* free memory allocated for function variables */
         if (sim->memory) {

@@ -526,6 +526,8 @@ void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary) {
 void spirv_module_free(SPIRV_module *module) {
     if (module) {
         mem_arena_free(&module->allocator);
+        arr_free(module->opcode_array);
+        map_free(&module->extinst_sets);
         map_free(&module->names);
         map_free(&module->decorations);
         map_free(&module->types);
@@ -533,6 +535,7 @@ void spirv_module_free(SPIRV_module *module) {
         map_free(&module->variables);
         map_free(&module->variables_sc);
         map_free(&module->functions);
+        arr_free(module->entry_points);
     }
 }
 
