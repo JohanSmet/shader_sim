@@ -525,6 +525,33 @@ void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary) {
 
 void spirv_module_free(SPIRV_module *module) {
     if (module) {
+        for (int iter = map_begin(&module->functions); iter != map_end(&module->functions); iter = map_next(&module->functions, iter)) {
+            SPIRV_function *func = map_val(&module->functions, iter);
+            arr_free(func->func.parameter_ids);
+            arr_free(func->func.variable_ids);
+        }
+        for (int iter = map_begin(&module->variables_sc); iter != map_end(&module->variables_sc); iter = map_next(&module->variables_sc, iter)) {
+            Variable **var_array = map_val(&module->variables_sc, iter);
+            arr_free(var_array);
+        }
+        for (int iter = map_begin(&module->variables); iter != map_end(&module->variables); iter = map_next(&module->variables, iter)) {
+            Variable *var = map_val(&module->variables, iter);
+            arr_free(var->member_access);
+            arr_free(var->member_name);
+        }
+        for (int iter = map_begin(&module->decorations); iter != map_end(&module->decorations); iter = map_next(&module->decorations, iter)) {
+            SPIRV_opcode **arr = map_val(&module->decorations, iter);
+            arr_free(arr);
+        }
+        for (int iter = map_begin(&module->types); iter != map_end(&module->types); iter = map_next(&module->types, iter)) {
+            Type *type = map_val(&module->types, iter);
+            if (type->kind == TypeStructure) {
+                arr_free(type->structure.members);
+            } else if (type->kind == TypeFunction) {
+                arr_free(type->function.parameter_types);
+            }
+        }
+
         mem_arena_free(&module->allocator);
         arr_free(module->opcode_array);
         map_free(&module->extinst_sets);

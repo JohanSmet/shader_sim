@@ -11,7 +11,7 @@
 #include <math.h>
 
 static SimPointer *new_sim_pointer(SPIRV_simulator *sim, Type *type, uint32_t pointer) {
-    SimPointer *result = (SimPointer *) malloc(sizeof(SimPointer));
+    SimPointer *result = (SimPointer *) mem_arena_allocate(&sim->current_frame->memory, sizeof(SimPointer));
     *result = (SimPointer){
         .type = type,
         .pointer = pointer
