@@ -20,6 +20,8 @@ MunitResult test_basic(const MunitParameter params[], void* user_data_or_fixture
     munit_assert_int(arr_len(test_array), ==, 0);
     munit_assert_int(arr_cap(test_array), ==, 0);
 
+    arr_free(test_array);
+
     return MUNIT_OK;
 }
 
@@ -57,6 +59,8 @@ MunitResult test_clear(const MunitParameter params[], void* user_data_or_fixture
     munit_assert_int(arr_len(test_array), ==, 0);
     munit_assert_int(arr_cap(test_array), ==, cap);
 
+    arr_free(test_array);
+
     return MUNIT_OK;
 }
 
@@ -72,6 +76,8 @@ MunitResult test_printf(const MunitParameter params[], void* user_data_or_fixtur
     arr_printf(test_string, "Hello World");
     munit_assert_string_equal(test_string, "Hello World");
 
+    arr_free(test_string);
+
     return MUNIT_OK;
 }
 
@@ -83,6 +89,8 @@ MunitResult test_reserve(const MunitParameter params[], void* user_data_or_fixtu
     munit_assert_not_null(test_array);
     munit_assert_int(arr_len(test_array), ==, 5);
     munit_assert_int(arr_cap(test_array), >=, 5);
+
+    arr_free(test_array);
     
     return MUNIT_OK;
 }
@@ -108,6 +116,9 @@ MunitResult test_pop(const MunitParameter params[], void* user_data_or_fixture) 
     munit_assert_int(arr_pop(test_array), ==, 0);
 
     munit_assert_int(arr_len(test_array), ==, 0);
+
+    arr_free(test_array);
+
     return MUNIT_OK;
 }
 
@@ -143,6 +154,8 @@ MunitResult test_remove_back(const MunitParameter params[], void* user_data_or_f
     arr_remove_back(test_array, 3);
     munit_assert_int(arr_len(test_array), ==, 0);
     munit_assert_int(arr_cap(test_array), ==, cap);
+
+    arr_free(test_array);
 
     return MUNIT_OK;
 }
