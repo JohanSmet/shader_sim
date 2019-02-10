@@ -203,6 +203,9 @@
 				<div id="output" class="data_window"> 
 					<h1>Output</h1>
 				</div>
+				<div id="call_stack" class="data_window">
+					<h1>Call Stack</h1>
+				</div>
 			</div>
 		</div>
 		<div id="about" class="hidden">
@@ -244,6 +247,8 @@
 		var simapi_spirv_register_by_id = null;
 		var simapi_spirv_local_register_ids = null;
 		var simapi_spirv_current_function_id = null;
+		var simapi_spirv_stackframe_count = null;
+		var simapi_spirv_stackframe = null;
 
 		// global variables
 		var simapi_context = null;
@@ -274,6 +279,8 @@
 			simapi_spirv_register_by_id = Module.cwrap('simapi_spirv_register_by_id', 'string', ['number', 'number']);
 			simapi_spirv_local_register_ids = Module.cwrap('simapi_spirv_local_register_ids', 'string', ['number']);
 			simapi_spirv_current_function_id = Module.cwrap('simapi_spirv_current_function_id', 'number', ['number']);
+			simapi_spirv_stackframe_count = Module.cwrap('simapi_spirv_stackframe_count', 'number', ['number']);
+			simapi_spirv_stackframe = Module.cwrap('simapi_spirv_stackframe', 'string', ['number', 'number']);
 		}
 
 		function wasm_included_files() {
@@ -542,6 +549,7 @@
 
 			// callstack
 			current_function_id = simapi_spirv_current_function_id(simapi_context);
+		 	ui_refresh_callstack();
 
 			// reset header
 			$("#btnStep").prop("disabled", simapi_spirv_execution_finished(simapi_context));
@@ -566,6 +574,19 @@
 			}
 		}
 
+		function ui_refresh_callstack() {
+			$("#call_stack div").remove();
+
+			var num_frames = simapi_spirv_stackframe_count(simapi_context);
+			for (var idx = 0; idx < num_frames; ++idx) {
+				var frame = parse_json(simapi_spirv_stackframe(simapi_context, idx));
+				var caption = "function %" + frame.func_id;
+				if (frame.hasOwnProperty('func_name')) {
+		 			caption = caption + ' (' + frame.func_name + ')';
+				}
+				$("#call_stack").append($('<div />').text(caption));
+			}
+		}
 		$("#btnLoad").on("click", function (event) {
 			ui_reset();
 
@@ -607,6 +628,8 @@
 				local_register_ids = [];
 				$("#regs div").remove();
 
+				// update callstack
+				ui_refresh_callstack();
 			}
 
 			// update register view

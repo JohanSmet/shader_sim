@@ -409,3 +409,26 @@ EMSCRIPTEN_KEEPALIVE
 uint32_t simapi_spirv_current_function_id(SimApiContext *context) {
 	return context->spirv_sim.current_frame->func->func.id;
 }
+
+EMSCRIPTEN_KEEPALIVE
+uint32_t simapi_spirv_stackframe_count(SimApiContext *context) {
+	return arr_len(context->spirv_sim.func_frames);
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char *simapi_spirv_stackframe(SimApiContext *context, uint32_t index) {
+
+	char *json = NULL;
+	if (index > arr_len(context->spirv_sim.func_frames)) {
+		return NULL;
+	}
+	SPIRV_stackframe *frame = &context->spirv_sim.func_frames[index];
+
+	arr_printf(json, "{\"func_id\": %d", frame->func->func.id);
+	if (frame->func->func.name) {
+		arr_printf(json, ",\"func_name\": \"%s\"", frame->func->func.name);
+	}
+	arr_printf(json, "}");
+
+	return json;
+}
