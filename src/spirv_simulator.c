@@ -94,11 +94,12 @@ static void stackframe_init(SPIRV_stackframe *frame) {
     mem_arena_init(&frame->memory, 256 * 16, ARENA_DEFAULT_ALIGN);
 }
 
-static SPIRV_stackframe *stackframe_new(SPIRV_simulator *sim) {
+static SPIRV_stackframe *stackframe_new(SPIRV_simulator *sim, SPIRV_function *func) {
     arr_reserve(sim->func_frames, 1);
     sim->current_frame = sim->func_frames + (arr_len(sim->func_frames) - 2);
     SPIRV_stackframe *new_frame = sim->func_frames + (arr_len(sim->func_frames) - 1);
     stackframe_init(new_frame);
+    new_frame->func = func;
     return new_frame;
 }
 
@@ -127,7 +128,7 @@ static uint32_t allocate_variable(SPIRV_simulator *sim, Variable *var) {
 static void setup_function_call(SPIRV_simulator *sim, SPIRV_function *func, uint32_t result_id, uint32_t *param_ids, SPIRV_opcode *return_addr) {
 
     /* create new stack frame */
-    SPIRV_stackframe *new_frame = stackframe_new(sim);
+    SPIRV_stackframe *new_frame = stackframe_new(sim, func);
 
     /* when the function ends, return to the opcode right after the current opcode */
     new_frame->return_addr = return_addr;

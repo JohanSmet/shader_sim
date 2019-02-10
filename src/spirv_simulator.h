@@ -27,11 +27,12 @@ typedef struct SimRegister {
 } SimRegister;
 
 typedef struct SPIRV_stackframe {
-    HashMap                regs;        // SPIRV id (uint32_t) -> SimRegister *
-    struct SPIRV_opcode    *return_addr;
-    uint32_t                return_id;
-    uint32_t                heap_start;
-    MemArena                memory;
+    HashMap regs;             // SPIRV id (uint32_t) -> SimRegister *
+    SPIRV_function *func;
+    struct SPIRV_opcode *return_addr;
+    uint32_t return_id;
+    uint32_t heap_start;
+    MemArena memory;
 } SPIRV_stackframe;
 
 typedef struct SPIRV_simulator {
