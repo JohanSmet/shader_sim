@@ -614,7 +614,9 @@
 		 	var new_regs = all_regs.filter(x => !local_register_ids.includes(x));
 			for (var idx = 0; idx < new_regs.length; ++idx) {
 				var reg_info = parse_json(simapi_spirv_register_by_id(simapi_context, new_regs[idx]));
-				$("#regs").append(ui_create_register_display(reg_info));
+				if (reg_info.type.type != "Pointer") {
+					$("#regs").append(ui_create_register_display(reg_info));
+				}
 			}
 		 	local_register_ids = all_regs;
 		});
