@@ -414,7 +414,7 @@ static void handle_opcode_function(SPIRV_module *module, SPIRV_opcode *op) {
     SPIRV_function *func = new_function(module, spirv_module_type_by_id(module, func_type), func_id);
 
     // optional name that was defined earlier
-    func->func.name = spirv_module_name_by_id(module, func_id, 0);
+    func->func.name = spirv_module_name_by_id(module, func_id, -1);
 
     // scan ahead to the first real instruction of the function
     func->fst_opcode = spirv_bin_opcode_next(module->spirv_bin);
