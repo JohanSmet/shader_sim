@@ -43,6 +43,7 @@ typedef struct SPIRV_simulator {
     uint32_t memory_free_start;
 
     HashMap intf_pointers;  // uint64_t -> SimPointer *
+    EntryPoint *entry_point;
 
     /* stackframes */
     SPIRV_stackframe global_frame;

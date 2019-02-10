@@ -250,9 +250,8 @@ void spirv_sim_select_entry_point(SPIRV_simulator *sim, uint32_t index) {
     assert(sim);
     assert(index < arr_len(sim->module->entry_points));
 
+    sim->entry_point = &sim->module->entry_points[index];
     SPIRV_function *func = sim->module->entry_points[index].function;
-
-    setup_function_call(sim, func, 0, NULL, NULL);
     spirv_bin_opcode_jump_to(sim->module->spirv_bin, func->fst_opcode);
 }
 
@@ -1825,6 +1824,10 @@ void spirv_sim_step(SPIRV_simulator *sim) {
 
     if (sim->finished) {
         return;
+    }
+
+    if (arr_len(sim->func_frames) == 0) {
+       setup_function_call(sim, sim->entry_point->function, 0, NULL, NULL);
     }
 
     SPIRV_opcode *op = spirv_bin_opcode_current(sim->module->spirv_bin);
