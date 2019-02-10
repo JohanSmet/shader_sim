@@ -404,3 +404,8 @@ const char *simapi_spirv_local_register_ids(SimApiContext *context) {
 	arr_printf(json, "]");
 	return json;
 }
+
+EMSCRIPTEN_KEEPALIVE
+uint32_t simapi_spirv_current_function_id(SimApiContext *context) {
+	return context->spirv_sim.current_frame->func->func.id;
+}

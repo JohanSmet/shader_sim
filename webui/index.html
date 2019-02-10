@@ -243,11 +243,13 @@
 		var simapi_spirv_execution_finished = null;
 		var simapi_spirv_register_by_id = null;
 		var simapi_spirv_local_register_ids = null;
+		var simapi_spirv_current_function_id = null;
 
 		// global variables
 		var simapi_context = null;
 		var variable_windows = variable_windows_empty();
 		var local_register_ids = [];
+		var current_function_id = -1;
 
 		// functions
 		function wasm_wrap_functions() {
@@ -271,6 +273,7 @@
 			simapi_spirv_execution_finished = Module.cwrap('simapi_spirv_execution_finished', 'number', ['number']);
 			simapi_spirv_register_by_id = Module.cwrap('simapi_spirv_register_by_id', 'string', ['number', 'number']);
 			simapi_spirv_local_register_ids = Module.cwrap('simapi_spirv_local_register_ids', 'string', ['number']);
+			simapi_spirv_current_function_id = Module.cwrap('simapi_spirv_current_function_id', 'number', ['number']);
 		}
 
 		function wasm_included_files() {
@@ -470,8 +473,27 @@
 		}
 
 		function ui_update_current_line(lineno) {
+			var cur_line = $($("#shader div")[lineno]);
 			$("#shader div").removeClass("curop");
-			$($("#shader div")[lineno]) .addClass("curop");
+			cur_line.addClass("curop");
+			ui_scroll_shader_if_necessary(cur_line);
+		}
+
+		function ui_scroll_shader_if_necessary(cur_line) {
+			if ($("#shader").length == 0) {
+				return;
+			}
+
+			var container = $("#shader");
+			var view_top = container.offset().top;
+			var view_bottom = view_top + container.height();
+			var view_center = view_top + (container.height() / 2);
+			var line_top = cur_line.offset().top;
+			var line_bottom = line_top + cur_line.height();
+
+			if (line_top > view_bottom || line_bottom < view_top) {
+				container.scrollTop(container.scrollTop() + line_top - view_center);
+			}
 		}
 
 		function ui_data_window(kind) {
@@ -492,6 +514,7 @@
 				simapi_release_context(simapi_context);
 				variable_windows = variable_windows_empty();
 				local_register_ids = [];
+				current_function_id = -1;
 			}
 		}
 
@@ -516,6 +539,9 @@
 			// current line
 			var f_curr_line = simapi_spirv_select_entry_point(simapi_context, 0);
 			ui_update_current_line(f_curr_line);
+
+			// callstack
+			current_function_id = simapi_spirv_current_function_id(simapi_context);
 
 			// reset header
 			$("#btnStep").prop("disabled", simapi_spirv_execution_finished(simapi_context));
@@ -572,6 +598,17 @@
 			// update output variables
 			ui_refresh_variables_output();
 
+			// did we jump to another function ?
+			var f_function_id = simapi_spirv_current_function_id(simapi_context);
+			if (f_function_id != current_function_id) {
+				current_function_id = f_function_id;
+
+				// clear register view
+				local_register_ids = [];
+				$("#regs div").remove();
+
+			}
+
 			// update register view
 	 		var all_regs = parse_json(simapi_spirv_local_register_ids(simapi_context));
 		 	var new_regs = all_regs.filter(x => !local_register_ids.includes(x));
@@ -596,6 +633,7 @@
 			// clear register view 
 			$("#regs div").remove();
 		 	local_register_ids = [];
+			current_function_id = -1;
 		});
 
 	 	$("#btnAboutOpen").on("click", function (event) {
