@@ -9,6 +9,8 @@
 #include "allocator.h"
 #include "spirv_module.h"
 
+#define SPIRV_SIM_DEFAULT_ENTRYPOINT 0
+
 // types
 typedef struct SimPointer {
     Type *type;
@@ -55,7 +57,7 @@ typedef struct SPIRV_simulator {
     char *error_msg;        // NULL if no error, dynamic string otherwise
 } SPIRV_simulator;
 
-void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module);
+void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module, uint32_t entrypoint);
 void spirv_sim_shutdown(SPIRV_simulator *sim);
 void spirv_sim_variable_associate_data(
     SPIRV_simulator *sim, 
@@ -64,7 +66,6 @@ void spirv_sim_variable_associate_data(
     uint8_t *data,
     size_t data_size
 );
-void spirv_sim_select_entry_point(SPIRV_simulator *sim, uint32_t index);
 void spirv_sim_step(SPIRV_simulator *sim);
 
 SimRegister *spirv_sim_register_by_id(SPIRV_simulator *sim, uint32_t id);

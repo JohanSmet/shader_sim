@@ -484,7 +484,7 @@ void runner_execute(Runner *runner, struct SPIRV_simulator *sim) {
     assert(sim);
 
     runner->spirv_sim = sim;
-    spirv_sim_init(sim, &runner->spirv_module);
+    spirv_sim_init(sim, &runner->spirv_module, SPIRV_SIM_DEFAULT_ENTRYPOINT);
 
     for (RunnerCmd **iter = runner->commands; iter != arr_end(runner->commands); ++iter) {
         (*iter)->cmd_func(runner, *iter);

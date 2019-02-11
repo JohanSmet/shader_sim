@@ -151,9 +151,10 @@ static void setup_function_call(SPIRV_simulator *sim, SPIRV_function *func, uint
     }
 }
 
-void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
+void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module, uint32_t entrypoint) {
     assert(sim);
     assert(module);
+    assert(entrypoint < arr_len(module->entry_points));
 
     *sim = (SPIRV_simulator) {
         .module = module
@@ -202,8 +203,11 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module) {
         spirv_add_interface_pointers(sim, var, mem_ptr);
     }
 
-    /* start at first defined entrypoint (for now -- FIXME) */
-    spirv_sim_select_entry_point(sim, 0);
+    /* setup entrypoint */
+    sim->entry_point = &sim->module->entry_points[entrypoint];
+    SPIRV_function *func = sim->entry_point->function;
+    setup_function_call(sim, sim->entry_point->function, 0, NULL, NULL);
+    spirv_bin_opcode_jump_to(sim->module->spirv_bin, func->fst_opcode);
 }
 
 void spirv_sim_shutdown(SPIRV_simulator *sim) {
@@ -244,15 +248,6 @@ void spirv_sim_variable_associate_data(
     assert(data_size <= (ptr->type->element_size * ptr->type->count));
     
     memcpy(sim->memory + ptr->pointer, data, data_size);
-}
-
-void spirv_sim_select_entry_point(SPIRV_simulator *sim, uint32_t index) {
-    assert(sim);
-    assert(index < arr_len(sim->module->entry_points));
-
-    sim->entry_point = &sim->module->entry_points[index];
-    SPIRV_function *func = sim->module->entry_points[index].function;
-    spirv_bin_opcode_jump_to(sim->module->spirv_bin, func->fst_opcode);
 }
 
 SimRegister *spirv_sim_register_by_id(SPIRV_simulator *sim, uint32_t id) {
@@ -1824,10 +1819,6 @@ void spirv_sim_step(SPIRV_simulator *sim) {
 
     if (sim->finished) {
         return;
-    }
-
-    if (arr_len(sim->func_frames) == 0) {
-       setup_function_call(sim, sim->entry_point->function, 0, NULL, NULL);
     }
 
     SPIRV_opcode *op = spirv_bin_opcode_current(sim->module->spirv_bin);

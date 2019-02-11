@@ -138,6 +138,7 @@ MunitResult test_arithmetic_float32(const MunitParameter params[], void* user_da
     spirv_bin_init(&spirv_bin, 1, 0);
     
     spirv_common_header(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpName, ID(4), S('m','a','i','n'), S(0,0,0,0));
     SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(40), SpvDecorationLocation, 0);
     SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(41), SpvDecorationLocation, 1);
     spirv_common_types(&spirv_bin, TEST_TYPE_FLOAT32);
@@ -164,7 +165,7 @@ MunitResult test_arithmetic_float32(const MunitParameter params[], void* user_da
     spirv_module_load(&spirv_module, &spirv_bin);
     
     SPIRV_simulator spirv_sim;
-    spirv_sim_init(&spirv_sim, &spirv_module);
+    spirv_sim_init(&spirv_sim, &spirv_module, SPIRV_SIM_DEFAULT_ENTRYPOINT);
     float data1[4] = {1.0f, 2.0f, 3.0f, 4.0f};
     float data2[4] = {3.5f, 6.6f, 8.0f, 11.0f};
     spirv_sim_variable_associate_data(
@@ -248,7 +249,7 @@ MunitResult test_arithmetic_int32(const MunitParameter params[], void* user_data
     spirv_module_load(&spirv_module, &spirv_bin);
     
     SPIRV_simulator spirv_sim;
-    spirv_sim_init(&spirv_sim, &spirv_module);
+    spirv_sim_init(&spirv_sim, &spirv_module, SPIRV_SIM_DEFAULT_ENTRYPOINT);
     int32_t data1[4] = {1, 2, 3, 4};
     int32_t data2[4] = {3, 6, 8, 11};
     spirv_sim_variable_associate_data(
@@ -328,7 +329,7 @@ MunitResult test_arithmetic_uint32(const MunitParameter params[], void* user_dat
     spirv_module_load(&spirv_module, &spirv_bin);
     
     SPIRV_simulator spirv_sim;
-    spirv_sim_init(&spirv_sim, &spirv_module);
+    spirv_sim_init(&spirv_sim, &spirv_module, SPIRV_SIM_DEFAULT_ENTRYPOINT);
     uint32_t data1[4] = {1, 2, 3, 4};
     uint32_t data2[4] = {3, 6, 8, 11};
     spirv_sim_variable_associate_data(
@@ -422,7 +423,7 @@ MunitResult test_composite_float32(const MunitParameter params[], void* user_dat
     spirv_module_load(&spirv_module, &spirv_bin);
     
     SPIRV_simulator spirv_sim;
-    spirv_sim_init(&spirv_sim, &spirv_module);
+    spirv_sim_init(&spirv_sim, &spirv_module, SPIRV_SIM_DEFAULT_ENTRYPOINT);
     float data1[4] = {1.0f, 2.0f, 3.0f, 4.0f};
     float data2[4] = {3.5f, 6.6f, 8.0f, 11.0f};
     float data3 = 5.0f;
@@ -560,7 +561,7 @@ MunitResult test_conversion(const MunitParameter params[], void* user_data_or_fi
     spirv_module_load(&spirv_module, &spirv_bin);
     
     SPIRV_simulator spirv_sim;
-    spirv_sim_init(&spirv_sim, &spirv_module);
+    spirv_sim_init(&spirv_sim, &spirv_module, SPIRV_SIM_DEFAULT_ENTRYPOINT);
     float data_f[4] = {1.3f, -2.0f, 3.7f, 4.0f};
     int32_t data_s[4] = {1, 2, -3, 4};
     uint32_t data_u[4] = {1, 2, 3, UINT32_MAX};
@@ -670,7 +671,7 @@ MunitResult test_aggregate(const MunitParameter params[], void* user_data_or_fix
     spirv_module_load(&spirv_module, &spirv_bin);
     
     SPIRV_simulator spirv_sim;
-    spirv_sim_init(&spirv_sim, &spirv_module);
+    spirv_sim_init(&spirv_sim, &spirv_module, SPIRV_SIM_DEFAULT_ENTRYPOINT);
 
     AggregateIn data_in = {1.0f, 2.0f, {3.5f, 6.6f, 8.0f, 11.0f}};
     spirv_sim_variable_associate_data(
@@ -762,7 +763,7 @@ MunitResult test_function(const MunitParameter params[], void* user_data_or_fixt
     spirv_module_load(&spirv_module, &spirv_bin);
     
     SPIRV_simulator spirv_sim;
-    spirv_sim_init(&spirv_sim, &spirv_module);
+    spirv_sim_init(&spirv_sim, &spirv_module, SPIRV_SIM_DEFAULT_ENTRYPOINT);
 
     /* run simulator */
     while (!spirv_sim.finished && !spirv_sim.error_msg) {
@@ -824,7 +825,7 @@ MunitResult test_GLSL_std_450_basic_math(const MunitParameter params[], void* us
     spirv_module_load(&spirv_module, &spirv_bin);
     
     SPIRV_simulator spirv_sim;
-    spirv_sim_init(&spirv_sim, &spirv_module);
+    spirv_sim_init(&spirv_sim, &spirv_module, SPIRV_SIM_DEFAULT_ENTRYPOINT);
 
     /* run simulator */
     while (!spirv_sim.finished && !spirv_sim.error_msg) {
@@ -900,7 +901,7 @@ MunitResult test_GLSL_std_450_trig(const MunitParameter params[], void* user_dat
     spirv_module_load(&spirv_module, &spirv_bin);
     
     SPIRV_simulator spirv_sim;
-    spirv_sim_init(&spirv_sim, &spirv_module);
+    spirv_sim_init(&spirv_sim, &spirv_module, SPIRV_SIM_DEFAULT_ENTRYPOINT);
 
     /* run simulator */
     while (!spirv_sim.finished && !spirv_sim.error_msg) {
@@ -967,7 +968,7 @@ MunitResult test_GLSL_std_450_exp_power(const MunitParameter params[], void* use
     spirv_module_load(&spirv_module, &spirv_bin);
     
     SPIRV_simulator spirv_sim;
-    spirv_sim_init(&spirv_sim, &spirv_module);
+    spirv_sim_init(&spirv_sim, &spirv_module, SPIRV_SIM_DEFAULT_ENTRYPOINT);
 
     /* run simulator */
     while (!spirv_sim.finished && !spirv_sim.error_msg) {
@@ -1020,7 +1021,7 @@ MunitResult test_GLSL_std_450(const MunitParameter params[], void* user_data_or_
     spirv_module_load(&spirv_module, &spirv_bin);
     
     SPIRV_simulator spirv_sim;
-    spirv_sim_init(&spirv_sim, &spirv_module);
+    spirv_sim_init(&spirv_sim, &spirv_module, SPIRV_SIM_DEFAULT_ENTRYPOINT);
 
     /* run simulator */
     while (!spirv_sim.finished && !spirv_sim.error_msg) {
