@@ -1855,7 +1855,7 @@ OP_FUNC_BEGIN(SpvOpSwitch) {
     OP_REGISTER(selector_reg, 0);
     uint32_t target = op->optional[1];  // default
 
-    for(uint32_t idx = 2; idx < op->op.length - 1; idx + 2) {
+    for(uint32_t idx = 2; idx < op->op.length - 1; idx = idx + 2) {
         uint32_t case_literal = op->optional[idx];
         uint32_t case_label = op->optional[idx + 1];
 
