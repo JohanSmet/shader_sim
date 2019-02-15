@@ -151,6 +151,30 @@ static void setup_function_call(SPIRV_simulator *sim, SPIRV_function *func, uint
     }
 }
 
+static uint32_t aggregate_indices_offset(Type *type, uint32_t num_indices, uint32_t *indices) {
+    
+    uint32_t offset = 0;
+    Type *cur_type = type;
+    
+    for (uint32_t idx = 0; idx < num_indices; ++idx) {
+        if (cur_type->kind == TypeStructure) {
+            for (int32_t i = 0; i < indices[idx]; ++i) {
+                offset += cur_type->structure.members[i]->element_size * cur_type->structure.members[i]->count;
+            }
+            cur_type = cur_type->structure.members[indices[idx]];
+        } else if (cur_type->kind == TypeArray ||
+                   spirv_type_is_vector(cur_type) ||
+                   spirv_type_is_matrix(cur_type)) {
+            offset += cur_type->element_size * indices[idx];
+            cur_type = cur_type->base_type;
+        } else {
+            assert(0 && "Unsupported type in aggregate hierarchy");
+        }
+    }
+    
+    return offset;
+}
+
 void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module, uint32_t entrypoint) {
     assert(sim);
     assert(module);
@@ -272,6 +296,19 @@ SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, VariableKind k
     return result;
 }
 
+uint32_t spirv_sim_variable_pointer(SPIRV_simulator *sim, uint32_t id, uint32_t member) {
+    assert(sim);
+
+    SimRegister *reg_for_var = spirv_sim_register_by_id(sim, id);
+    uint32_t pointer = reg_for_var->uvec[0];
+
+    if (member > 0) {
+        pointer += aggregate_indices_offset(reg_for_var->type, 1, &member);
+    }
+
+    return pointer;
+}
+
 void spirv_register_to_string(SPIRV_simulator *sim, SimRegister *reg, char **out_str) {
     assert(sim);
     assert(reg);
@@ -317,29 +354,6 @@ static inline uint32_t count_set_bits(uint32_t data) {
     return result;
 }
 
-static uint32_t aggregate_indices_offset(Type *type, uint32_t num_indices, uint32_t *indices) {
-    
-    uint32_t offset = 0;
-    Type *cur_type = type;
-    
-    for (uint32_t idx = 0; idx < num_indices; ++idx) {
-        if (cur_type->kind == TypeStructure) {
-            for (int32_t i = 0; i < indices[idx]; ++i) {
-                offset += cur_type->structure.members[i]->element_size * cur_type->structure.members[i]->count;
-            }
-            cur_type = cur_type->structure.members[indices[idx]];
-        } else if (cur_type->kind == TypeArray ||
-                   spirv_type_is_vector(cur_type) ||
-                   spirv_type_is_matrix(cur_type)) {
-            offset += cur_type->element_size * indices[idx];
-            cur_type = cur_type->base_type;
-        } else {
-            assert(0 && "Unsupported type in aggregate hierarchy");
-        }
-    }
-    
-    return offset;
-}
 
 #define OP_REGISTER(reg, idx)                                            \
     SimRegister *reg = spirv_sim_register_by_id(sim, op->optional[idx]); \
