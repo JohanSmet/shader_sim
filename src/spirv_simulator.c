@@ -1805,9 +1805,56 @@ OP_FUNC_RES_2OP(SpvOpFUnordGreaterThanEqual) {
         (op1_reg->vec[i] >= op2_reg->vec[i]);
     }
     
-    
 } OP_FUNC_END
 
+/*
+ * control flow instructions
+ */
+    
+OP_FUNC_BEGIN(SpvOpBranch) {
+/* Unconditional branch to Target Label. */
+    assert(sim);
+    uint32_t label_id = op->optional[0];   
+
+    sim->jump_to_op = spirv_module_opcode_by_label(sim->module, label_id);
+    assert(sim->jump_to_op);
+
+} OP_FUNC_END
+
+OP_FUNC_BEGIN(SpvOpBranchConditional) {
+/* If Condition is true, branch to True Label, otherwise branch to False Label. */
+    assert(sim);
+    OP_REGISTER(cond_reg, 0);
+    uint32_t true_label = op->optional[1];
+    uint32_t false_label = op->optional[2];
+
+    sim->jump_to_op = spirv_module_opcode_by_label(
+                            sim->module,
+                            (cond_reg->svec[0]) ? true_label : false_label);
+    assert(sim->jump_to_op);
+
+} OP_FUNC_END
+
+OP_FUNC_BEGIN(SpvOpSwitch) {
+/* Multi-way branch to one of the operand label <id>. */
+    assert(sim);
+    OP_REGISTER(selector_reg, 0);
+    uint32_t target = op->optional[1];  // default
+
+    for(uint32_t idx = 2; idx < op->op.length - 1; idx + 2) {
+        uint32_t case_literal = op->optional[idx];
+        uint32_t case_label = op->optional[idx + 1];
+
+        if (selector_reg->uvec[0] == case_literal) {
+            target = case_label;
+            break;
+        }
+    }
+
+    sim->jump_to_op = spirv_module_opcode_by_label(sim->module, target);
+    assert(sim->jump_to_op);
+
+} OP_FUNC_END
 
 #undef OP_FUNC_BEGIN
 #undef OP_FUNC_RES_1OP
@@ -1972,6 +2019,19 @@ void spirv_sim_step(SPIRV_simulator *sim) {
         OP(SpvOpFUnordLessThanEqual)
         OP(SpvOpFOrdGreaterThanEqual)
         OP(SpvOpFUnordGreaterThanEqual)
+
+        // control-flow instructions
+        OP_DEFAULT(SpvOpPhi)
+        OP_IGNORE(SpvOpLoopMerge)
+        OP_IGNORE(SpvOpSelectionMerge)
+        OP_IGNORE(SpvOpLabel)
+        OP(SpvOpBranch)
+        OP(SpvOpBranchConditional)
+        OP(SpvOpSwitch)
+        OP_DEFAULT(SpvOpKill)
+        OP_IGNORE(SpvOpUnreachable)
+        OP_IGNORE(SpvOpLifetimeStart)
+        OP_IGNORE(SpvOpLifetimeStop)
 
         default:
             arr_printf(sim->error_msg, "Unsupported opcode [%s]", spirv_op_name(op->op.kind));

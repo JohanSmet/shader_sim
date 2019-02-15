@@ -784,6 +784,138 @@ MunitResult test_function(const MunitParameter params[], void* user_data_or_fixt
     return MUNIT_OK;
 } 
 
+MunitResult test_controlflow(const MunitParameter params[], void* user_data_or_fixture) {
+
+    /* prepare binary */
+    SPIRV_binary spirv_bin;
+    spirv_bin_init(&spirv_bin, 1, 0);
+
+    SPIRV_OP(&spirv_bin, SpvOpCapability,  SpvCapabilityShader);
+    SPIRV_OP(&spirv_bin, SpvOpMemoryModel, SpvAddressingModelLogical, SpvMemoryModelSimple);
+    SPIRV_OP(&spirv_bin, SpvOpEntryPoint, SpvExecutionModelVertex, 4, S('m','a','i','n'), S(0,0,0,0), ID(40), ID(41), ID(42), ID(43));
+    SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(40), SpvDecorationLocation, 0);
+    SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(41), SpvDecorationLocation, 1);
+    SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(42), SpvDecorationLocation, 0);
+    SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(43), SpvDecorationLocation, 1);
+    SPIRV_OP(&spirv_bin, SpvOpDecorate, ID(44), SpvDecorationLocation, 2);
+    spirv_common_types(&spirv_bin, TEST_TYPE_FLOAT32 | TEST_TYPE_INT32);
+    SPIRV_OP(&spirv_bin, SpvOpTypePointer, ID(15), SpvStorageClassOutput, ID(10));
+    SPIRV_OP(&spirv_bin, SpvOpTypeBool, ID(16));
+    SPIRV_OP(&spirv_bin, SpvOpTypePointer, ID(25), SpvStorageClassFunction, ID(20));
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(13), ID(40), SpvStorageClassInput);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(13), ID(41), SpvStorageClassInput);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(15), ID(42), SpvStorageClassOutput);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(15), ID(43), SpvStorageClassOutput);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(15), ID(44), SpvStorageClassOutput);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(20), ID(90), 0);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(20), ID(91), 1);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(20), ID(92), 5);
+    SPIRV_OP(&spirv_bin, SpvOpConstant, ID(10), ID(93), FLOAT(0.0f));
+    spirv_common_function_header_main(&spirv_bin);
+    SPIRV_OP(&spirv_bin, SpvOpVariable, ID(25), ID(45), SpvStorageClassFunction);
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(10), ID(50), ID(40));
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(10), ID(51), ID(41));
+
+    /* if - true branch */
+    SPIRV_OP(&spirv_bin, SpvOpFOrdLessThan, ID(16), ID(52), ID(50), ID(51));
+    SPIRV_OP(&spirv_bin, SpvOpSelectionMerge, ID(60), SpvSelectionControlMaskNone);
+    SPIRV_OP(&spirv_bin, SpvOpBranchConditional, ID(52), ID(61), ID(62));
+    SPIRV_OP(&spirv_bin, SpvOpLabel, ID(61));
+    SPIRV_OP(&spirv_bin, SpvOpStore, ID(42), ID(50));
+    SPIRV_OP(&spirv_bin, SpvOpBranch, ID(60));
+    SPIRV_OP(&spirv_bin, SpvOpLabel, ID(62));
+    SPIRV_OP(&spirv_bin, SpvOpStore, ID(42), ID(51));
+    SPIRV_OP(&spirv_bin, SpvOpBranch, ID(60));
+    SPIRV_OP(&spirv_bin, SpvOpLabel, ID(60));
+
+    /* if - false branch */
+    SPIRV_OP(&spirv_bin, SpvOpFOrdGreaterThan, ID(16), ID(53), ID(50), ID(51));
+    SPIRV_OP(&spirv_bin, SpvOpSelectionMerge, ID(63), SpvSelectionControlMaskNone);
+    SPIRV_OP(&spirv_bin, SpvOpBranchConditional, ID(53), ID(64), ID(65));
+    SPIRV_OP(&spirv_bin, SpvOpLabel, ID(64));
+    SPIRV_OP(&spirv_bin, SpvOpStore, ID(43), ID(50));
+    SPIRV_OP(&spirv_bin, SpvOpBranch, ID(63));
+    SPIRV_OP(&spirv_bin, SpvOpLabel, ID(65));
+    SPIRV_OP(&spirv_bin, SpvOpStore, ID(43), ID(51));
+    SPIRV_OP(&spirv_bin, SpvOpBranch, ID(63));
+    SPIRV_OP(&spirv_bin, SpvOpLabel, ID(63));
+
+    /* loop */
+    SPIRV_OP(&spirv_bin, SpvOpStore, ID(44), ID(93));
+    SPIRV_OP(&spirv_bin, SpvOpStore, ID(45), ID(90));
+    SPIRV_OP(&spirv_bin, SpvOpBranch, ID(70));
+    SPIRV_OP(&spirv_bin, SpvOpLabel, ID(70));
+    SPIRV_OP(&spirv_bin, SpvOpLoopMerge, ID(72), ID(73), SpvLoopControlMaskNone);
+    SPIRV_OP(&spirv_bin, SpvOpBranch, ID(74));
+    SPIRV_OP(&spirv_bin, SpvOpLabel, ID(74));
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(20), ID(80), ID(45));
+    SPIRV_OP(&spirv_bin, SpvOpSLessThan, ID(16), ID(81), ID(80), ID(92));
+    SPIRV_OP(&spirv_bin, SpvOpBranchConditional, ID(81), ID(71), ID(72));
+    SPIRV_OP(&spirv_bin, SpvOpLabel, ID(71));
+    SPIRV_OP(&spirv_bin, SpvOpFMul, ID(10), ID(82), ID(50), ID(51));
+    SPIRV_OP(&spirv_bin, SpvOpLoad, ID(10), ID(83), ID(44));
+    SPIRV_OP(&spirv_bin, SpvOpFAdd, ID(10), ID(84), ID(83), ID(82));
+    SPIRV_OP(&spirv_bin, SpvOpStore, ID(44), ID(84));
+    SPIRV_OP(&spirv_bin, SpvOpIAdd, ID(20), ID(85), ID(80), ID(91));
+    SPIRV_OP(&spirv_bin, SpvOpStore, ID(45), ID(85));
+    SPIRV_OP(&spirv_bin, SpvOpBranch, ID(73));
+    SPIRV_OP(&spirv_bin, SpvOpLabel, ID(73));
+    SPIRV_OP(&spirv_bin, SpvOpBranch, ID(70));
+    SPIRV_OP(&spirv_bin, SpvOpLabel, ID(72));
+
+    spirv_common_function_footer(&spirv_bin);
+    spirv_bin.header.bound_ids = 84; 
+    spirv_bin_finalize(&spirv_bin);
+
+    /* prepare simulator */
+    SPIRV_module spirv_module;
+    spirv_module_load(&spirv_module, &spirv_bin);
+    
+    SPIRV_simulator spirv_sim;
+    spirv_sim_init(&spirv_sim, &spirv_module, SPIRV_SIM_DEFAULT_ENTRYPOINT);
+
+    float in_1 = 1.0f;
+    float in_2 = 3.0f;
+
+    spirv_sim_variable_associate_data(
+        &spirv_sim, VarKindInput, (VariableAccess) {VarAccessLocation, 0},
+        (uint8_t *) &in_1, sizeof(in_1)
+    );
+    spirv_sim_variable_associate_data(
+        &spirv_sim, VarKindInput, (VariableAccess) {VarAccessLocation, 1},
+        (uint8_t *) &in_2, sizeof(in_2)
+    );
+
+    SimPointer *ptr_1 = spirv_sim_retrieve_intf_pointer(
+        &spirv_sim, VarKindOutput,
+        (VariableAccess) {VarAccessLocation, 0}
+    );
+    SimPointer *ptr_2 = spirv_sim_retrieve_intf_pointer(
+        &spirv_sim, VarKindOutput,
+        (VariableAccess) {VarAccessLocation, 1}
+    );
+    SimPointer *ptr_3 = spirv_sim_retrieve_intf_pointer(
+        &spirv_sim, VarKindOutput,
+        (VariableAccess) {VarAccessLocation, 2}
+    );
+    float *out_1 = (float *) (spirv_sim.memory + ptr_1->pointer);
+    float *out_2 = (float *) (spirv_sim.memory + ptr_2->pointer);
+    float *out_3 = (float *) (spirv_sim.memory + ptr_3->pointer);
+
+    /* run simulator */
+    while (!spirv_sim.finished && !spirv_sim.error_msg) {
+        spirv_sim_step(&spirv_sim);
+        munit_assert_null(spirv_sim.error_msg);
+    }
+
+    /* check output */
+    munit_assert_float(*out_1, ==, 1.0f);
+    munit_assert_float(*out_2, ==, 3.0f);
+    munit_assert_float(*out_3, ==, 15.0f);
+
+    return MUNIT_OK;
+}
+
 MunitResult test_GLSL_std_450_basic_math(const MunitParameter params[], void* user_data_or_fixture) {
 
     /* prepare binary */
@@ -1052,6 +1184,7 @@ MunitTest spirv_sim_tests[] = {
     {"/conversion", test_conversion, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/aggregate", test_aggregate, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/function", test_function, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {"/controlflow", test_controlflow, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/ext_GLSL_std_450_basic_math", test_GLSL_std_450_basic_math, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/ext_GLSL_std_450_trig", test_GLSL_std_450_trig, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/ext_GLSL_std_450_exp_power", test_GLSL_std_450_exp_power, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
