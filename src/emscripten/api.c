@@ -14,6 +14,7 @@
 typedef struct SimApiContext {
 	SPIRV_binary spirv_bin;
 	SPIRV_module spirv_module;
+	uint32_t entry_point;
     SPIRV_simulator spirv_sim;
 } SimApiContext;
 
@@ -44,8 +45,9 @@ bool simapi_spirv_load_binary(SimApiContext *context, const int8_t *binary_data,
 	}
 
 	spirv_module_load(&context->spirv_module, &context->spirv_bin);
+	context->entry_point = 0;
 
-	spirv_sim_init(&context->spirv_sim, &context->spirv_module);
+	spirv_sim_init(&context->spirv_sim, &context->spirv_module, context->entry_point);
 	return true;
 }
 
@@ -63,15 +65,16 @@ bool simapi_spirv_load_file(SimApiContext *context, const char *filename) {
 	}
 
 	spirv_module_load(&context->spirv_module, &context->spirv_bin);
+	context->entry_point = 0;
 
-	spirv_sim_init(&context->spirv_sim, &context->spirv_module);
+	spirv_sim_init(&context->spirv_sim, &context->spirv_module, context->entry_point);
 	return true;
 }
 
 EMSCRIPTEN_KEEPALIVE
 void simapi_spirv_reset(SimApiContext *context) {
 	spirv_bin_opcode_rewind(&context->spirv_bin);
-	spirv_sim_init(&context->spirv_sim, &context->spirv_module);
+	spirv_sim_init(&context->spirv_sim, &context->spirv_module, context->entry_point);
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -352,7 +355,8 @@ uint32_t simapi_spirv_current_line(SimApiContext *context) {
 
 EMSCRIPTEN_KEEPALIVE
 uint32_t simapi_spirv_select_entry_point(SimApiContext *context, uint32_t index) {
-	spirv_sim_select_entry_point(&context->spirv_sim, index); 
+	context->entry_point = index;
+	spirv_sim_init(&context->spirv_sim, &context->spirv_module, index);
 	return simapi_spirv_current_line(context);
 }
 
