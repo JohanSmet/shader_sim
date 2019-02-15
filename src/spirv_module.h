@@ -160,6 +160,7 @@ typedef struct SPIRV_module {
     HashMap variables;      // id (int) -> Variable *
     HashMap variables_sc;   // kind (StorageClass) -> Variable ** (dyn_array)
     HashMap functions;      // id (int) -> SPIRV_function *
+    HashMap labels;         // id (int) -> SPIRV_opcode *
 
     EntryPoint *entry_points;       // dyn_array
 } SPIRV_module;
@@ -186,6 +187,8 @@ SPIRV_function *spirv_module_function_by_id(SPIRV_module *module, uint32_t id);
 size_t spirv_module_opcode_count(SPIRV_module *module);
 struct SPIRV_opcode *spirv_module_opcode_by_index(SPIRV_module *module, uint32_t index);
 uint32_t spirv_module_index_for_opcode(SPIRV_module *module, struct SPIRV_opcode *op);
+
+struct SPIRV_opcode *spirv_module_opcode_by_label(SPIRV_module *module, uint32_t label_id);
 
 static inline bool spirv_type_is_integer(Type *type) {
     return type->kind == TypeInteger ||

@@ -162,6 +162,10 @@ static void define_sc_variable(SPIRV_module *module, Variable *var) {
     map_int_ptr_put(&module->variables_sc, var->kind, kind_vars);
 }
 
+static void define_label(SPIRV_module *module, uint32_t id, SPIRV_opcode *op) {
+    map_int_ptr_put(&module->labels, id, op);
+}
+
 static inline bool is_opcode_type(SPIRV_opcode *op) {
     return op->op.kind >= SpvOpTypeVoid && op->op.kind <= SpvOpTypeForwardPointer;
 }
@@ -503,6 +507,8 @@ void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary) {
                         op->optional[0], 
                         (const char *) &op->optional[2],
                         (int32_t) op->optional[1]);
+        } else if (op->op.kind == SpvOpLabel) {
+            define_label(module, op->optional[0], op);
         } else if (is_opcode_type(op)) {
             handle_opcode_type(module, op);
         } else if (is_opcode_constant(op)) {
@@ -562,6 +568,7 @@ void spirv_module_free(SPIRV_module *module) {
         map_free(&module->variables);
         map_free(&module->variables_sc);
         map_free(&module->functions);
+        map_free(&module->labels);
         arr_free(module->entry_points);
     }
 }
@@ -589,3 +596,7 @@ uint32_t spirv_module_index_for_opcode(SPIRV_module *module, struct SPIRV_opcode
 	return index;
 }
 
+SPIRV_opcode *spirv_module_opcode_by_label(SPIRV_module *module, uint32_t label_id) {
+    assert(module);
+    return map_int_ptr_get(&module->labels, label_id);
+}
