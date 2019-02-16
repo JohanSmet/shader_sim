@@ -253,6 +253,7 @@
 		var simapi_spirv_stackframe_count = null;
 		var simapi_spirv_stackframe = null;
 		var simapi_spirv_function_variables = null;
+		var simapi_spirv_simulator_memory_dump = null;
 
 		// global variables
 		var simapi_context = null;
@@ -286,6 +287,7 @@
 			simapi_spirv_stackframe_count = Module.cwrap('simapi_spirv_stackframe_count', 'number', ['number']);
 			simapi_spirv_stackframe = Module.cwrap('simapi_spirv_stackframe', 'string', ['number', 'number']);
 			simapi_spirv_function_variables = Module.cwrap('simapi_spirv_function_variables', 'string', ['number']);
+			simapi_spirv_simulator_memory_dump = Module.cwrap('simapi_spirv_simulator_memory_dump', 'string', ['number']);
 		}
 
 		function wasm_included_files() {

@@ -456,3 +456,19 @@ const char *simapi_spirv_function_variables(SimApiContext *context) {
 	arr_printf(json, "]");
 	return json;
 }
+
+EMSCRIPTEN_KEEPALIVE
+const char *simapi_spirv_simulator_memory_dump(SimApiContext *context) {
+
+	const char *fmt = "%d";
+	char *json;
+	arr_printf(json, "[");
+
+	for (uint8_t *data = context->spirv_sim.memory; data != arr_end(context->spirv_sim.memory); ++data) {
+		arr_printf(json, fmt, *data);
+		fmt = ",%d";
+	}
+
+	arr_printf(json, "]");
+	return json;
+}
