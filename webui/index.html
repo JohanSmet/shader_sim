@@ -680,7 +680,7 @@
 			$("#input input").blur();
 
 			// reset current line
-			var f_curr_line = simapi_spirv_select_entry_point(simapi_context, 0);
+			var f_curr_line = simapi_spirv_current_line(simapi_context);
 			ui_update_current_line(f_curr_line);
 
 			// reset header
