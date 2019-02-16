@@ -151,29 +151,42 @@ static void setup_function_call(SPIRV_simulator *sim, SPIRV_function *func, uint
     }
 }
 
+static void variable_member_pointer(SimPointer *ptr, int32_t field_offset) {
+    assert (ptr);
+
+    switch (ptr->type->kind) {
+        case TypeStructure:
+            for (int32_t i = 0; i < field_offset; ++i) {
+                ptr->pointer += ptr->type->structure.members[i]->element_size * ptr->type->structure.members[i]->count;
+            }
+            ptr->type = ptr->type->structure.members[field_offset];
+            break;
+                
+        case TypeArray:
+        case TypeVectorFloat:
+        case TypeVectorInteger:
+        case TypeMatrixFloat:
+        case TypeMatrixInteger:
+            ptr->pointer += ptr->type->element_size * field_offset;
+            ptr->type = ptr->type->base_type;
+            break;
+                
+        default:
+            assert(0 && "base is not an aggregate type");
+    }
+}
+
 static uint32_t aggregate_indices_offset(Type *type, uint32_t num_indices, uint32_t *indices) {
     
-    uint32_t offset = 0;
-    Type *cur_type = type;
+    SimPointer ptr = {.type = type, .pointer = 0};
     
     for (uint32_t idx = 0; idx < num_indices; ++idx) {
-        if (cur_type->kind == TypeStructure) {
-            for (int32_t i = 0; i < indices[idx]; ++i) {
-                offset += cur_type->structure.members[i]->element_size * cur_type->structure.members[i]->count;
-            }
-            cur_type = cur_type->structure.members[indices[idx]];
-        } else if (cur_type->kind == TypeArray ||
-                   spirv_type_is_vector(cur_type) ||
-                   spirv_type_is_matrix(cur_type)) {
-            offset += cur_type->element_size * indices[idx];
-            cur_type = cur_type->base_type;
-        } else {
-            assert(0 && "Unsupported type in aggregate hierarchy");
-        }
+        variable_member_pointer(&ptr, indices[idx]);
     }
     
-    return offset;
+    return ptr.pointer;
 }
+
 
 void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module, uint32_t entrypoint) {
     assert(sim);
@@ -296,17 +309,17 @@ SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, VariableKind k
     return result;
 }
 
-uint32_t spirv_sim_variable_pointer(SPIRV_simulator *sim, uint32_t id, uint32_t member) {
+void spirv_sim_variable_pointer(SPIRV_simulator *sim, uint32_t id, int32_t member, SimPointer *pointer) {
     assert(sim);
+    assert(pointer);
 
     SimRegister *reg_for_var = spirv_sim_register_by_id(sim, id);
-    uint32_t pointer = reg_for_var->uvec[0];
+    pointer->type = reg_for_var->type;
+    pointer->pointer = reg_for_var->uvec[0];
 
-    if (member > 0) {
-        pointer += aggregate_indices_offset(reg_for_var->type, 1, &member);
+    if (member >= 0) {
+        variable_member_pointer(pointer, member);
     }
-
-    return pointer;
 }
 
 void spirv_register_to_string(SPIRV_simulator *sim, SimRegister *reg, char **out_str) {
@@ -446,35 +459,14 @@ OP_FUNC_BEGIN(SpvOpAccessChain) {
     OP_REGISTER_ASSIGN(res_reg, res_type, op->optional[1]);
     OP_REGISTER(base, 2);
 
-    Type *cur_type = base->type->base_type;
-    uint32_t pointer = base->uvec[0];
+    SimPointer ptr = {base->type->base_type, base->uvec[0]};
     
     for (uint32_t idx = 3; idx < op->op.length - 1; ++idx) {
         uint32_t field_offset = spirv_module_constant_by_id(sim->module, op->optional[idx])->value.as_uint;
-        
-        switch (cur_type->kind) {
-            case TypeStructure:
-                for (int32_t i = 0; i < field_offset; ++i) {
-                    pointer += cur_type->structure.members[i]->element_size * cur_type->structure.members[i]->count;
-                }
-                cur_type = cur_type->structure.members[field_offset];
-                break;
-                
-            case TypeArray:
-            case TypeVectorFloat:
-            case TypeVectorInteger:
-            case TypeMatrixFloat:
-            case TypeMatrixInteger:
-                pointer += cur_type->element_size * field_offset;
-                cur_type = cur_type->base_type;
-                break;
-                
-            default:
-                assert(0 && "Unsupported type in SvpOpAccessChain");
-        }
+        variable_member_pointer(&ptr, field_offset);
     }
     
-    res_reg->uvec[0] = pointer;
+    res_reg->uvec[0] = ptr.pointer;
 
 } OP_FUNC_END
 

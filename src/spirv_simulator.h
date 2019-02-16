@@ -70,7 +70,7 @@ void spirv_sim_step(SPIRV_simulator *sim);
 
 SimRegister *spirv_sim_register_by_id(SPIRV_simulator *sim, uint32_t id);
 SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, VariableKind kind, VariableAccess access);
-uint32_t spirv_sim_variable_pointer(SPIRV_simulator *sim, uint32_t id, uint32_t member);
+void spirv_sim_variable_pointer(SPIRV_simulator *sim, uint32_t id, int32_t member, SimPointer *pointer);
 void spirv_register_to_string(SPIRV_simulator *sim, SimRegister *reg, char **out_str);
 
 
