@@ -203,6 +203,9 @@
 				<div id="output" class="data_window"> 
 					<h1>Output</h1>
 				</div>
+				<div id="function" class="data_window"> 
+					<h1>Function Variables</h1>
+				</div>
 				<div id="call_stack" class="data_window">
 					<h1>Call Stack</h1>
 				</div>
@@ -249,6 +252,7 @@
 		var simapi_spirv_current_function_id = null;
 		var simapi_spirv_stackframe_count = null;
 		var simapi_spirv_stackframe = null;
+		var simapi_spirv_function_variables = null;
 
 		// global variables
 		var simapi_context = null;
@@ -281,6 +285,7 @@
 			simapi_spirv_current_function_id = Module.cwrap('simapi_spirv_current_function_id', 'number', ['number']);
 			simapi_spirv_stackframe_count = Module.cwrap('simapi_spirv_stackframe_count', 'number', ['number']);
 			simapi_spirv_stackframe = Module.cwrap('simapi_spirv_stackframe', 'string', ['number', 'number']);
+			simapi_spirv_function_variables = Module.cwrap('simapi_spirv_function_variables', 'string', ['number']);
 		}
 
 		function wasm_included_files() {
@@ -311,11 +316,11 @@
 				access = var_desc.members[member].access;
 			}
 
-			result = '';
+			result = '%' + var_desc.id;
 			if (access.hasOwnProperty('builtin')) {
-				result = access.kind + '.' + access.builtin;
-			} else {
-				result = access.kind + ' ' + access.location;
+				result = result + ' [' + access.kind + '.' + access.builtin + ']';
+			} else if (access.hasOwnProperty('location')) {
+				result = result + ' [' + access.kind + ' ' + access.location + ']';
 			}
 
 			if (member == -1 && var_desc.hasOwnProperty('name') && var_desc.name != '') {
@@ -347,7 +352,8 @@
 			return {
 				'Output': [],
 				'Input': [],
-				'UniformConstant': []
+				'UniformConstant': [],
+				'Function': []
 			};
 		}
 
@@ -510,7 +516,9 @@
 				return "#output";
 			} else if (kind == "UniformConstant") {
 				return "#uniform";
-			}
+	 		} else if (kind == "Function") {
+	 			return "#function";
+	 		}
 		}
 
 		function ui_reset() {
@@ -538,8 +546,13 @@
 			for (var f_idx = 0; f_idx < f_var_count; ++f_idx) {
 				var var_id = simapi_spirv_variable_id(simapi_context, f_idx);
 				var var_desc = parse_json(simapi_spirv_variable_desc(simapi_context, var_id));
-		 		ui_create_var_display(var_desc);
+				if (var_desc.kind != "Function") {
+		 			ui_create_var_display(var_desc);
+				}
 			}
+
+			// function variables (entrypoint)
+			ui_fill_function_variable_window();
 
 			ui_refresh_variables();
 
@@ -568,9 +581,23 @@
 			ui_refresh_variable_window("Output");
 		}
 
+		function ui_refresh_variables_function() {
+			ui_refresh_variable_window("Function");
+		}
+
 		function ui_refresh_variables() {
 			for (kind in variable_windows) {
 				ui_refresh_variable_window(kind);
+			}
+		}
+
+		function ui_fill_function_variable_window() {
+			$("#function div").remove();
+	 		variable_windows["Function"] = [];
+			var function_vars = parse_json(simapi_spirv_function_variables(simapi_context));
+			for (var f_idx = 0; f_idx < function_vars.length; ++f_idx) {
+				var var_desc = parse_json(simapi_spirv_variable_desc(simapi_context, function_vars[f_idx]));
+		 		ui_create_var_display(var_desc);
 			}
 		}
 
@@ -587,6 +614,7 @@
 				$("#call_stack").append($('<div />').text(caption));
 			}
 		}
+
 		$("#btnLoad").on("click", function (event) {
 			ui_reset();
 
@@ -616,9 +644,6 @@
 			// update source display
 			ui_update_current_line(f_curr_line);
 
-			// update output variables
-			ui_refresh_variables_output();
-
 			// did we jump to another function ?
 			var f_function_id = simapi_spirv_current_function_id(simapi_context);
 			if (f_function_id != current_function_id) {
@@ -630,7 +655,13 @@
 
 				// update callstack
 				ui_refresh_callstack();
+
+				ui_fill_function_variable_window();
 			}
+
+			// update variables
+			ui_refresh_variables_output();
+			ui_refresh_variables_function();
 
 			// update register view
 	 		var all_regs = parse_json(simapi_spirv_local_register_ids(simapi_context));
@@ -659,6 +690,9 @@
 			$("#regs div").remove();
 		 	local_register_ids = [];
 			current_function_id = -1;
+
+			// function variables (entrypoint)
+			ui_fill_function_variable_window();
 		});
 
 	 	$("#btnAboutOpen").on("click", function (event) {
