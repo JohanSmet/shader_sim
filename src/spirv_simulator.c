@@ -314,7 +314,11 @@ void spirv_sim_variable_pointer(SPIRV_simulator *sim, uint32_t id, int32_t membe
     assert(pointer);
 
     SimRegister *reg_for_var = spirv_sim_register_by_id(sim, id);
-    pointer->type = reg_for_var->type;
+    if (!reg_for_var) {
+	    return;
+    }
+
+    pointer->type = reg_for_var->type->base_type;
     pointer->pointer = reg_for_var->uvec[0];
 
     if (member >= 0) {
