@@ -173,6 +173,24 @@ static inline char *spirv_text_SpvOpExecutionModeId(SPIRV_module *module, SPIRV_
     return result;
 }
 
+static inline char *spirv_text_SpvOpConstant(SPIRV_module *module, SPIRV_opcode *opcode) {
+    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
+    arr_printf(result, " %%%d", opcode->optional[0]);
+
+    Type *res_type = spirv_module_type_by_id(module, opcode->optional[0]);
+    
+    if (spirv_type_is_float(res_type)) {
+        for (int idx=2; idx < opcode->op.length - 1; ++idx) {
+            arr_printf(result, " %f", (double) *((float *) &opcode->optional[idx]));
+        }
+    } else  {
+        for (int idx=2; idx < opcode->op.length - 1; ++idx) {
+            arr_printf(result, " %d", opcode->optional[idx]);
+        }
+    }
+    return result;
+} 
+
 static inline char *spirv_text_SpvOpConstantSampler(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
     arr_printf(result, " %%%d %s %d %s",
@@ -561,7 +579,7 @@ char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {
         // constant-creation instructions
         OP_CASE_TYPE(SpvOpConstantTrue, type_result_number_list)
         OP_CASE_TYPE(SpvOpConstantFalse, type_result_number_list)
-        OP_CASE_TYPE(SpvOpConstant, type_result_number_list)
+        OP_CASE_SPECIAL(SpvOpConstant)
         OP_CASE_TYPE(SpvOpConstantComposite, type_result_id_list)
         OP_CASE_SPECIAL(SpvOpConstantSampler)
         OP_CASE_TYPE(SpvOpConstantNull, type_result_number_list)
