@@ -50,7 +50,7 @@ static void print_registers(SPIRV_simulator *sim, HashMap *reg_map) {
 RUNNER_FUNC_BEGIN(CmdStep)
 
     if (!runner->spirv_sim->finished && !runner->spirv_sim->error_msg) {
-        printf("Execute %s\n", spirv_text_opcode(spirv_bin_opcode_current(&runner->spirv_bin)));
+        printf("Execute %s\n", spirv_text_opcode(spirv_bin_opcode_current(&runner->spirv_bin), &runner->spirv_module));
         spirv_sim_step(runner->spirv_sim);
 
         print_registers(runner->spirv_sim, &runner->spirv_sim->global_frame.regs);

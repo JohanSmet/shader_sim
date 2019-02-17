@@ -4,6 +4,7 @@
 
 #include "spirv_text.h"
 #include "spirv_binary.h"
+#include "spirv_module.h"
 #include "dyn_array.h"
 
 #include <stdbool.h>
@@ -44,13 +45,13 @@ static inline void spirv_string_bitmask(char **result, uint32_t bitmask, const c
     }
 }
 
-static inline char *spirv_text_SpvOpCapability(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpCapability(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %s", spirv_capability_name(opcode->optional[0]));
     return result;
 }
 
-static inline char *spirv_text_SpvOpSource(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpSource(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %s v%d", 
             spirv_source_language_name(opcode->optional[0]),
@@ -59,7 +60,7 @@ static inline char *spirv_text_SpvOpSource(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpName(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpName(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %%%d \"%s\"", 
             opcode->optional[0],
@@ -67,7 +68,7 @@ static inline char *spirv_text_SpvOpName(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpMemberName(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpMemberName(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %%%d %d \"%s\"", 
             opcode->optional[0],
@@ -76,7 +77,7 @@ static inline char *spirv_text_SpvOpMemberName(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpExtInst(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpExtInst(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
     arr_printf(result, " %%%d %%%d %d",
                     opcode->optional[0],
@@ -89,7 +90,7 @@ static inline char *spirv_text_SpvOpExtInst(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpMemoryModel(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpMemoryModel(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %s %s",
                     spirv_addressing_model_name(opcode->optional[0]),
@@ -97,7 +98,7 @@ static inline char *spirv_text_SpvOpMemoryModel(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpEntryPoint(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpEntryPoint(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %s %%%d \"%s\"",
                     spirv_execution_model_name(opcode->optional[0]),
@@ -113,7 +114,7 @@ static inline char *spirv_text_SpvOpEntryPoint(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpTypeImage(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpTypeImage(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
     arr_printf(result, " %%%d %s %d %d %d %d %s",
                     opcode->optional[1], 
@@ -131,7 +132,7 @@ static inline char *spirv_text_SpvOpTypeImage(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpTypePointer(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpTypePointer(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
     arr_printf(result, " %s %%%d",
                     spirv_storage_class_name(opcode->optional[1]),
@@ -139,13 +140,13 @@ static inline char *spirv_text_SpvOpTypePointer(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpTypePipe(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpTypePipe(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
     arr_printf(result, " %s", spirv_access_qualifier_name(opcode->optional[1]));
     return result;
 }
 
-static inline char *spirv_text_SpvOpTypeForwardPointer(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpTypeForwardPointer(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %%%d %s",
                     opcode->optional[0],
@@ -153,7 +154,7 @@ static inline char *spirv_text_SpvOpTypeForwardPointer(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpExecutionMode(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpExecutionMode(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %%%d %s",
                     opcode->optional[0],
@@ -161,7 +162,7 @@ static inline char *spirv_text_SpvOpExecutionMode(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpExecutionModeId(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpExecutionModeId(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %%%d %s",
                     opcode->optional[0],
@@ -172,7 +173,7 @@ static inline char *spirv_text_SpvOpExecutionModeId(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpConstantSampler(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpConstantSampler(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
     arr_printf(result, " %%%d %s %d %s",
                     opcode->optional[0],
@@ -182,7 +183,7 @@ static inline char *spirv_text_SpvOpConstantSampler(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpSpecConstantOp(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpSpecConstantOp(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
     arr_printf(result, " %%%d %s",
                     opcode->optional[0],
@@ -193,7 +194,7 @@ static inline char *spirv_text_SpvOpSpecConstantOp(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpFunction(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpFunction(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
     arr_printf(result, " %%%d", opcode->optional[0]);
     spirv_string_bitmask(&result, opcode->optional[2], SPIRV_FUNCTION_CONTROL);
@@ -201,7 +202,7 @@ static inline char *spirv_text_SpvOpFunction(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpVariable(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpVariable(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
     arr_printf(result, " %%%d %s",
                     opcode->optional[0],
@@ -212,7 +213,7 @@ static inline char *spirv_text_SpvOpVariable(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpLoad(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpLoad(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
     arr_printf(result, " %%%d %%%d",
                     opcode->optional[0],
@@ -223,7 +224,7 @@ static inline char *spirv_text_SpvOpLoad(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpStore(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpStore(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %%%d %%%d",
                     opcode->optional[0],
@@ -234,11 +235,11 @@ static inline char *spirv_text_SpvOpStore(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpCopyMemory(SPIRV_opcode *opcode) {
-    return spirv_text_SpvOpStore(opcode);
+static inline char *spirv_text_SpvOpCopyMemory(SPIRV_module *module, SPIRV_opcode *opcode) {
+    return spirv_text_SpvOpStore(module, opcode);
 }
 
-static inline char *spirv_text_SpvOpCopyMemorySized(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpCopyMemorySized(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %%%d %%%d %%%d",
                     opcode->optional[0],
@@ -250,7 +251,7 @@ static inline char *spirv_text_SpvOpCopyMemorySized(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpDecorate(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpDecorate(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %%%d %s",
                     opcode->optional[0],
@@ -265,7 +266,7 @@ static inline char *spirv_text_SpvOpDecorate(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpDecorateId(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpDecorateId(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %%%d %s",
                     opcode->optional[0],
@@ -276,7 +277,7 @@ static inline char *spirv_text_SpvOpDecorateId(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpMemberDecorate(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpMemberDecorate(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %%%d %d %s",
                     opcode->optional[0],
@@ -292,7 +293,7 @@ static inline char *spirv_text_SpvOpMemberDecorate(SPIRV_opcode *opcode) {
     return result;
 }   
 
-static inline char *spirv_text_SpvOpGroupMemberDecorate(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpGroupMemberDecorate(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %%%d", opcode->optional[0]);
     for (int idx = 1; idx < opcode->op.length - 1; idx += 2) {
@@ -301,21 +302,21 @@ static inline char *spirv_text_SpvOpGroupMemberDecorate(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_SpvOpLoopMerge(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpLoopMerge(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %%%d %%%d", opcode->optional[0], opcode->optional[1]);
     spirv_string_bitmask(&result, opcode->optional[2], SPIRV_LOOP_CONTROL);
     return result;
 }
 
-static inline char *spirv_text_SpvOpSelectionMerge(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpSelectionMerge(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %%%d", opcode->optional[0]);
     spirv_string_bitmask(&result, opcode->optional[1], SPIRV_SELECTION_CONTROL);
     return result;
 }
 
-static inline char *spirv_text_SpvOpSwitch(SPIRV_opcode *opcode) {
+static inline char *spirv_text_SpvOpSwitch(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %%%d %%%d", opcode->optional[0], opcode->optional[1]);
     for (int idx = 2; idx < opcode->op.length - 1; idx += 2) {
@@ -324,19 +325,19 @@ static inline char *spirv_text_SpvOpSwitch(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_string(SPIRV_opcode *opcode) {
+static inline char *spirv_text_string(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " \"%s\"", (const char *) &opcode->optional[0]);
     return result;
 }
 
-static inline char *spirv_text_result_string(SPIRV_opcode *opcode) {
+static inline char *spirv_text_result_string(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
     arr_printf(result, " \"%s\"", (const char *) &opcode->optional[1]);
     return result;
 }
 
-static inline char *spirv_text_result_number_list(SPIRV_opcode *opcode) {
+static inline char *spirv_text_result_number_list(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
     for (int idx=1; idx < opcode->op.length - 1; ++idx) {
         arr_printf(result, " %d", opcode->optional[idx]);
@@ -344,7 +345,7 @@ static inline char *spirv_text_result_number_list(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_result_id_number_list(SPIRV_opcode *opcode) {
+static inline char *spirv_text_result_id_number_list(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
     arr_printf(result, " %%%d", opcode->optional[1]);
     for (int idx=2; idx < opcode->op.length - 1; ++idx) {
@@ -353,7 +354,7 @@ static inline char *spirv_text_result_id_number_list(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_result_id_list(SPIRV_opcode *opcode) {
+static inline char *spirv_text_result_id_list(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
     for (int idx=1; idx < opcode->op.length - 1; ++idx) {
         arr_printf(result, " %%%d", opcode->optional[idx]);
@@ -361,7 +362,7 @@ static inline char *spirv_text_result_id_list(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_id_list(SPIRV_opcode *opcode) {
+static inline char *spirv_text_id_list(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     for (int idx=0; idx < opcode->op.length - 1; ++idx) {
         arr_printf(result, " %%%d", opcode->optional[idx]);
@@ -369,7 +370,7 @@ static inline char *spirv_text_id_list(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_type_result_number_list(SPIRV_opcode *opcode) {
+static inline char *spirv_text_type_result_number_list(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
     arr_printf(result, " %%%d", opcode->optional[0]);
     for (int idx=2; idx < opcode->op.length - 1; ++idx) {
@@ -378,7 +379,7 @@ static inline char *spirv_text_type_result_number_list(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_type_result_id_list(SPIRV_opcode *opcode) {
+static inline char *spirv_text_type_result_id_list(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
     arr_printf(result, " %%%d", opcode->optional[0]);
     for (int idx=2; idx < opcode->op.length - 1; ++idx) {
@@ -387,7 +388,7 @@ static inline char *spirv_text_type_result_id_list(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_type_result_id_number(SPIRV_opcode *opcode) {
+static inline char *spirv_text_type_result_id_number(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
     arr_printf(result, " %%%d %%%d %d", 
                     opcode->optional[0],
@@ -396,7 +397,7 @@ static inline char *spirv_text_type_result_id_number(SPIRV_opcode *opcode) {
     return result;
 }
 
-static inline char *spirv_text_type_result_n_id_number_list(SPIRV_opcode *opcode, int n) {
+static inline char *spirv_text_type_result_n_id_number_list(SPIRV_module *module, SPIRV_opcode *opcode, int n) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
     arr_printf(result, " %%%d", opcode->optional[0]);
     for (int idx = 0; idx < n; ++idx) {
@@ -408,7 +409,7 @@ static inline char *spirv_text_type_result_n_id_number_list(SPIRV_opcode *opcode
     return result;
 }
 
-static inline char *spirv_text_n_id_number_list(SPIRV_opcode *opcode, int n) {
+static inline char *spirv_text_n_id_number_list(SPIRV_module *module, SPIRV_opcode *opcode, int n) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     for (int idx = 0; idx < n; ++idx) {
         arr_printf(result, " %%%d", opcode->optional[idx]);
@@ -419,7 +420,7 @@ static inline char *spirv_text_n_id_number_list(SPIRV_opcode *opcode, int n) {
     return result;
 }
 
-static inline char *spirv_text_type_result_n_id_imageop_id_list(SPIRV_opcode *opcode, int n) {
+static inline char *spirv_text_type_result_n_id_imageop_id_list(SPIRV_module *module, SPIRV_opcode *opcode, int n) {
     char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
     arr_printf(result, " %%%d", opcode->optional[0]);
     for (int idx = 0; idx < n; ++idx) {
@@ -434,7 +435,7 @@ static inline char *spirv_text_type_result_n_id_imageop_id_list(SPIRV_opcode *op
     return result;
 }
 
-static inline char *spirv_text_n_id_imageop_id_list(SPIRV_opcode *opcode, int n) {
+static inline char *spirv_text_n_id_imageop_id_list(SPIRV_module *module, SPIRV_opcode *opcode, int n) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     for (int idx = 0; idx < n; ++idx) {
         arr_printf(result, " %%%d", opcode->optional[idx]);
@@ -448,7 +449,7 @@ static inline char *spirv_text_n_id_imageop_id_list(SPIRV_opcode *opcode, int n)
     return result;
 }
 
-static inline char *spirv_text_id_groupop_id(SPIRV_opcode *opcode) {
+static inline char *spirv_text_id_groupop_id(SPIRV_module *module, SPIRV_opcode *opcode) {
     char *result = spirv_string_opcode_no_result(opcode->op.kind);
     arr_printf(result, " %%%d %s %%%d",
                     opcode->optional[0],
@@ -486,18 +487,18 @@ char *spirv_text_header_line(SPIRV_header *header, int line) {
     return result;
 }
 
-char *spirv_text_opcode(SPIRV_opcode *opcode) {
-#define OP_CASE_SPECIAL(op)                         \
-    case op:                                        \
-        line = spirv_text_##op(opcode);            \
+char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {
+#define OP_CASE_SPECIAL(op)                             \
+    case op:                                            \
+        line = spirv_text_##op(module, opcode);         \
         break;
-#define OP_CASE_TYPE(op, type)                      \
-    case op:                                        \
-        line = spirv_text_##type(opcode);          \
+#define OP_CASE_TYPE(op, type)                          \
+    case op:                                            \
+        line = spirv_text_##type(module, opcode);       \
         break;                      
-#define OP_CASE_TYPE_1(op, type, n)                 \
-    case op:                                        \
-        line = spirv_text_##type(opcode, n);       \
+#define OP_CASE_TYPE_1(op, type, n)                     \
+    case op:                                            \
+        line = spirv_text_##type(module, opcode, n);    \
         break;                      
 #define OP_DEFAULT(op)
 

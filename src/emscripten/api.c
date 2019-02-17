@@ -90,7 +90,7 @@ size_t simapi_spirv_opcode_count(SimApiContext *context) {
 EMSCRIPTEN_KEEPALIVE
 const char *simapi_spirv_opcode_text(SimApiContext *context, uint32_t index) {
 	SPIRV_opcode *op = spirv_module_opcode_by_index(&context->spirv_module, index);
-	return spirv_text_opcode(op);
+	return spirv_text_opcode(op, &context->spirv_module);
 }
 
 EMSCRIPTEN_KEEPALIVE

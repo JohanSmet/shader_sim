@@ -8,11 +8,12 @@
 // require forward declarations
 struct SPIRV_header;
 struct SPIRV_opcode;
+struct SPIRV_module;
 
 // interface functions
 int spirv_text_header_num_lines(struct SPIRV_header *header);
 char *spirv_text_header_line(struct SPIRV_header *header, int line);
 
-char *spirv_text_opcode(struct SPIRV_opcode *opcode);
+char *spirv_text_opcode(struct SPIRV_opcode *opcode, struct SPIRV_module *module);
 
 #endif // JS_SHADER_SIM_SPIRV_TEXT_H
