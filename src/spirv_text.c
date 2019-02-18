@@ -8,6 +8,7 @@
 #include "dyn_array.h"
 
 #include <stdbool.h>
+#include <assert.h>
 
 #define JS_SPIRV_NAMES_IMPLEMENTATION
 #include "spirv/spirv_names.h"
@@ -45,40 +46,78 @@ static inline void spirv_string_bitmask(char **result, uint32_t bitmask, const c
     }
 }
 
-static inline char *spirv_text_SpvOpCapability(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+#define TEXT_FUNC_SPECIAL_BEGIN(kind)       \
+    static inline char *spirv_text_##kind(SPIRV_module *module, SPIRV_opcode *opcode) {     \
+        assert(module);                     \
+        assert(opcode);
+
+#define TEXT_FUNC_SPECIAL_OP_NORES(kind)    \
+    TEXT_FUNC_SPECIAL_BEGIN(kind)           \
+        char *result = spirv_string_opcode_no_result(kind);
+
+#define TEXT_FUNC_SPECIAL_OP_RESID(kind)    \
+    TEXT_FUNC_SPECIAL_BEGIN(kind)           \
+        char *result = spirv_string_opcode_result_id(kind, opcode->optional[1]);
+
+#define TEXT_FUNC_TYPE_NORES(type)          \
+    static inline char *spirv_text_##type(SPIRV_module *module, SPIRV_opcode *opcode) { \
+        assert(module);                     \
+        assert(opcode);                     \
+        char *result = spirv_string_opcode_no_result(opcode->op.kind);
+
+#define TEXT_FUNC_TYPE_RESID(type)          \
+    static inline char *spirv_text_result_##type(SPIRV_module *module, SPIRV_opcode *opcode) { \
+        assert(module);                     \
+        assert(opcode);                     \
+        char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
+
+#define TEXT_FUNC_TYPE_N_RESID(type)        \
+    static inline char *spirv_text_result_##type(SPIRV_module *module, SPIRV_opcode *opcode, int n) {  \
+        assert(module);                     \
+        assert(opcode);                     \
+        char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
+
+#define TEXT_FUNC_TYPE_N_NORES(type)        \
+    static inline char *spirv_text_##type(SPIRV_module *module, SPIRV_opcode *opcode, int n) {  \
+        assert(module);                     \
+        assert(opcode);                     \
+        char *result = spirv_string_opcode_no_result(opcode->op.kind);
+
+#define TEXT_FUNC_END   }
+
+/*
+ * text functions for one specific opcode
+ */
+
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpCapability) {
     arr_printf(result, " %s", spirv_capability_name(opcode->optional[0]));
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpSource(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpSource) {
     arr_printf(result, " %s v%d", 
             spirv_source_language_name(opcode->optional[0]),
             opcode->optional[1]);
     // TODO: optional file & source
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpName(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpName) {
     arr_printf(result, " %%%d \"%s\"", 
             opcode->optional[0],
             (const char *) &opcode->optional[1]);
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpMemberName(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpMemberName) {
     arr_printf(result, " %%%d %d \"%s\"", 
             opcode->optional[0],
             opcode->optional[1],
             (const char *) &opcode->optional[2]);
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpExtInst(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
+TEXT_FUNC_SPECIAL_OP_RESID(SpvOpExtInst) {
     arr_printf(result, " %%%d %%%d %d",
                     opcode->optional[0],
                     opcode->optional[2],
@@ -88,18 +127,16 @@ static inline char *spirv_text_SpvOpExtInst(SPIRV_module *module, SPIRV_opcode *
     }
 
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpMemoryModel(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpMemoryModel) {
     arr_printf(result, " %s %s",
                     spirv_addressing_model_name(opcode->optional[0]),
                     spirv_memory_model_name(opcode->optional[1]));
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpEntryPoint(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpEntryPoint) {
     arr_printf(result, " %s %%%d \"%s\"",
                     spirv_execution_model_name(opcode->optional[0]),
                     opcode->optional[1],
@@ -112,10 +149,9 @@ static inline char *spirv_text_SpvOpEntryPoint(SPIRV_module *module, SPIRV_opcod
     }
 
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpTypeImage(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
+TEXT_FUNC_SPECIAL_OP_RESID(SpvOpTypeImage) {
     arr_printf(result, " %%%d %s %d %d %d %d %s",
                     opcode->optional[1], 
                     spirv_dim_name(opcode->optional[2]),
@@ -130,40 +166,35 @@ static inline char *spirv_text_SpvOpTypeImage(SPIRV_module *module, SPIRV_opcode
     }
 
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpTypePointer(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
+TEXT_FUNC_SPECIAL_OP_RESID(SpvOpTypePointer) {
     arr_printf(result, " %s %%%d",
                     spirv_storage_class_name(opcode->optional[1]),
                     opcode->optional[2]);
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpTypePipe(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
+TEXT_FUNC_SPECIAL_OP_RESID(SpvOpTypePipe) {
     arr_printf(result, " %s", spirv_access_qualifier_name(opcode->optional[1]));
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpTypeForwardPointer(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpTypeForwardPointer) {
     arr_printf(result, " %%%d %s",
                     opcode->optional[0],
                     spirv_storage_class_name(opcode->optional[1]));
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpExecutionMode(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpExecutionMode) {
     arr_printf(result, " %%%d %s",
                     opcode->optional[0],
                     spirv_execution_mode_name(opcode->optional[1]));
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpExecutionModeId(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpExecutionModeId) {
     arr_printf(result, " %%%d %s",
                     opcode->optional[0],
                     spirv_execution_mode_name(opcode->optional[1]));
@@ -171,10 +202,9 @@ static inline char *spirv_text_SpvOpExecutionModeId(SPIRV_module *module, SPIRV_
         arr_printf(result, " %%%d", opcode->optional[idx]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpConstant(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
+TEXT_FUNC_SPECIAL_OP_RESID(SpvOpConstant) {
     arr_printf(result, " %%%d", opcode->optional[0]);
 
     Type *res_type = spirv_module_type_by_id(module, opcode->optional[0]);
@@ -189,39 +219,35 @@ static inline char *spirv_text_SpvOpConstant(SPIRV_module *module, SPIRV_opcode 
         }
     }
     return result;
-} 
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpConstantSampler(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
+TEXT_FUNC_SPECIAL_OP_RESID(SpvOpConstantSampler) {
     arr_printf(result, " %%%d %s %d %s",
                     opcode->optional[0],
                     spirv_sampler_addressing_mode_name(opcode->optional[2]),
                     opcode->optional[3],
                     spirv_sampler_filter_mode_name(opcode->optional[4]));
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpSpecConstantOp(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
+TEXT_FUNC_SPECIAL_OP_RESID(SpvOpSpecConstantOp) {
     arr_printf(result, " %%%d %s",
-                    opcode->optional[0],
-                    spirv_op_name(opcode->optional[2]));
+               opcode->optional[0],
+               spirv_op_name(opcode->optional[2]));
     for (int idx=3; idx < opcode->op.length - 1; ++idx) {
         arr_printf(result, " %%%d", opcode->optional[idx]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpFunction(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
+TEXT_FUNC_SPECIAL_OP_RESID(SpvOpFunction) {
     arr_printf(result, " %%%d", opcode->optional[0]);
     spirv_string_bitmask(&result, opcode->optional[2], SPIRV_FUNCTION_CONTROL);
     arr_printf(result, " %%%d", opcode->optional[3]);
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpVariable(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
+TEXT_FUNC_SPECIAL_OP_RESID(SpvOpVariable) {
     arr_printf(result, " %%%d %s",
                     opcode->optional[0],
                     spirv_storage_class_name(opcode->optional[2]));
@@ -229,10 +255,9 @@ static inline char *spirv_text_SpvOpVariable(SPIRV_module *module, SPIRV_opcode 
         arr_printf(result, " %%%d", opcode->optional[idx]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpLoad(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
+TEXT_FUNC_SPECIAL_OP_RESID(SpvOpLoad) {
     arr_printf(result, " %%%d %%%d",
                     opcode->optional[0],
                     opcode->optional[2]);
@@ -240,10 +265,9 @@ static inline char *spirv_text_SpvOpLoad(SPIRV_module *module, SPIRV_opcode *opc
         spirv_string_bitmask(&result, opcode->optional[3], SPIRV_MEMORY_ACCESS);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpStore(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpStore) {
     arr_printf(result, " %%%d %%%d",
                     opcode->optional[0],
                     opcode->optional[1]);
@@ -251,14 +275,13 @@ static inline char *spirv_text_SpvOpStore(SPIRV_module *module, SPIRV_opcode *op
         spirv_string_bitmask(&result, opcode->optional[2], SPIRV_MEMORY_ACCESS);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpCopyMemory(SPIRV_module *module, SPIRV_opcode *opcode) {
+TEXT_FUNC_SPECIAL_BEGIN(SpvOpCopyMemory) {
     return spirv_text_SpvOpStore(module, opcode);
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpCopyMemorySized(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpCopyMemorySized) {
     arr_printf(result, " %%%d %%%d %%%d",
                     opcode->optional[0],
                     opcode->optional[1],
@@ -267,10 +290,9 @@ static inline char *spirv_text_SpvOpCopyMemorySized(SPIRV_module *module, SPIRV_
         spirv_string_bitmask(&result, opcode->optional[3], SPIRV_MEMORY_ACCESS);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpDecorate(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpDecorate) {
     arr_printf(result, " %%%d %s",
                     opcode->optional[0],
                     spirv_decoration_name(opcode->optional[1]));
@@ -282,10 +304,9 @@ static inline char *spirv_text_SpvOpDecorate(SPIRV_module *module, SPIRV_opcode 
         }
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpDecorateId(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpDecorateId) {
     arr_printf(result, " %%%d %s",
                     opcode->optional[0],
                     spirv_decoration_name(opcode->optional[1]));
@@ -293,10 +314,9 @@ static inline char *spirv_text_SpvOpDecorateId(SPIRV_module *module, SPIRV_opcod
         arr_printf(result, " %%%d", opcode->optional[idx]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpMemberDecorate(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpMemberDecorate) {
     arr_printf(result, " %%%d %d %s",
                     opcode->optional[0],
                     opcode->optional[1],
@@ -309,114 +329,104 @@ static inline char *spirv_text_SpvOpMemberDecorate(SPIRV_module *module, SPIRV_o
         }
     }
     return result;
-}   
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpGroupMemberDecorate(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpGroupMemberDecorate) {
     arr_printf(result, " %%%d", opcode->optional[0]);
     for (int idx = 1; idx < opcode->op.length - 1; idx += 2) {
         arr_printf(result, " %%%d %d", opcode->optional[idx], opcode->optional[idx+1]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpLoopMerge(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpLoopMerge) {
     arr_printf(result, " %%%d %%%d", opcode->optional[0], opcode->optional[1]);
     spirv_string_bitmask(&result, opcode->optional[2], SPIRV_LOOP_CONTROL);
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpSelectionMerge(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpSelectionMerge) {
     arr_printf(result, " %%%d", opcode->optional[0]);
     spirv_string_bitmask(&result, opcode->optional[1], SPIRV_SELECTION_CONTROL);
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_SpvOpSwitch(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_SPECIAL_OP_NORES(SpvOpSwitch) {
     arr_printf(result, " %%%d %%%d", opcode->optional[0], opcode->optional[1]);
     for (int idx = 2; idx < opcode->op.length - 1; idx += 2) {
         arr_printf(result, " %%%d %d", opcode->optional[idx], opcode->optional[idx+1]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_string(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+/*
+ * generic text functions - used by multiple types
+ */
+
+TEXT_FUNC_TYPE_NORES(string) {              /* OP "string" */
     arr_printf(result, " \"%s\"", (const char *) &opcode->optional[0]);
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_result_string(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
+TEXT_FUNC_TYPE_RESID(string) {              /* %id = OP "string" */
     arr_printf(result, " \"%s\"", (const char *) &opcode->optional[1]);
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_result_number_list(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
+TEXT_FUNC_TYPE_RESID(number_list) {         /* %id = OP number+ */
     for (int idx=1; idx < opcode->op.length - 1; ++idx) {
         arr_printf(result, " %d", opcode->optional[idx]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_result_id_number_list(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
+TEXT_FUNC_TYPE_RESID(id_number_list) {      /* %id = OP %id number+ */
     arr_printf(result, " %%%d", opcode->optional[1]);
     for (int idx=2; idx < opcode->op.length - 1; ++idx) {
         arr_printf(result, " %d", opcode->optional[idx]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_result_id_list(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
+TEXT_FUNC_TYPE_RESID(id_list) {             /* %id = OP %id+ */
     for (int idx=1; idx < opcode->op.length - 1; ++idx) {
         arr_printf(result, " %%%d", opcode->optional[idx]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_id_list(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_TYPE_NORES(id_list) {              /* OP %id+ */
     for (int idx=0; idx < opcode->op.length - 1; ++idx) {
         arr_printf(result, " %%%d", opcode->optional[idx]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_type_result_number_list(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
+TEXT_FUNC_TYPE_RESID(type_number_list) {     /* %id = OP %type_id number+ */
     arr_printf(result, " %%%d", opcode->optional[0]);
     for (int idx=2; idx < opcode->op.length - 1; ++idx) {
         arr_printf(result, " %d", opcode->optional[idx]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_type_result_id_list(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
+TEXT_FUNC_TYPE_RESID(type_id_list) {     /* %id = OP %type_id %id+ */
     arr_printf(result, " %%%d", opcode->optional[0]);
     for (int idx=2; idx < opcode->op.length - 1; ++idx) {
         arr_printf(result, " %%%d", opcode->optional[idx]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_type_result_id_number(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
+TEXT_FUNC_TYPE_RESID(type_id_number) {     /* %id = OP %type_id %id number */
     arr_printf(result, " %%%d %%%d %d", 
                     opcode->optional[0],
                     opcode->optional[2],
                     opcode->optional[3]);
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_type_result_n_id_number_list(SPIRV_module *module, SPIRV_opcode *opcode, int n) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
+TEXT_FUNC_TYPE_N_RESID(type_n_id_number_list) {     /* %id = OP %type_id %id*n number+ */
     arr_printf(result, " %%%d", opcode->optional[0]);
     for (int idx = 0; idx < n; ++idx) {
         arr_printf(result, " %%%d", opcode->optional[2+idx]);
@@ -425,10 +435,9 @@ static inline char *spirv_text_type_result_n_id_number_list(SPIRV_module *module
         arr_printf(result, " %d", opcode->optional[idx]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_n_id_number_list(SPIRV_module *module, SPIRV_opcode *opcode, int n) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_TYPE_N_NORES(n_id_number_list) {          /* OP %id*n number+ */
     for (int idx = 0; idx < n; ++idx) {
         arr_printf(result, " %%%d", opcode->optional[idx]);
     }
@@ -436,10 +445,9 @@ static inline char *spirv_text_n_id_number_list(SPIRV_module *module, SPIRV_opco
         arr_printf(result, " %d", opcode->optional[idx]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_type_result_n_id_imageop_id_list(SPIRV_module *module, SPIRV_opcode *opcode, int n) {
-    char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[1]);
+TEXT_FUNC_TYPE_N_RESID(type_n_id_imageop_id_list) {     /* %id = OP %type_id %id*n <image-operand> %id+ */
     arr_printf(result, " %%%d", opcode->optional[0]);
     for (int idx = 0; idx < n; ++idx) {
         arr_printf(result, " %%%d", opcode->optional[2+idx]);
@@ -451,10 +459,9 @@ static inline char *spirv_text_type_result_n_id_imageop_id_list(SPIRV_module *mo
         arr_printf(result, " %%%d", opcode->optional[idx]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_n_id_imageop_id_list(SPIRV_module *module, SPIRV_opcode *opcode, int n) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_TYPE_N_NORES(n_id_imageop_id_list) {          /* OP %id*n <image-operand> %id+ */
     for (int idx = 0; idx < n; ++idx) {
         arr_printf(result, " %%%d", opcode->optional[idx]);
     }
@@ -465,16 +472,15 @@ static inline char *spirv_text_n_id_imageop_id_list(SPIRV_module *module, SPIRV_
         arr_printf(result, " %%%d", opcode->optional[idx]);
     }
     return result;
-}
+} TEXT_FUNC_END
 
-static inline char *spirv_text_id_groupop_id(SPIRV_module *module, SPIRV_opcode *opcode) {
-    char *result = spirv_string_opcode_no_result(opcode->op.kind);
+TEXT_FUNC_TYPE_NORES(id_groupop_id) {              /* OP %id <group-operation> %id */
     arr_printf(result, " %%%d %s %%%d",
                     opcode->optional[0],
                     spirv_group_operation_name(opcode->optional[1]),
                     opcode->optional[2]);
     return result;
-} 
+} TEXT_FUNC_END
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -525,8 +531,8 @@ char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {
     switch (opcode->op.kind) {
         // miscellaneous instructions
         OP_DEFAULT(SpvOpNop)
-        OP_CASE_TYPE(SpvOpUndef, type_result_id_list)
-        OP_CASE_TYPE(SpvOpSizeOf, type_result_id_list)
+        OP_CASE_TYPE(SpvOpUndef, result_type_id_list)
+        OP_CASE_TYPE(SpvOpSizeOf, result_type_id_list)
 
         // debug instructions
         OP_CASE_TYPE(SpvOpSourceContinued, string)
@@ -577,37 +583,37 @@ char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {
         OP_CASE_TYPE(SpvOpTypeNamedBarrier, result_number_list)
 
         // constant-creation instructions
-        OP_CASE_TYPE(SpvOpConstantTrue, type_result_number_list)
-        OP_CASE_TYPE(SpvOpConstantFalse, type_result_number_list)
+        OP_CASE_TYPE(SpvOpConstantTrue, result_type_number_list)
+        OP_CASE_TYPE(SpvOpConstantFalse, result_type_number_list)
         OP_CASE_SPECIAL(SpvOpConstant)
-        OP_CASE_TYPE(SpvOpConstantComposite, type_result_id_list)
+        OP_CASE_TYPE(SpvOpConstantComposite, result_type_id_list)
         OP_CASE_SPECIAL(SpvOpConstantSampler)
-        OP_CASE_TYPE(SpvOpConstantNull, type_result_number_list)
-        OP_CASE_TYPE(SpvOpSpecConstantTrue, type_result_number_list)
-        OP_CASE_TYPE(SpvOpSpecConstantFalse, type_result_number_list)
-        OP_CASE_TYPE(SpvOpSpecConstant, type_result_number_list)
-        OP_CASE_TYPE(SpvOpSpecConstantComposite, type_result_id_list)
+        OP_CASE_TYPE(SpvOpConstantNull, result_type_number_list)
+        OP_CASE_TYPE(SpvOpSpecConstantTrue, result_type_number_list)
+        OP_CASE_TYPE(SpvOpSpecConstantFalse, result_type_number_list)
+        OP_CASE_TYPE(SpvOpSpecConstant, result_type_number_list)
+        OP_CASE_TYPE(SpvOpSpecConstantComposite, result_type_id_list)
         OP_CASE_SPECIAL(SpvOpSpecConstantOp)
 
         // function instructions
         OP_CASE_SPECIAL(SpvOpFunction)
-        OP_CASE_TYPE(SpvOpFunctionParameter, type_result_number_list)
+        OP_CASE_TYPE(SpvOpFunctionParameter, result_type_number_list)
         OP_DEFAULT(SpvOpFunctionEnd)
-        OP_CASE_TYPE(SpvOpFunctionCall, type_result_id_list)
+        OP_CASE_TYPE(SpvOpFunctionCall, result_type_id_list)
 
         // memory instructions
         OP_CASE_SPECIAL(SpvOpVariable)
-        OP_CASE_TYPE(SpvOpImageTexelPointer, type_result_id_list)
+        OP_CASE_TYPE(SpvOpImageTexelPointer, result_type_id_list)
         OP_CASE_SPECIAL(SpvOpLoad)
         OP_CASE_SPECIAL(SpvOpStore)
         OP_CASE_SPECIAL(SpvOpCopyMemory)
         OP_CASE_SPECIAL(SpvOpCopyMemorySized)
-        OP_CASE_TYPE(SpvOpAccessChain, type_result_id_list)
-        OP_CASE_TYPE(SpvOpInBoundsAccessChain, type_result_id_list)
-        OP_CASE_TYPE(SpvOpPtrAccessChain, type_result_id_list)
-        OP_CASE_TYPE(SpvOpArrayLength, type_result_id_number)
-        OP_CASE_TYPE(SpvOpGenericPtrMemSemantics, type_result_id_list)
-        OP_CASE_TYPE(SpvOpInBoundsPtrAccessChain, type_result_id_list)
+        OP_CASE_TYPE(SpvOpAccessChain, result_type_id_list)
+        OP_CASE_TYPE(SpvOpInBoundsAccessChain, result_type_id_list)
+        OP_CASE_TYPE(SpvOpPtrAccessChain, result_type_id_list)
+        OP_CASE_TYPE(SpvOpArrayLength, result_type_id_number)
+        OP_CASE_TYPE(SpvOpGenericPtrMemSemantics, result_type_id_list)
+        OP_CASE_TYPE(SpvOpInBoundsPtrAccessChain, result_type_id_list)
 
         // annotation instructions
         OP_CASE_SPECIAL(SpvOpDecorate)
@@ -618,163 +624,163 @@ char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {
         OP_CASE_SPECIAL(SpvOpDecorateId)
 
         // composite instructions
-        OP_CASE_TYPE(SpvOpVectorExtractDynamic, type_result_id_list)
-        OP_CASE_TYPE(SpvOpVectorInsertDynamic, type_result_id_list)
-        OP_CASE_TYPE_1(SpvOpVectorShuffle, type_result_n_id_number_list, 2)
-        OP_CASE_TYPE(SpvOpCompositeConstruct, type_result_id_list)
-        OP_CASE_TYPE_1(SpvOpCompositeExtract, type_result_n_id_number_list, 1)
-        OP_CASE_TYPE_1(SpvOpCompositeInsert, type_result_n_id_number_list, 2)
-        OP_CASE_TYPE(SpvOpCopyObject, type_result_id_list)
-        OP_CASE_TYPE(SpvOpTranspose, type_result_id_list)
+        OP_CASE_TYPE(SpvOpVectorExtractDynamic, result_type_id_list)
+        OP_CASE_TYPE(SpvOpVectorInsertDynamic, result_type_id_list)
+        OP_CASE_TYPE_1(SpvOpVectorShuffle, result_type_n_id_number_list, 2)
+        OP_CASE_TYPE(SpvOpCompositeConstruct, result_type_id_list)
+        OP_CASE_TYPE_1(SpvOpCompositeExtract, result_type_n_id_number_list, 1)
+        OP_CASE_TYPE_1(SpvOpCompositeInsert, result_type_n_id_number_list, 2)
+        OP_CASE_TYPE(SpvOpCopyObject, result_type_id_list)
+        OP_CASE_TYPE(SpvOpTranspose, result_type_id_list)
 
         // image instructions
-        OP_CASE_TYPE(SpvOpSampledImage, type_result_id_list)
-        OP_CASE_TYPE_1(SpvOpImageSampleImplicitLod, type_result_n_id_imageop_id_list, 2)
-        OP_CASE_TYPE_1(SpvOpImageSampleExplicitLod, type_result_n_id_imageop_id_list, 2)
-        OP_CASE_TYPE_1(SpvOpImageSampleDrefImplicitLod, type_result_n_id_imageop_id_list, 3)
-        OP_CASE_TYPE_1(SpvOpImageSampleDrefExplicitLod, type_result_n_id_imageop_id_list, 3)
-        OP_CASE_TYPE_1(SpvOpImageSampleProjImplicitLod, type_result_n_id_imageop_id_list, 2)
-        OP_CASE_TYPE_1(SpvOpImageSampleProjExplicitLod, type_result_n_id_imageop_id_list, 2)
-        OP_CASE_TYPE_1(SpvOpImageSampleProjDrefImplicitLod, type_result_n_id_imageop_id_list, 3)
-        OP_CASE_TYPE_1(SpvOpImageSampleProjDrefExplicitLod, type_result_n_id_imageop_id_list, 3)
-        OP_CASE_TYPE_1(SpvOpImageFetch, type_result_n_id_imageop_id_list, 2)
-        OP_CASE_TYPE_1(SpvOpImageGather, type_result_n_id_imageop_id_list, 3)
-        OP_CASE_TYPE_1(SpvOpImageDrefGather, type_result_n_id_imageop_id_list, 3)
-        OP_CASE_TYPE_1(SpvOpImageRead, type_result_n_id_imageop_id_list, 2)
+        OP_CASE_TYPE(SpvOpSampledImage, result_type_id_list)
+        OP_CASE_TYPE_1(SpvOpImageSampleImplicitLod, result_type_n_id_imageop_id_list, 2)
+        OP_CASE_TYPE_1(SpvOpImageSampleExplicitLod, result_type_n_id_imageop_id_list, 2)
+        OP_CASE_TYPE_1(SpvOpImageSampleDrefImplicitLod, result_type_n_id_imageop_id_list, 3)
+        OP_CASE_TYPE_1(SpvOpImageSampleDrefExplicitLod, result_type_n_id_imageop_id_list, 3)
+        OP_CASE_TYPE_1(SpvOpImageSampleProjImplicitLod, result_type_n_id_imageop_id_list, 2)
+        OP_CASE_TYPE_1(SpvOpImageSampleProjExplicitLod, result_type_n_id_imageop_id_list, 2)
+        OP_CASE_TYPE_1(SpvOpImageSampleProjDrefImplicitLod, result_type_n_id_imageop_id_list, 3)
+        OP_CASE_TYPE_1(SpvOpImageSampleProjDrefExplicitLod, result_type_n_id_imageop_id_list, 3)
+        OP_CASE_TYPE_1(SpvOpImageFetch, result_type_n_id_imageop_id_list, 2)
+        OP_CASE_TYPE_1(SpvOpImageGather, result_type_n_id_imageop_id_list, 3)
+        OP_CASE_TYPE_1(SpvOpImageDrefGather, result_type_n_id_imageop_id_list, 3)
+        OP_CASE_TYPE_1(SpvOpImageRead, result_type_n_id_imageop_id_list, 2)
         OP_CASE_TYPE_1(SpvOpImageWrite, n_id_imageop_id_list, 3)
-        OP_CASE_TYPE(SpvOpImage, type_result_id_list)
-        OP_CASE_TYPE(SpvOpImageQueryFormat, type_result_id_list)
-        OP_CASE_TYPE(SpvOpImageQueryOrder, type_result_id_list)
-        OP_CASE_TYPE(SpvOpImageQuerySizeLod, type_result_id_list)
-        OP_CASE_TYPE(SpvOpImageQuerySize, type_result_id_list)
-        OP_CASE_TYPE(SpvOpImageQueryLod, type_result_id_list)
-        OP_CASE_TYPE(SpvOpImageQueryLevels, type_result_id_list)
-        OP_CASE_TYPE(SpvOpImageQuerySamples, type_result_id_list)
-        OP_CASE_TYPE_1(SpvOpImageSparseSampleImplicitLod, type_result_n_id_imageop_id_list, 2)
-        OP_CASE_TYPE_1(SpvOpImageSparseSampleExplicitLod, type_result_n_id_imageop_id_list, 2)
-        OP_CASE_TYPE_1(SpvOpImageSparseSampleDrefImplicitLod, type_result_n_id_imageop_id_list, 3)
-        OP_CASE_TYPE_1(SpvOpImageSparseSampleDrefExplicitLod, type_result_n_id_imageop_id_list, 3)
-        OP_CASE_TYPE_1(SpvOpImageSparseSampleProjImplicitLod, type_result_n_id_imageop_id_list, 2)
-        OP_CASE_TYPE_1(SpvOpImageSparseSampleProjExplicitLod, type_result_n_id_imageop_id_list, 2)
-        OP_CASE_TYPE_1(SpvOpImageSparseSampleProjDrefImplicitLod, type_result_n_id_imageop_id_list, 3)
-        OP_CASE_TYPE_1(SpvOpImageSparseSampleProjDrefExplicitLod, type_result_n_id_imageop_id_list, 3)
-        OP_CASE_TYPE_1(SpvOpImageSparseFetch, type_result_n_id_imageop_id_list, 2)
-        OP_CASE_TYPE_1(SpvOpImageSparseGather, type_result_n_id_imageop_id_list, 3)
-        OP_CASE_TYPE_1(SpvOpImageSparseDrefGather, type_result_n_id_imageop_id_list, 3)
-        OP_CASE_TYPE(SpvOpImageSparseTexelsResident, type_result_id_list)
-        OP_CASE_TYPE_1(SpvOpImageSparseRead, type_result_n_id_imageop_id_list, 2)
+        OP_CASE_TYPE(SpvOpImage, result_type_id_list)
+        OP_CASE_TYPE(SpvOpImageQueryFormat, result_type_id_list)
+        OP_CASE_TYPE(SpvOpImageQueryOrder, result_type_id_list)
+        OP_CASE_TYPE(SpvOpImageQuerySizeLod, result_type_id_list)
+        OP_CASE_TYPE(SpvOpImageQuerySize, result_type_id_list)
+        OP_CASE_TYPE(SpvOpImageQueryLod, result_type_id_list)
+        OP_CASE_TYPE(SpvOpImageQueryLevels, result_type_id_list)
+        OP_CASE_TYPE(SpvOpImageQuerySamples, result_type_id_list)
+        OP_CASE_TYPE_1(SpvOpImageSparseSampleImplicitLod, result_type_n_id_imageop_id_list, 2)
+        OP_CASE_TYPE_1(SpvOpImageSparseSampleExplicitLod, result_type_n_id_imageop_id_list, 2)
+        OP_CASE_TYPE_1(SpvOpImageSparseSampleDrefImplicitLod, result_type_n_id_imageop_id_list, 3)
+        OP_CASE_TYPE_1(SpvOpImageSparseSampleDrefExplicitLod, result_type_n_id_imageop_id_list, 3)
+        OP_CASE_TYPE_1(SpvOpImageSparseSampleProjImplicitLod, result_type_n_id_imageop_id_list, 2)
+        OP_CASE_TYPE_1(SpvOpImageSparseSampleProjExplicitLod, result_type_n_id_imageop_id_list, 2)
+        OP_CASE_TYPE_1(SpvOpImageSparseSampleProjDrefImplicitLod, result_type_n_id_imageop_id_list, 3)
+        OP_CASE_TYPE_1(SpvOpImageSparseSampleProjDrefExplicitLod, result_type_n_id_imageop_id_list, 3)
+        OP_CASE_TYPE_1(SpvOpImageSparseFetch, result_type_n_id_imageop_id_list, 2)
+        OP_CASE_TYPE_1(SpvOpImageSparseGather, result_type_n_id_imageop_id_list, 3)
+        OP_CASE_TYPE_1(SpvOpImageSparseDrefGather, result_type_n_id_imageop_id_list, 3)
+        OP_CASE_TYPE(SpvOpImageSparseTexelsResident, result_type_id_list)
+        OP_CASE_TYPE_1(SpvOpImageSparseRead, result_type_n_id_imageop_id_list, 2)
 
         // conversion instructions
-        OP_CASE_TYPE(SpvOpConvertFToU, type_result_id_list)
-        OP_CASE_TYPE(SpvOpConvertFToS, type_result_id_list)
-        OP_CASE_TYPE(SpvOpConvertSToF, type_result_id_list)
-        OP_CASE_TYPE(SpvOpConvertUToF, type_result_id_list)
-        OP_CASE_TYPE(SpvOpUConvert, type_result_id_list)
-        OP_CASE_TYPE(SpvOpSConvert, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFConvert, type_result_id_list)
-        OP_CASE_TYPE(SpvOpQuantizeToF16, type_result_id_list)
-        OP_CASE_TYPE(SpvOpConvertPtrToU, type_result_id_list)
-        OP_CASE_TYPE(SpvOpSatConvertSToU, type_result_id_list)
-        OP_CASE_TYPE(SpvOpSatConvertUToS, type_result_id_list)
-        OP_CASE_TYPE(SpvOpConvertUToPtr, type_result_id_list)
-        OP_CASE_TYPE(SpvOpPtrCastToGeneric, type_result_id_list)
-        OP_CASE_TYPE(SpvOpGenericCastToPtr, type_result_id_list)
-        OP_CASE_TYPE(SpvOpGenericCastToPtrExplicit, type_result_id_list)
-        OP_CASE_TYPE(SpvOpBitcast, type_result_id_list)
+        OP_CASE_TYPE(SpvOpConvertFToU, result_type_id_list)
+        OP_CASE_TYPE(SpvOpConvertFToS, result_type_id_list)
+        OP_CASE_TYPE(SpvOpConvertSToF, result_type_id_list)
+        OP_CASE_TYPE(SpvOpConvertUToF, result_type_id_list)
+        OP_CASE_TYPE(SpvOpUConvert, result_type_id_list)
+        OP_CASE_TYPE(SpvOpSConvert, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFConvert, result_type_id_list)
+        OP_CASE_TYPE(SpvOpQuantizeToF16, result_type_id_list)
+        OP_CASE_TYPE(SpvOpConvertPtrToU, result_type_id_list)
+        OP_CASE_TYPE(SpvOpSatConvertSToU, result_type_id_list)
+        OP_CASE_TYPE(SpvOpSatConvertUToS, result_type_id_list)
+        OP_CASE_TYPE(SpvOpConvertUToPtr, result_type_id_list)
+        OP_CASE_TYPE(SpvOpPtrCastToGeneric, result_type_id_list)
+        OP_CASE_TYPE(SpvOpGenericCastToPtr, result_type_id_list)
+        OP_CASE_TYPE(SpvOpGenericCastToPtrExplicit, result_type_id_list)
+        OP_CASE_TYPE(SpvOpBitcast, result_type_id_list)
 
         // arithmetic instructions
-        OP_CASE_TYPE(SpvOpSNegate, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFNegate, type_result_id_list)
-        OP_CASE_TYPE(SpvOpIAdd, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFAdd, type_result_id_list)
-        OP_CASE_TYPE(SpvOpISub, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFSub, type_result_id_list)
-        OP_CASE_TYPE(SpvOpIMul, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFMul, type_result_id_list)
-        OP_CASE_TYPE(SpvOpUDiv, type_result_id_list)
-        OP_CASE_TYPE(SpvOpSDiv, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFDiv, type_result_id_list)
-        OP_CASE_TYPE(SpvOpUMod, type_result_id_list)
-        OP_CASE_TYPE(SpvOpSRem, type_result_id_list)
-        OP_CASE_TYPE(SpvOpSMod, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFRem, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFMod, type_result_id_list)
-        OP_CASE_TYPE(SpvOpVectorTimesScalar, type_result_id_list)
-        OP_CASE_TYPE(SpvOpMatrixTimesScalar, type_result_id_list)
-        OP_CASE_TYPE(SpvOpVectorTimesMatrix, type_result_id_list)
-        OP_CASE_TYPE(SpvOpMatrixTimesVector, type_result_id_list)
-        OP_CASE_TYPE(SpvOpMatrixTimesMatrix, type_result_id_list)
-        OP_CASE_TYPE(SpvOpOuterProduct, type_result_id_list)
-        OP_CASE_TYPE(SpvOpDot, type_result_id_list)
-        OP_CASE_TYPE(SpvOpIAddCarry, type_result_id_list)
-        OP_CASE_TYPE(SpvOpISubBorrow, type_result_id_list)
-        OP_CASE_TYPE(SpvOpUMulExtended, type_result_id_list)
-        OP_CASE_TYPE(SpvOpSMulExtended, type_result_id_list)
+        OP_CASE_TYPE(SpvOpSNegate, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFNegate, result_type_id_list)
+        OP_CASE_TYPE(SpvOpIAdd, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFAdd, result_type_id_list)
+        OP_CASE_TYPE(SpvOpISub, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFSub, result_type_id_list)
+        OP_CASE_TYPE(SpvOpIMul, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFMul, result_type_id_list)
+        OP_CASE_TYPE(SpvOpUDiv, result_type_id_list)
+        OP_CASE_TYPE(SpvOpSDiv, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFDiv, result_type_id_list)
+        OP_CASE_TYPE(SpvOpUMod, result_type_id_list)
+        OP_CASE_TYPE(SpvOpSRem, result_type_id_list)
+        OP_CASE_TYPE(SpvOpSMod, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFRem, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFMod, result_type_id_list)
+        OP_CASE_TYPE(SpvOpVectorTimesScalar, result_type_id_list)
+        OP_CASE_TYPE(SpvOpMatrixTimesScalar, result_type_id_list)
+        OP_CASE_TYPE(SpvOpVectorTimesMatrix, result_type_id_list)
+        OP_CASE_TYPE(SpvOpMatrixTimesVector, result_type_id_list)
+        OP_CASE_TYPE(SpvOpMatrixTimesMatrix, result_type_id_list)
+        OP_CASE_TYPE(SpvOpOuterProduct, result_type_id_list)
+        OP_CASE_TYPE(SpvOpDot, result_type_id_list)
+        OP_CASE_TYPE(SpvOpIAddCarry, result_type_id_list)
+        OP_CASE_TYPE(SpvOpISubBorrow, result_type_id_list)
+        OP_CASE_TYPE(SpvOpUMulExtended, result_type_id_list)
+        OP_CASE_TYPE(SpvOpSMulExtended, result_type_id_list)
 
         // relational and logical instructions
-        OP_CASE_TYPE(SpvOpAny, type_result_id_list)
-        OP_CASE_TYPE(SpvOpAll, type_result_id_list)
-        OP_CASE_TYPE(SpvOpIsNan, type_result_id_list)
-        OP_CASE_TYPE(SpvOpIsInf, type_result_id_list)
-        OP_CASE_TYPE(SpvOpIsFinite, type_result_id_list)
-        OP_CASE_TYPE(SpvOpIsNormal, type_result_id_list)
-        OP_CASE_TYPE(SpvOpSignBitSet, type_result_id_list)
-        OP_CASE_TYPE(SpvOpLessOrGreater, type_result_id_list)
-        OP_CASE_TYPE(SpvOpOrdered, type_result_id_list)
-        OP_CASE_TYPE(SpvOpUnordered, type_result_id_list)
-        OP_CASE_TYPE(SpvOpLogicalEqual, type_result_id_list)
-        OP_CASE_TYPE(SpvOpLogicalNotEqual, type_result_id_list)
-        OP_CASE_TYPE(SpvOpLogicalOr, type_result_id_list)
-        OP_CASE_TYPE(SpvOpLogicalAnd, type_result_id_list)
-        OP_CASE_TYPE(SpvOpLogicalNot, type_result_id_list)
-        OP_CASE_TYPE(SpvOpSelect, type_result_id_list)
-        OP_CASE_TYPE(SpvOpIEqual, type_result_id_list)
-        OP_CASE_TYPE(SpvOpINotEqual, type_result_id_list)
-        OP_CASE_TYPE(SpvOpUGreaterThan, type_result_id_list)
-        OP_CASE_TYPE(SpvOpSGreaterThan, type_result_id_list)
-        OP_CASE_TYPE(SpvOpUGreaterThanEqual, type_result_id_list)
-        OP_CASE_TYPE(SpvOpSGreaterThanEqual, type_result_id_list)
-        OP_CASE_TYPE(SpvOpULessThan, type_result_id_list)
-        OP_CASE_TYPE(SpvOpSLessThan, type_result_id_list)
-        OP_CASE_TYPE(SpvOpULessThanEqual, type_result_id_list)
-        OP_CASE_TYPE(SpvOpSLessThanEqual, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFOrdEqual, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFUnordEqual, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFOrdNotEqual, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFUnordNotEqual, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFOrdLessThan, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFUnordLessThan, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFOrdGreaterThan, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFUnordGreaterThan, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFOrdLessThanEqual, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFUnordLessThanEqual, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFOrdGreaterThanEqual, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFUnordGreaterThanEqual, type_result_id_list)
+        OP_CASE_TYPE(SpvOpAny, result_type_id_list)
+        OP_CASE_TYPE(SpvOpAll, result_type_id_list)
+        OP_CASE_TYPE(SpvOpIsNan, result_type_id_list)
+        OP_CASE_TYPE(SpvOpIsInf, result_type_id_list)
+        OP_CASE_TYPE(SpvOpIsFinite, result_type_id_list)
+        OP_CASE_TYPE(SpvOpIsNormal, result_type_id_list)
+        OP_CASE_TYPE(SpvOpSignBitSet, result_type_id_list)
+        OP_CASE_TYPE(SpvOpLessOrGreater, result_type_id_list)
+        OP_CASE_TYPE(SpvOpOrdered, result_type_id_list)
+        OP_CASE_TYPE(SpvOpUnordered, result_type_id_list)
+        OP_CASE_TYPE(SpvOpLogicalEqual, result_type_id_list)
+        OP_CASE_TYPE(SpvOpLogicalNotEqual, result_type_id_list)
+        OP_CASE_TYPE(SpvOpLogicalOr, result_type_id_list)
+        OP_CASE_TYPE(SpvOpLogicalAnd, result_type_id_list)
+        OP_CASE_TYPE(SpvOpLogicalNot, result_type_id_list)
+        OP_CASE_TYPE(SpvOpSelect, result_type_id_list)
+        OP_CASE_TYPE(SpvOpIEqual, result_type_id_list)
+        OP_CASE_TYPE(SpvOpINotEqual, result_type_id_list)
+        OP_CASE_TYPE(SpvOpUGreaterThan, result_type_id_list)
+        OP_CASE_TYPE(SpvOpSGreaterThan, result_type_id_list)
+        OP_CASE_TYPE(SpvOpUGreaterThanEqual, result_type_id_list)
+        OP_CASE_TYPE(SpvOpSGreaterThanEqual, result_type_id_list)
+        OP_CASE_TYPE(SpvOpULessThan, result_type_id_list)
+        OP_CASE_TYPE(SpvOpSLessThan, result_type_id_list)
+        OP_CASE_TYPE(SpvOpULessThanEqual, result_type_id_list)
+        OP_CASE_TYPE(SpvOpSLessThanEqual, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFOrdEqual, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFUnordEqual, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFOrdNotEqual, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFUnordNotEqual, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFOrdLessThan, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFUnordLessThan, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFOrdGreaterThan, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFUnordGreaterThan, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFOrdLessThanEqual, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFUnordLessThanEqual, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFOrdGreaterThanEqual, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFUnordGreaterThanEqual, result_type_id_list)
 
         // bit instructions
-        OP_CASE_TYPE(SpvOpShiftRightLogical, type_result_id_list)
-        OP_CASE_TYPE(SpvOpShiftRightArithmetic, type_result_id_list)
-        OP_CASE_TYPE(SpvOpShiftLeftLogical, type_result_id_list)
-        OP_CASE_TYPE(SpvOpBitwiseOr, type_result_id_list)
-        OP_CASE_TYPE(SpvOpBitwiseXor, type_result_id_list)
-        OP_CASE_TYPE(SpvOpBitwiseAnd, type_result_id_list)
-        OP_CASE_TYPE(SpvOpNot, type_result_id_list)
-        OP_CASE_TYPE(SpvOpBitFieldInsert, type_result_id_list)
-        OP_CASE_TYPE(SpvOpBitFieldSExtract, type_result_id_list)
-        OP_CASE_TYPE(SpvOpBitFieldUExtract, type_result_id_list)
-        OP_CASE_TYPE(SpvOpBitReverse, type_result_id_list)
-        OP_CASE_TYPE(SpvOpBitCount, type_result_id_list)
+        OP_CASE_TYPE(SpvOpShiftRightLogical, result_type_id_list)
+        OP_CASE_TYPE(SpvOpShiftRightArithmetic, result_type_id_list)
+        OP_CASE_TYPE(SpvOpShiftLeftLogical, result_type_id_list)
+        OP_CASE_TYPE(SpvOpBitwiseOr, result_type_id_list)
+        OP_CASE_TYPE(SpvOpBitwiseXor, result_type_id_list)
+        OP_CASE_TYPE(SpvOpBitwiseAnd, result_type_id_list)
+        OP_CASE_TYPE(SpvOpNot, result_type_id_list)
+        OP_CASE_TYPE(SpvOpBitFieldInsert, result_type_id_list)
+        OP_CASE_TYPE(SpvOpBitFieldSExtract, result_type_id_list)
+        OP_CASE_TYPE(SpvOpBitFieldUExtract, result_type_id_list)
+        OP_CASE_TYPE(SpvOpBitReverse, result_type_id_list)
+        OP_CASE_TYPE(SpvOpBitCount, result_type_id_list)
 
         // derivative instructions
-        OP_CASE_TYPE(SpvOpDPdx, type_result_id_list)
-        OP_CASE_TYPE(SpvOpDPdy, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFwidth, type_result_id_list)
-        OP_CASE_TYPE(SpvOpDPdxFine, type_result_id_list)
-        OP_CASE_TYPE(SpvOpDPdyFine, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFwidthFine, type_result_id_list)
-        OP_CASE_TYPE(SpvOpDPdxCoarse, type_result_id_list)
-        OP_CASE_TYPE(SpvOpDPdyCoarse, type_result_id_list)
-        OP_CASE_TYPE(SpvOpFwidthCoarse, type_result_id_list)
+        OP_CASE_TYPE(SpvOpDPdx, result_type_id_list)
+        OP_CASE_TYPE(SpvOpDPdy, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFwidth, result_type_id_list)
+        OP_CASE_TYPE(SpvOpDPdxFine, result_type_id_list)
+        OP_CASE_TYPE(SpvOpDPdyFine, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFwidthFine, result_type_id_list)
+        OP_CASE_TYPE(SpvOpDPdxCoarse, result_type_id_list)
+        OP_CASE_TYPE(SpvOpDPdyCoarse, result_type_id_list)
+        OP_CASE_TYPE(SpvOpFwidthCoarse, result_type_id_list)
 
         // primitive instructions
         OP_DEFAULT(SpvOpEmitVertex)
@@ -785,31 +791,31 @@ char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {
         // barrier instructions
         OP_CASE_TYPE(SpvOpControlBarrier, id_list)
         OP_CASE_TYPE(SpvOpMemoryBarrier, id_list)
-        OP_CASE_TYPE(SpvOpNamedBarrierInitialize, type_result_id_list)
+        OP_CASE_TYPE(SpvOpNamedBarrierInitialize, result_type_id_list)
         OP_CASE_TYPE(SpvOpMemoryNamedBarrier, id_list)
 
         // atomic instructions
-        OP_CASE_TYPE(SpvOpAtomicLoad, type_result_id_list)
+        OP_CASE_TYPE(SpvOpAtomicLoad, result_type_id_list)
         OP_CASE_TYPE(SpvOpAtomicStore, id_list)
-        OP_CASE_TYPE(SpvOpAtomicExchange, type_result_id_list)
-        OP_CASE_TYPE(SpvOpAtomicCompareExchange, type_result_id_list)
-        OP_CASE_TYPE(SpvOpAtomicCompareExchangeWeak, type_result_id_list)
-        OP_CASE_TYPE(SpvOpAtomicIIncrement, type_result_id_list)
-        OP_CASE_TYPE(SpvOpAtomicIDecrement, type_result_id_list)
-        OP_CASE_TYPE(SpvOpAtomicIAdd, type_result_id_list)
-        OP_CASE_TYPE(SpvOpAtomicISub, type_result_id_list)
-        OP_CASE_TYPE(SpvOpAtomicSMin, type_result_id_list)
-        OP_CASE_TYPE(SpvOpAtomicUMin, type_result_id_list)
-        OP_CASE_TYPE(SpvOpAtomicSMax, type_result_id_list)
-        OP_CASE_TYPE(SpvOpAtomicUMax, type_result_id_list)
-        OP_CASE_TYPE(SpvOpAtomicAnd, type_result_id_list)
-        OP_CASE_TYPE(SpvOpAtomicOr, type_result_id_list)
-        OP_CASE_TYPE(SpvOpAtomicXor, type_result_id_list)
-        OP_CASE_TYPE(SpvOpAtomicFlagTestAndSet, type_result_id_list)
+        OP_CASE_TYPE(SpvOpAtomicExchange, result_type_id_list)
+        OP_CASE_TYPE(SpvOpAtomicCompareExchange, result_type_id_list)
+        OP_CASE_TYPE(SpvOpAtomicCompareExchangeWeak, result_type_id_list)
+        OP_CASE_TYPE(SpvOpAtomicIIncrement, result_type_id_list)
+        OP_CASE_TYPE(SpvOpAtomicIDecrement, result_type_id_list)
+        OP_CASE_TYPE(SpvOpAtomicIAdd, result_type_id_list)
+        OP_CASE_TYPE(SpvOpAtomicISub, result_type_id_list)
+        OP_CASE_TYPE(SpvOpAtomicSMin, result_type_id_list)
+        OP_CASE_TYPE(SpvOpAtomicUMin, result_type_id_list)
+        OP_CASE_TYPE(SpvOpAtomicSMax, result_type_id_list)
+        OP_CASE_TYPE(SpvOpAtomicUMax, result_type_id_list)
+        OP_CASE_TYPE(SpvOpAtomicAnd, result_type_id_list)
+        OP_CASE_TYPE(SpvOpAtomicOr, result_type_id_list)
+        OP_CASE_TYPE(SpvOpAtomicXor, result_type_id_list)
+        OP_CASE_TYPE(SpvOpAtomicFlagTestAndSet, result_type_id_list)
         OP_CASE_TYPE(SpvOpAtomicFlagClear, id_list)
 
         // control-flow instructions
-        OP_CASE_TYPE(SpvOpPhi, type_result_id_list)
+        OP_CASE_TYPE(SpvOpPhi, result_type_id_list)
         OP_CASE_SPECIAL(SpvOpLoopMerge)
         OP_CASE_SPECIAL(SpvOpSelectionMerge)
         OP_CASE_TYPE(SpvOpLabel, result_number_list)
@@ -824,11 +830,11 @@ char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {
         OP_CASE_TYPE_1(SpvOpLifetimeStop, n_id_number_list, 1)
 
         // group instructions
-        OP_CASE_TYPE(SpvOpGroupAsyncCopy, type_result_id_list)
+        OP_CASE_TYPE(SpvOpGroupAsyncCopy, result_type_id_list)
         OP_CASE_TYPE(SpvOpGroupWaitEvents, id_list)
-        OP_CASE_TYPE(SpvOpGroupAll, type_result_id_list)
-        OP_CASE_TYPE(SpvOpGroupAny, type_result_id_list)
-        OP_CASE_TYPE(SpvOpGroupBroadcast, type_result_id_list)
+        OP_CASE_TYPE(SpvOpGroupAll, result_type_id_list)
+        OP_CASE_TYPE(SpvOpGroupAny, result_type_id_list)
+        OP_CASE_TYPE(SpvOpGroupBroadcast, result_type_id_list)
         OP_CASE_TYPE(SpvOpGroupIAdd, id_groupop_id)
         OP_CASE_TYPE(SpvOpGroupFAdd, id_groupop_id)
         OP_CASE_TYPE(SpvOpGroupFMin, id_groupop_id)
@@ -839,41 +845,41 @@ char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {
         OP_CASE_TYPE(SpvOpGroupSMax, id_groupop_id)
 
         // pipe instructions
-        OP_CASE_TYPE(SpvOpReadPipe, type_result_id_list)
-        OP_CASE_TYPE(SpvOpWritePipe, type_result_id_list)
-        OP_CASE_TYPE(SpvOpReservedReadPipe, type_result_id_list)
-        OP_CASE_TYPE(SpvOpReservedWritePipe, type_result_id_list)
-        OP_CASE_TYPE(SpvOpReserveReadPipePackets, type_result_id_list)
-        OP_CASE_TYPE(SpvOpReserveWritePipePackets, type_result_id_list)
+        OP_CASE_TYPE(SpvOpReadPipe, result_type_id_list)
+        OP_CASE_TYPE(SpvOpWritePipe, result_type_id_list)
+        OP_CASE_TYPE(SpvOpReservedReadPipe, result_type_id_list)
+        OP_CASE_TYPE(SpvOpReservedWritePipe, result_type_id_list)
+        OP_CASE_TYPE(SpvOpReserveReadPipePackets, result_type_id_list)
+        OP_CASE_TYPE(SpvOpReserveWritePipePackets, result_type_id_list)
         OP_CASE_TYPE(SpvOpCommitReadPipe, id_list)
         OP_CASE_TYPE(SpvOpCommitWritePipe, id_list)
-        OP_CASE_TYPE(SpvOpIsValidReserveId, type_result_id_list)
-        OP_CASE_TYPE(SpvOpGetNumPipePackets, type_result_id_list)
-        OP_CASE_TYPE(SpvOpGetMaxPipePackets, type_result_id_list)
-        OP_CASE_TYPE(SpvOpGroupReserveReadPipePackets, type_result_id_list)
-        OP_CASE_TYPE(SpvOpGroupReserveWritePipePackets, type_result_id_list)
+        OP_CASE_TYPE(SpvOpIsValidReserveId, result_type_id_list)
+        OP_CASE_TYPE(SpvOpGetNumPipePackets, result_type_id_list)
+        OP_CASE_TYPE(SpvOpGetMaxPipePackets, result_type_id_list)
+        OP_CASE_TYPE(SpvOpGroupReserveReadPipePackets, result_type_id_list)
+        OP_CASE_TYPE(SpvOpGroupReserveWritePipePackets, result_type_id_list)
         OP_CASE_TYPE(SpvOpGroupCommitReadPipe, id_list)
         OP_CASE_TYPE(SpvOpGroupCommitWritePipe, id_list)
-        OP_CASE_TYPE(SpvOpConstantPipeStorage, type_result_number_list)
-        OP_CASE_TYPE(SpvOpCreatePipeFromPipeStorage, type_result_id_list)
+        OP_CASE_TYPE(SpvOpConstantPipeStorage, result_type_number_list)
+        OP_CASE_TYPE(SpvOpCreatePipeFromPipeStorage, result_type_id_list)
 
         // device-side enqueue instructions
-        OP_CASE_TYPE(SpvOpEnqueueMarker, type_result_id_list)
-        OP_CASE_TYPE(SpvOpEnqueueKernel, type_result_id_list)
-        OP_CASE_TYPE(SpvOpGetKernelNDrangeSubGroupCount, type_result_id_list)
-        OP_CASE_TYPE(SpvOpGetKernelNDrangeMaxSubGroupSize, type_result_id_list)
-        OP_CASE_TYPE(SpvOpGetKernelWorkGroupSize, type_result_id_list)
-        OP_CASE_TYPE(SpvOpGetKernelPreferredWorkGroupSizeMultiple, type_result_id_list)
+        OP_CASE_TYPE(SpvOpEnqueueMarker, result_type_id_list)
+        OP_CASE_TYPE(SpvOpEnqueueKernel, result_type_id_list)
+        OP_CASE_TYPE(SpvOpGetKernelNDrangeSubGroupCount, result_type_id_list)
+        OP_CASE_TYPE(SpvOpGetKernelNDrangeMaxSubGroupSize, result_type_id_list)
+        OP_CASE_TYPE(SpvOpGetKernelWorkGroupSize, result_type_id_list)
+        OP_CASE_TYPE(SpvOpGetKernelPreferredWorkGroupSizeMultiple, result_type_id_list)
         OP_CASE_TYPE(SpvOpRetainEvent, id_list)
         OP_CASE_TYPE(SpvOpReleaseEvent, id_list)
-        OP_CASE_TYPE(SpvOpCreateUserEvent, type_result_id_list)
-        OP_CASE_TYPE(SpvOpIsValidEvent, type_result_id_list)
+        OP_CASE_TYPE(SpvOpCreateUserEvent, result_type_id_list)
+        OP_CASE_TYPE(SpvOpIsValidEvent, result_type_id_list)
         OP_CASE_TYPE(SpvOpSetUserEventStatus, id_list)
         OP_CASE_TYPE(SpvOpCaptureEventProfilingInfo, id_list)
-        OP_CASE_TYPE(SpvOpGetDefaultQueue, type_result_id_list)
-        OP_CASE_TYPE(SpvOpBuildNDRange, type_result_id_list)
-        OP_CASE_TYPE(SpvOpGetKernelLocalSizeForSubgroupCount, type_result_id_list)
-        OP_CASE_TYPE(SpvOpGetKernelMaxNumSubgroups, type_result_id_list)
+        OP_CASE_TYPE(SpvOpGetDefaultQueue, result_type_id_list)
+        OP_CASE_TYPE(SpvOpBuildNDRange, result_type_id_list)
+        OP_CASE_TYPE(SpvOpGetKernelLocalSizeForSubgroupCount, result_type_id_list)
+        OP_CASE_TYPE(SpvOpGetKernelMaxNumSubgroups, result_type_id_list)
 
         default :
             line = spirv_string_opcode_no_result(opcode->op.kind);
