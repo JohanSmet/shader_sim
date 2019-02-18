@@ -160,6 +160,34 @@ MunitResult test_remove_back(const MunitParameter params[], void* user_data_or_f
     return MUNIT_OK;
 }
 
+MunitResult test_strcat(const MunitParameter params[], void* user_data_or_fixture) {
+
+    char *test_string = NULL;
+
+    arr_strcat(test_string, "one");
+    munit_assert_string_equal(test_string, "one");
+
+    arr_strcat(test_string, "_");
+    munit_assert_string_equal(test_string, "one_");
+
+    arr_strcat(test_string, "two");
+    munit_assert_string_equal(test_string, "one_two");
+
+    arr_strcat(test_string, " ");
+    munit_assert_string_equal(test_string, "one_two ");
+
+    arr_strcat(test_string, "and a bigger string with spaces and all that stuff!");
+    munit_assert_string_equal(test_string, "one_two and a bigger string with spaces and all that stuff!");
+
+    arr_free(test_string);
+
+    char *test_empty = NULL;
+    arr_strcat(test_empty, "");
+    munit_assert_string_equal(test_empty, "");
+    arr_free(test_empty);
+
+    return MUNIT_OK;
+}
 
 MunitTest dyn_array_tests[] = {
     { "/basic", test_basic, NULL, NULL,  MUNIT_TEST_OPTION_NONE, NULL },
@@ -169,5 +197,6 @@ MunitTest dyn_array_tests[] = {
     { "/reserve", test_reserve, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     { "/pop", test_pop, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     { "/remove_back", test_remove_back, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    { "/strcat", test_strcat, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
