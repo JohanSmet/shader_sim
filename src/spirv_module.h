@@ -150,6 +150,7 @@ typedef struct SPIRV_module {
     struct SPIRV_binary *spirv_bin;
     MemArena allocator;
 
+    struct SPIRV_text   *text;
     struct SPIRV_opcode **opcode_array;	// dyn_array
 
     HashMap extinst_sets;   // id (int) -> const char *

@@ -13,18 +13,79 @@
 #define JS_SPIRV_NAMES_IMPLEMENTATION
 #include "spirv/spirv_names.h"
 
-static inline char *spirv_string_opcode_no_result(SpvOp op) {
+static inline const char *spirv_text_format_id(SPIRV_module *spirv_mod, uint32_t id) {
+    arr_clear(spirv_mod->text->scratch_buf);
+    /* TODO: use names as aliases for the ids */
+    arr_printf(spirv_mod->text->scratch_buf, "%%%d", id);
+    return spirv_mod->text->scratch_buf;
+}
+
+static inline const char *spirv_text_format_type_id(SPIRV_module *spirv_mod, uint32_t id) {
+    arr_clear(spirv_mod->text->scratch_buf);
+    /* TODO: create/reuse abbreviations for the type instead of the numerical id */
+    arr_printf(spirv_mod->text->scratch_buf, "%%%d", id);
+    return spirv_mod->text->scratch_buf;
+}
+
+static inline void spirv_text_append(char **result, const char **strings, size_t count) {
+    for (size_t idx = 0; idx < count; ++idx) {
+        arr_strcat(*result, strings[idx]);
+    }
+}
+
+/*
+ * macros to add semantic information to the output
+ */
+
+
+#define APPEND_STR(...)     spirv_text_append(&result, (const char *[]){__VA_ARGS__}, sizeof((const char *[]) {__VA_ARGS__})/sizeof(const char *))
+#define APPEND_FMT(fmt,...) arr_printf(result, fmt, __VA_ARGS__)
+
+#define OP(op)              APPEND_STR(spirv_op_name((op)))
+#define KEYWORD(x)          APPEND_STR(" ", (x))            
+#define LITERAL_STRING(x)   APPEND_STR(" ", "\"", (x), "\"")
+#define LITERAL_INTEGER(x)  APPEND_FMT(" %d", (x))
+#define LITERAL_FLOAT(x)    APPEND_FMT(" %f", (double) (x))
+#define FORMATTED_ID(x)     APPEND_STR((x))
+#define ID(x)               APPEND_STR(" ", spirv_text_format_id(module, (x)))
+#define TYPE_ID(x)          APPEND_STR(" ", spirv_text_format_type_id(module, (x)))
+
+static inline char *spirv_string_opcode_no_result(SPIRV_module *module, SpvOp op) {
     char *result = NULL;
-    arr_printf(result, "%16s%s", "", spirv_op_name(op));
+    APPEND_FMT("%16s", "");
+    OP(op);
     return result;
 }
 
-static inline char *spirv_string_opcode_result_id(SpvOp op, uint32_t result_id) {
+static inline char *spirv_string_opcode_result_id(SPIRV_module *module, SpvOp op, uint32_t result_id) {
     char *result = NULL;
-    char s_id[16] = "";
+    const char *s_id = spirv_text_format_id(module, result_id);
 
-    snprintf(s_id, 16, "%%%d", result_id);
-    arr_printf(result, "%13s = %s", s_id, spirv_op_name(op));
+    /* try to right align the result-id in the first column */
+    int spaces = 13 - (int) arr_len(s_id);
+    for (int i = 0; i < spaces; ++i) {
+        APPEND_STR(" ");
+    }
+
+    FORMATTED_ID(s_id);
+    APPEND_STR(" = ");
+    OP(op);
+    return result;
+}
+
+static inline char *spirv_string_opcode_result_type_id(SPIRV_module *module, SpvOp op, uint32_t type_id) {
+    char *result = NULL;
+    const char *s_id = spirv_text_format_type_id(module, type_id);
+
+    /* try to right align the result-id in the first column */
+    int spaces = 13 - (int) arr_len(s_id);
+    for (int i = 0; i < spaces; ++i) {
+        APPEND_STR(" ");
+    }
+
+    FORMATTED_ID(s_id);
+    APPEND_STR(" = ");
+    OP(op);
     return result;
 }
 
@@ -53,214 +114,210 @@ static inline void spirv_string_bitmask(char **result, uint32_t bitmask, const c
 
 #define TEXT_FUNC_SPECIAL_OP_NORES(kind)    \
     TEXT_FUNC_SPECIAL_BEGIN(kind)           \
-        char *result = spirv_string_opcode_no_result(kind);
+        char *result = spirv_string_opcode_no_result(module, kind);
 
 #define TEXT_FUNC_SPECIAL_OP_RESID(kind)    \
     TEXT_FUNC_SPECIAL_BEGIN(kind)           \
-        char *result = spirv_string_opcode_result_id(kind, opcode->optional[1]);
+        char *result = spirv_string_opcode_result_id(module, kind, opcode->optional[1]);
+
+#define TEXT_FUNC_SPECIAL_OP_RESTYPE(kind)  \
+    TEXT_FUNC_SPECIAL_BEGIN(kind)           \
+        char *result = spirv_string_opcode_result_type_id(module, kind, opcode->optional[0]);
 
 #define TEXT_FUNC_TYPE_NORES(type)          \
     static inline char *spirv_text_##type(SPIRV_module *module, SPIRV_opcode *opcode) { \
         assert(module);                     \
         assert(opcode);                     \
-        char *result = spirv_string_opcode_no_result(opcode->op.kind);
+        char *result = spirv_string_opcode_no_result(module, opcode->op.kind);
 
 #define TEXT_FUNC_TYPE_RESID(type)          \
     static inline char *spirv_text_result_##type(SPIRV_module *module, SPIRV_opcode *opcode) { \
         assert(module);                     \
         assert(opcode);                     \
-        char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
+        char *result = spirv_string_opcode_result_id(module, opcode->op.kind, opcode->optional[1]);
+
+#define TEXT_FUNC_TYPE_RESTYPE(type)        \
+    static inline char *spirv_text_restype_##type(SPIRV_module *module, SPIRV_opcode *opcode) { \
+        assert(module);                     \
+        assert(opcode);                     \
+        char *result = spirv_string_opcode_result_type_id(module, opcode->op.kind, opcode->optional[0]);
 
 #define TEXT_FUNC_TYPE_N_RESID(type)        \
     static inline char *spirv_text_result_##type(SPIRV_module *module, SPIRV_opcode *opcode, int n) {  \
         assert(module);                     \
         assert(opcode);                     \
-        char *result = spirv_string_opcode_result_id(opcode->op.kind, opcode->optional[0]);
+        char *result = spirv_string_opcode_result_id(module, opcode->op.kind, opcode->optional[0]);
 
 #define TEXT_FUNC_TYPE_N_NORES(type)        \
     static inline char *spirv_text_##type(SPIRV_module *module, SPIRV_opcode *opcode, int n) {  \
         assert(module);                     \
         assert(opcode);                     \
-        char *result = spirv_string_opcode_no_result(opcode->op.kind);
+        char *result = spirv_string_opcode_no_result(module, opcode->op.kind);
 
 #define TEXT_FUNC_END   }
+
 
 /*
  * text functions for one specific opcode
  */
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpCapability) {
-    arr_printf(result, " %s", spirv_capability_name(opcode->optional[0]));
+    KEYWORD(spirv_capability_name(opcode->optional[0]));
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpSource) {
-    arr_printf(result, " %s v%d", 
-            spirv_source_language_name(opcode->optional[0]),
-            opcode->optional[1]);
+    char version[64];
+    snprintf(version, 63, "v%d", opcode->optional[1]);
+    KEYWORD(spirv_source_language_name(opcode->optional[0]));
+    KEYWORD(version);
     // TODO: optional file & source
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpName) {
-    arr_printf(result, " %%%d \"%s\"", 
-            opcode->optional[0],
-            (const char *) &opcode->optional[1]);
+    ID (opcode->optional[0]);
+    LITERAL_STRING((const char *) &opcode->optional[1]);
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpMemberName) {
-    arr_printf(result, " %%%d %d \"%s\"", 
-            opcode->optional[0],
-            opcode->optional[1],
-            (const char *) &opcode->optional[2]);
+    ID(opcode->optional[0]);
+    LITERAL_INTEGER(opcode->optional[1]);
+    LITERAL_STRING((const char *)&opcode->optional[2]);
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_RESID(SpvOpExtInst) {
-    arr_printf(result, " %%%d %%%d %d",
-                    opcode->optional[0],
-                    opcode->optional[2],
-                    opcode->optional[3]);
+    ID(opcode->optional[0]);
+    ID(opcode->optional[2]);
+    LITERAL_INTEGER(opcode->optional[3]);
     for (int idx = 4; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %%%%d", opcode->optional[idx]);
+        ID(opcode->optional[idx]);
     }
-
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpMemoryModel) {
-    arr_printf(result, " %s %s",
-                    spirv_addressing_model_name(opcode->optional[0]),
-                    spirv_memory_model_name(opcode->optional[1]));
+    KEYWORD(spirv_addressing_model_name(opcode->optional[0]));
+    KEYWORD(spirv_memory_model_name(opcode->optional[1]));
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpEntryPoint) {
-    arr_printf(result, " %s %%%d \"%s\"",
-                    spirv_execution_model_name(opcode->optional[0]),
-                    opcode->optional[1],
-                    (const char *) &opcode->optional[2]);
+    KEYWORD(spirv_execution_model_name(opcode->optional[0]));
+    ID(opcode->optional[1]);
+    LITERAL_STRING ((const char *) &opcode->optional[2]);
 
     size_t len = (strlen((const char *) &opcode->optional[2]) + 3) / 4;
-
-    for (int idx = 2+len; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %%%d", opcode->optional[idx]);
+    for (size_t idx = 2+len; idx < opcode->op.length - 1; ++idx) {
+        ID(opcode->optional[idx]);
     }
 
     return result;
 } TEXT_FUNC_END
 
-TEXT_FUNC_SPECIAL_OP_RESID(SpvOpTypeImage) {
-    arr_printf(result, " %%%d %s %d %d %d %d %s",
-                    opcode->optional[1], 
-                    spirv_dim_name(opcode->optional[2]),
-                    opcode->optional[3], 
-                    opcode->optional[4],
-                    opcode->optional[5], 
-                    opcode->optional[6], 
-                    spirv_image_format_name(opcode->optional[7])); 
+TEXT_FUNC_SPECIAL_OP_RESTYPE(SpvOpTypeImage) {
+    TYPE_ID(opcode->optional[1]);
+    KEYWORD(spirv_dim_name(opcode->optional[2]));
+    LITERAL_INTEGER(opcode->optional[3]);
+    LITERAL_INTEGER(opcode->optional[4]);
+    LITERAL_INTEGER(opcode->optional[5]);
+    LITERAL_INTEGER(opcode->optional[6]);
+    KEYWORD(spirv_image_format_name(opcode->optional[7])); 
     
     if (opcode->op.length == 10) {
-        arr_printf(result, " %s", spirv_access_qualifier_name(opcode->optional[8]));
+        KEYWORD(spirv_access_qualifier_name(opcode->optional[8]));
     }
 
     return result;
 } TEXT_FUNC_END
 
-TEXT_FUNC_SPECIAL_OP_RESID(SpvOpTypePointer) {
-    arr_printf(result, " %s %%%d",
-                    spirv_storage_class_name(opcode->optional[1]),
-                    opcode->optional[2]);
+TEXT_FUNC_SPECIAL_OP_RESTYPE(SpvOpTypePointer) {
+    KEYWORD(spirv_storage_class_name(opcode->optional[1]));
+    ID(opcode->optional[2]);
     return result;
 } TEXT_FUNC_END
 
-TEXT_FUNC_SPECIAL_OP_RESID(SpvOpTypePipe) {
-    arr_printf(result, " %s", spirv_access_qualifier_name(opcode->optional[1]));
+TEXT_FUNC_SPECIAL_OP_RESTYPE(SpvOpTypePipe) {
+    KEYWORD(spirv_access_qualifier_name(opcode->optional[1]));
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpTypeForwardPointer) {
-    arr_printf(result, " %%%d %s",
-                    opcode->optional[0],
-                    spirv_storage_class_name(opcode->optional[1]));
+    TYPE_ID(opcode->optional[0]);
+    KEYWORD(spirv_storage_class_name(opcode->optional[1]));
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpExecutionMode) {
-    arr_printf(result, " %%%d %s",
-                    opcode->optional[0],
-                    spirv_execution_mode_name(opcode->optional[1]));
+    ID(opcode->optional[0]);
+    KEYWORD(spirv_execution_mode_name(opcode->optional[1]));
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpExecutionModeId) {
-    arr_printf(result, " %%%d %s",
-                    opcode->optional[0],
-                    spirv_execution_mode_name(opcode->optional[1]));
+    ID(opcode->optional[0]);
+    KEYWORD(spirv_execution_mode_name(opcode->optional[1]));
     for (int idx=2; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %%%d", opcode->optional[idx]);
+        ID(opcode->optional[idx]);
     }
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_RESID(SpvOpConstant) {
-    arr_printf(result, " %%%d", opcode->optional[0]);
+    TYPE_ID(opcode->optional[0]);
 
     Type *res_type = spirv_module_type_by_id(module, opcode->optional[0]);
     
     if (spirv_type_is_float(res_type)) {
         for (int idx=2; idx < opcode->op.length - 1; ++idx) {
-            arr_printf(result, " %f", (double) *((float *) &opcode->optional[idx]));
+            LITERAL_FLOAT(*((float *) &opcode->optional[idx]));
         }
     } else  {
         for (int idx=2; idx < opcode->op.length - 1; ++idx) {
-            arr_printf(result, " %d", opcode->optional[idx]);
+            LITERAL_INTEGER(opcode->optional[idx]);
         }
     }
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_RESID(SpvOpConstantSampler) {
-    arr_printf(result, " %%%d %s %d %s",
-                    opcode->optional[0],
-                    spirv_sampler_addressing_mode_name(opcode->optional[2]),
-                    opcode->optional[3],
-                    spirv_sampler_filter_mode_name(opcode->optional[4]));
+    TYPE_ID(opcode->optional[0]);
+    KEYWORD(spirv_sampler_addressing_mode_name(opcode->optional[2]));
+    LITERAL_INTEGER(opcode->optional[3]);
+    KEYWORD(spirv_sampler_filter_mode_name(opcode->optional[4]));
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_RESID(SpvOpSpecConstantOp) {
-    arr_printf(result, " %%%d %s",
-               opcode->optional[0],
-               spirv_op_name(opcode->optional[2]));
+    TYPE_ID(opcode->optional[0]);
+    KEYWORD(spirv_op_name(opcode->optional[2]));
     for (int idx=3; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %%%d", opcode->optional[idx]);
+        ID(opcode->optional[idx]);
     }
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_RESID(SpvOpFunction) {
-    arr_printf(result, " %%%d", opcode->optional[0]);
+    TYPE_ID(opcode->optional[0]);
     spirv_string_bitmask(&result, opcode->optional[2], SPIRV_FUNCTION_CONTROL);
-    arr_printf(result, " %%%d", opcode->optional[3]);
+    ID(opcode->optional[3]);
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_RESID(SpvOpVariable) {
-    arr_printf(result, " %%%d %s",
-                    opcode->optional[0],
-                    spirv_storage_class_name(opcode->optional[2]));
+    TYPE_ID(opcode->optional[0]);
+    KEYWORD(spirv_storage_class_name(opcode->optional[2]));
     for (int idx=3; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %%%d", opcode->optional[idx]);
+        ID(opcode->optional[idx]);
     }
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_RESID(SpvOpLoad) {
-    arr_printf(result, " %%%d %%%d",
-                    opcode->optional[0],
-                    opcode->optional[2]);
+    TYPE_ID(opcode->optional[0]);
+    ID(opcode->optional[2]);
     if (opcode->op.length == 5) {
         spirv_string_bitmask(&result, opcode->optional[3], SPIRV_MEMORY_ACCESS);
     }
@@ -268,9 +325,8 @@ TEXT_FUNC_SPECIAL_OP_RESID(SpvOpLoad) {
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpStore) {
-    arr_printf(result, " %%%d %%%d",
-                    opcode->optional[0],
-                    opcode->optional[1]);
+    ID(opcode->optional[0]);
+    ID(opcode->optional[1]);
     if (opcode->op.length == 4) {
         spirv_string_bitmask(&result, opcode->optional[2], SPIRV_MEMORY_ACCESS);
     }
@@ -282,10 +338,9 @@ TEXT_FUNC_SPECIAL_BEGIN(SpvOpCopyMemory) {
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpCopyMemorySized) {
-    arr_printf(result, " %%%d %%%d %%%d",
-                    opcode->optional[0],
-                    opcode->optional[1],
-                    opcode->optional[2]);
+    ID(opcode->optional[0]);
+    ID(opcode->optional[1]);
+    ID(opcode->optional[2]);
     if (opcode->op.length == 5) {
         spirv_string_bitmask(&result, opcode->optional[3], SPIRV_MEMORY_ACCESS);
     }
@@ -293,69 +348,81 @@ TEXT_FUNC_SPECIAL_OP_NORES(SpvOpCopyMemorySized) {
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpDecorate) {
-    arr_printf(result, " %%%d %s",
-                    opcode->optional[0],
-                    spirv_decoration_name(opcode->optional[1]));
+    ID(opcode->optional[0]);
+    KEYWORD(spirv_decoration_name(opcode->optional[1]));
     for (int idx=2; idx < opcode->op.length - 1; ++idx) {
         if (opcode->optional[1] != SpvDecorationBuiltIn) {
-            arr_printf(result, " %d", opcode->optional[idx]);
+            LITERAL_INTEGER(opcode->optional[idx]);
         } else {
-            arr_printf(result, " %s", spirv_builtin_name(opcode->optional[idx]));
+            KEYWORD(spirv_builtin_name(opcode->optional[idx]));
         }
     }
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpDecorateId) {
-    arr_printf(result, " %%%d %s",
-                    opcode->optional[0],
-                    spirv_decoration_name(opcode->optional[1]));
+    ID(opcode->optional[0]);
+    KEYWORD(spirv_decoration_name(opcode->optional[1]));
     for (int idx=2; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %%%d", opcode->optional[idx]);
+        ID(opcode->optional[idx]);
     }
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpMemberDecorate) {
-    arr_printf(result, " %%%d %d %s",
-                    opcode->optional[0],
-                    opcode->optional[1],
-                    spirv_decoration_name(opcode->optional[2]));
+    TYPE_ID(opcode->optional[0]);
+    LITERAL_INTEGER(opcode->optional[1]);
+    KEYWORD(spirv_decoration_name(opcode->optional[2]));
     for (int idx=3; idx < opcode->op.length - 1; ++idx) {
         if (opcode->optional[2] != SpvDecorationBuiltIn) {
-            arr_printf(result, " %d", opcode->optional[idx]);
+            LITERAL_INTEGER(opcode->optional[idx]);
         } else {
-            arr_printf(result, " %s", spirv_builtin_name(opcode->optional[idx]));
+            KEYWORD(spirv_builtin_name(opcode->optional[idx]));
         }
     }
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpGroupMemberDecorate) {
-    arr_printf(result, " %%%d", opcode->optional[0]);
+    ID(opcode->optional[0]);
     for (int idx = 1; idx < opcode->op.length - 1; idx += 2) {
-        arr_printf(result, " %%%d %d", opcode->optional[idx], opcode->optional[idx+1]);
+        ID(opcode->optional[idx]);
+        LITERAL_INTEGER(opcode->optional[idx+1]);
     }
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpLoopMerge) {
-    arr_printf(result, " %%%d %%%d", opcode->optional[0], opcode->optional[1]);
+    ID(opcode->optional[0]); 
+    ID(opcode->optional[1]);
     spirv_string_bitmask(&result, opcode->optional[2], SPIRV_LOOP_CONTROL);
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpSelectionMerge) {
-    arr_printf(result, " %%%d", opcode->optional[0]);
+    ID(opcode->optional[0]);
     spirv_string_bitmask(&result, opcode->optional[1], SPIRV_SELECTION_CONTROL);
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_SPECIAL_OP_NORES(SpvOpSwitch) {
-    arr_printf(result, " %%%d %%%d", opcode->optional[0], opcode->optional[1]);
+    ID(opcode->optional[0]);
+    ID(opcode->optional[1]);
     for (int idx = 2; idx < opcode->op.length - 1; idx += 2) {
-        arr_printf(result, " %%%d %d", opcode->optional[idx], opcode->optional[idx+1]);
+        ID(opcode->optional[idx]);
+        LITERAL_INTEGER(opcode->optional[idx+1]);
     }
+    return result;
+} TEXT_FUNC_END
+
+TEXT_FUNC_SPECIAL_BEGIN(SpvOpLabel) {
+    char *result = spirv_string_opcode_result_id(module, opcode->op.kind, opcode->optional[0]);
+    return result;
+} TEXT_FUNC_END
+
+TEXT_FUNC_SPECIAL_BEGIN(SpvOpExtInstImport) {
+    char *result = spirv_string_opcode_result_id(module, opcode->op.kind, opcode->optional[0]);
+    LITERAL_STRING((const char *) &opcode->optional[1]);
     return result;
 } TEXT_FUNC_END
 
@@ -364,121 +431,131 @@ TEXT_FUNC_SPECIAL_OP_NORES(SpvOpSwitch) {
  */
 
 TEXT_FUNC_TYPE_NORES(string) {              /* OP "string" */
-    arr_printf(result, " \"%s\"", (const char *) &opcode->optional[0]);
+    LITERAL_STRING((const char *) &opcode->optional[0]);
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_TYPE_RESID(string) {              /* %id = OP "string" */
-    arr_printf(result, " \"%s\"", (const char *) &opcode->optional[1]);
+    LITERAL_STRING((const char *) &opcode->optional[1]);
     return result;
 } TEXT_FUNC_END
 
-TEXT_FUNC_TYPE_RESID(number_list) {         /* %id = OP number+ */
+TEXT_FUNC_TYPE_RESTYPE(string) {              /* %id = OP "string" */
+    LITERAL_STRING((const char *) &opcode->optional[1]);
+    return result;
+} TEXT_FUNC_END
+
+TEXT_FUNC_TYPE_RESTYPE(number_list) {       /* %type_id = OP number* */
     for (int idx=1; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %d", opcode->optional[idx]);
+        LITERAL_INTEGER(opcode->optional[idx]);
     }
     return result;
 } TEXT_FUNC_END
 
-TEXT_FUNC_TYPE_RESID(id_number_list) {      /* %id = OP %id number+ */
-    arr_printf(result, " %%%d", opcode->optional[1]);
+TEXT_FUNC_TYPE_RESID(number_list) {         /* %id = OP number* */
+    for (int idx=1; idx < opcode->op.length - 1; ++idx) {
+        LITERAL_INTEGER(opcode->optional[idx]);
+    }
+    return result;
+} TEXT_FUNC_END
+
+TEXT_FUNC_TYPE_RESTYPE(id_number_list) {      /* %id = OP %id number+ */   
+    ID(opcode->optional[1]);        
     for (int idx=2; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %d", opcode->optional[idx]);
+        LITERAL_INTEGER(opcode->optional[idx]);
     }
     return result;
 } TEXT_FUNC_END
 
-TEXT_FUNC_TYPE_RESID(id_list) {             /* %id = OP %id+ */
+TEXT_FUNC_TYPE_RESTYPE(id_list) {             /* %id = OP %id+ */     // XXX: typeid?
     for (int idx=1; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %%%d", opcode->optional[idx]);
+        ID(opcode->optional[idx]);
     }
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_TYPE_NORES(id_list) {              /* OP %id+ */
     for (int idx=0; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %%%d", opcode->optional[idx]);
+        ID(opcode->optional[idx]);
     }
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_TYPE_RESID(type_number_list) {     /* %id = OP %type_id number+ */
-    arr_printf(result, " %%%d", opcode->optional[0]);
+    ID(opcode->optional[0]);
     for (int idx=2; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %d", opcode->optional[idx]);
+        LITERAL_INTEGER(opcode->optional[idx]);
     }
     return result;
 } TEXT_FUNC_END
 
-TEXT_FUNC_TYPE_RESID(type_id_list) {     /* %id = OP %type_id %id+ */
-    arr_printf(result, " %%%d", opcode->optional[0]);
+TEXT_FUNC_TYPE_RESID(type_id_list) {        /* %id = OP %type_id %id+ */
+    TYPE_ID(opcode->optional[0]);
     for (int idx=2; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %%%d", opcode->optional[idx]);
+        ID(opcode->optional[idx]);
     }
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_TYPE_RESID(type_id_number) {     /* %id = OP %type_id %id number */
-    arr_printf(result, " %%%d %%%d %d", 
-                    opcode->optional[0],
-                    opcode->optional[2],
-                    opcode->optional[3]);
+    TYPE_ID(opcode->optional[0]);
+    ID(opcode->optional[2]);
+    LITERAL_INTEGER(opcode->optional[3]);
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_TYPE_N_RESID(type_n_id_number_list) {     /* %id = OP %type_id %id*n number+ */
-    arr_printf(result, " %%%d", opcode->optional[0]);
+    TYPE_ID(opcode->optional[0]);
     for (int idx = 0; idx < n; ++idx) {
-        arr_printf(result, " %%%d", opcode->optional[2+idx]);
+        ID(opcode->optional[2+idx]);
     }
     for (int idx=2+n; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %d", opcode->optional[idx]);
+        LITERAL_INTEGER(opcode->optional[idx]);
     }
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_TYPE_N_NORES(n_id_number_list) {          /* OP %id*n number+ */
     for (int idx = 0; idx < n; ++idx) {
-        arr_printf(result, " %%%d", opcode->optional[idx]);
+        ID(opcode->optional[idx]);
     }
     for (int idx=n; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %d", opcode->optional[idx]);
+        LITERAL_INTEGER(opcode->optional[idx]);
     }
     return result;
 } TEXT_FUNC_END
 
-TEXT_FUNC_TYPE_N_RESID(type_n_id_imageop_id_list) {     /* %id = OP %type_id %id*n <image-operand> %id+ */
-    arr_printf(result, " %%%d", opcode->optional[0]);
+TEXT_FUNC_TYPE_N_RESID(type_n_id_imageop_id_list) { /* %id = OP %type_id %id*n <image-operand> %id+ */
+    TYPE_ID(opcode->optional[0]);
     for (int idx = 0; idx < n; ++idx) {
-        arr_printf(result, " %%%d", opcode->optional[2+idx]);
+        ID(opcode->optional[2+idx]);
     }
     if (opcode->op.length > n + 2) {
         spirv_string_bitmask(&result, opcode->optional[n + 2], SPIRV_IMAGE_OPERANDS);
     }
     for (int idx=3+n; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %%%d", opcode->optional[idx]);
+        ID(opcode->optional[idx]);
     }
     return result;
 } TEXT_FUNC_END
 
-TEXT_FUNC_TYPE_N_NORES(n_id_imageop_id_list) {          /* OP %id*n <image-operand> %id+ */
+TEXT_FUNC_TYPE_N_NORES(n_id_imageop_id_list) {      /* OP %id*n <image-operand> %id+ */
     for (int idx = 0; idx < n; ++idx) {
-        arr_printf(result, " %%%d", opcode->optional[idx]);
+        ID(opcode->optional[idx]);
     }
     if (opcode->op.length > n) {
         spirv_string_bitmask(&result, opcode->optional[n], SPIRV_IMAGE_OPERANDS);
     }
     for (int idx=1+n; idx < opcode->op.length - 1; ++idx) {
-        arr_printf(result, " %%%d", opcode->optional[idx]);
+        ID(opcode->optional[idx]);
     }
     return result;
 } TEXT_FUNC_END
 
 TEXT_FUNC_TYPE_NORES(id_groupop_id) {              /* OP %id <group-operation> %id */
-    arr_printf(result, " %%%d %s %%%d",
-                    opcode->optional[0],
-                    spirv_group_operation_name(opcode->optional[1]),
-                    opcode->optional[2]);
+    ID(opcode->optional[0]);
+    KEYWORD(spirv_group_operation_name(opcode->optional[1]));
+    ID(opcode->optional[2]);
     return result;
 } TEXT_FUNC_END
 
@@ -547,7 +624,7 @@ char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {
 
         // extension instructions
         OP_CASE_TYPE(SpvOpExtension, string)
-        OP_CASE_TYPE(SpvOpExtInstImport, result_string)
+        OP_CASE_SPECIAL(SpvOpExtInstImport)
         OP_CASE_SPECIAL(SpvOpExtInst)
 
         // mode-setting instructions
@@ -558,29 +635,29 @@ char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {
         OP_CASE_SPECIAL(SpvOpExecutionModeId)
 
         // type-declaration instructions
-        OP_CASE_TYPE(SpvOpTypeVoid, result_number_list)
-        OP_CASE_TYPE(SpvOpTypeBool, result_number_list)
-        OP_CASE_TYPE(SpvOpTypeInt, result_number_list)
-        OP_CASE_TYPE(SpvOpTypeFloat, result_number_list)
-        OP_CASE_TYPE(SpvOpTypeVector, result_id_number_list)
-        OP_CASE_TYPE(SpvOpTypeMatrix, result_id_number_list)
+        OP_CASE_TYPE(SpvOpTypeVoid, restype_number_list)
+        OP_CASE_TYPE(SpvOpTypeBool, restype_number_list)
+        OP_CASE_TYPE(SpvOpTypeInt, restype_number_list)
+        OP_CASE_TYPE(SpvOpTypeFloat, restype_number_list)
+        OP_CASE_TYPE(SpvOpTypeVector, restype_id_number_list)
+        OP_CASE_TYPE(SpvOpTypeMatrix, restype_id_number_list)
         OP_CASE_SPECIAL(SpvOpTypeImage)
-        OP_CASE_TYPE(SpvOpTypeSampler, result_number_list)
-        OP_CASE_TYPE(SpvOpTypeSampledImage, result_id_list)
-        OP_CASE_TYPE(SpvOpTypeArray, result_id_list)
-        OP_CASE_TYPE(SpvOpTypeRuntimeArray, result_id_list)
-        OP_CASE_TYPE(SpvOpTypeStruct, result_id_list)
-        OP_CASE_TYPE(SpvOpTypeOpaque, result_string)
+        OP_CASE_TYPE(SpvOpTypeSampler, restype_number_list)
+        OP_CASE_TYPE(SpvOpTypeSampledImage, restype_id_list)
+        OP_CASE_TYPE(SpvOpTypeArray, restype_id_list)
+        OP_CASE_TYPE(SpvOpTypeRuntimeArray, restype_id_list)
+        OP_CASE_TYPE(SpvOpTypeStruct, restype_id_list)
+        OP_CASE_TYPE(SpvOpTypeOpaque, restype_string)
         OP_CASE_SPECIAL(SpvOpTypePointer)
-        OP_CASE_TYPE(SpvOpTypeFunction, result_id_list)
-        OP_CASE_TYPE(SpvOpTypeEvent, result_number_list)
-        OP_CASE_TYPE(SpvOpTypeDeviceEvent, result_number_list)
-        OP_CASE_TYPE(SpvOpTypeReserveId, result_number_list)
-        OP_CASE_TYPE(SpvOpTypeQueue, result_number_list)
+        OP_CASE_TYPE(SpvOpTypeFunction, restype_id_list)
+        OP_CASE_TYPE(SpvOpTypeEvent, restype_number_list)
+        OP_CASE_TYPE(SpvOpTypeDeviceEvent, restype_number_list)
+        OP_CASE_TYPE(SpvOpTypeReserveId, restype_number_list)
+        OP_CASE_TYPE(SpvOpTypeQueue, restype_number_list)
         OP_CASE_SPECIAL(SpvOpTypePipe)
         OP_CASE_SPECIAL(SpvOpTypeForwardPointer)
-        OP_CASE_TYPE(SpvOpTypePipeStorage, result_number_list)
-        OP_CASE_TYPE(SpvOpTypeNamedBarrier, result_number_list)
+        OP_CASE_TYPE(SpvOpTypePipeStorage, restype_number_list)
+        OP_CASE_TYPE(SpvOpTypeNamedBarrier, restype_number_list)
 
         // constant-creation instructions
         OP_CASE_TYPE(SpvOpConstantTrue, result_type_number_list)
@@ -818,7 +895,7 @@ char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {
         OP_CASE_TYPE(SpvOpPhi, result_type_id_list)
         OP_CASE_SPECIAL(SpvOpLoopMerge)
         OP_CASE_SPECIAL(SpvOpSelectionMerge)
-        OP_CASE_TYPE(SpvOpLabel, result_number_list)
+        OP_CASE_SPECIAL(SpvOpLabel)
         OP_CASE_TYPE(SpvOpBranch, id_list)
         OP_CASE_TYPE_1(SpvOpBranchConditional, n_id_number_list, 3)
         OP_CASE_SPECIAL(SpvOpSwitch)
@@ -882,7 +959,7 @@ char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {
         OP_CASE_TYPE(SpvOpGetKernelMaxNumSubgroups, result_type_id_list)
 
         default :
-            line = spirv_string_opcode_no_result(opcode->op.kind);
+            line = spirv_string_opcode_no_result(module, opcode->op.kind);
     }
 
     return line;

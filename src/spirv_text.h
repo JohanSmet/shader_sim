@@ -10,6 +10,11 @@ struct SPIRV_header;
 struct SPIRV_opcode;
 struct SPIRV_module;
 
+// types
+typedef struct SPIRV_text {
+    char *scratch_buf;
+} SPIRV_text;
+
 // interface functions
 int spirv_text_header_num_lines(struct SPIRV_header *header);
 char *spirv_text_header_line(struct SPIRV_header *header, int line);
