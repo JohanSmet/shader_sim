@@ -170,12 +170,12 @@ MunitResult test_arithmetic_float32(const MunitParameter params[], void* user_da
     float data2[4] = {3.5f, 6.6f, 8.0f, 11.0f};
     spirv_sim_variable_associate_data(
         &spirv_sim, 
-        VarKindInput, 
+        ClassInput, 
         (VariableAccess) {VarAccessLocation, 0}, 
         (uint8_t *) data1, sizeof(data1));
     spirv_sim_variable_associate_data(
         &spirv_sim, 
-        VarKindInput, 
+        ClassInput, 
         (VariableAccess) {VarAccessLocation, 1}, 
         (uint8_t *) data2, sizeof(data2));
 
@@ -254,12 +254,12 @@ MunitResult test_arithmetic_int32(const MunitParameter params[], void* user_data
     int32_t data2[4] = {3, 6, 8, 11};
     spirv_sim_variable_associate_data(
         &spirv_sim, 
-        VarKindInput, 
+        ClassInput, 
         (VariableAccess) {VarAccessLocation, 0},
         (uint8_t *) data1, sizeof(data1));
     spirv_sim_variable_associate_data(
         &spirv_sim, 
-        VarKindInput, 
+        ClassInput, 
         (VariableAccess) {VarAccessLocation, 1}, 
         (uint8_t *) data2, sizeof(data2));
     
@@ -334,12 +334,12 @@ MunitResult test_arithmetic_uint32(const MunitParameter params[], void* user_dat
     uint32_t data2[4] = {3, 6, 8, 11};
     spirv_sim_variable_associate_data(
         &spirv_sim, 
-        VarKindInput, 
+        ClassInput, 
         (VariableAccess) {VarAccessLocation, 0},
         (uint8_t *) data1, sizeof(data1));
     spirv_sim_variable_associate_data(
         &spirv_sim, 
-        VarKindInput, 
+        ClassInput, 
         (VariableAccess) {VarAccessLocation, 1},
         (uint8_t *) data2, sizeof(data2));
     
@@ -429,17 +429,17 @@ MunitResult test_composite_float32(const MunitParameter params[], void* user_dat
     float data3 = 5.0f;
     spirv_sim_variable_associate_data(
         &spirv_sim, 
-        VarKindInput, 
+        ClassInput, 
         (VariableAccess) {VarAccessLocation, 0},
         (uint8_t *) data1, sizeof(data1));
     spirv_sim_variable_associate_data(
         &spirv_sim, 
-        VarKindInput, 
+        ClassInput, 
         (VariableAccess) {VarAccessLocation, 1},
         (uint8_t *) data2, sizeof(data2));
     spirv_sim_variable_associate_data(
         &spirv_sim, 
-        VarKindInput, 
+        ClassInput, 
         (VariableAccess) {VarAccessLocation, 2},
         (uint8_t *) &data3, sizeof(data3));
     
@@ -567,17 +567,17 @@ MunitResult test_conversion(const MunitParameter params[], void* user_data_or_fi
     uint32_t data_u[4] = {1, 2, 3, UINT32_MAX};
     spirv_sim_variable_associate_data(
         &spirv_sim, 
-        VarKindInput, 
+        ClassInput, 
         (VariableAccess) {VarAccessLocation, 0},
         (uint8_t *) data_f, sizeof(data_f));
     spirv_sim_variable_associate_data(
         &spirv_sim,
-        VarKindInput, 
+        ClassInput, 
         (VariableAccess) {VarAccessLocation, 1},
         (uint8_t *) data_s, sizeof(data_s));
     spirv_sim_variable_associate_data(
         &spirv_sim, 
-        VarKindInput, 
+        ClassInput, 
         (VariableAccess) {VarAccessLocation, 2},
         (uint8_t *) data_u, sizeof(data_u));
     
@@ -675,20 +675,20 @@ MunitResult test_aggregate(const MunitParameter params[], void* user_data_or_fix
 
     AggregateIn data_in = {1.0f, 2.0f, {3.5f, 6.6f, 8.0f, 11.0f}};
     spirv_sim_variable_associate_data(
-        &spirv_sim, VarKindInput, (VariableAccess) {VarAccessLocation, 0},
+        &spirv_sim, ClassInput, (VariableAccess) {VarAccessLocation, 0},
         (uint8_t *) &data_in.f0, sizeof(data_in.f0)
     );
     spirv_sim_variable_associate_data(
-        &spirv_sim, VarKindInput, (VariableAccess) {VarAccessLocation, 1},
+        &spirv_sim, ClassInput, (VariableAccess) {VarAccessLocation, 1},
         (uint8_t *) &data_in.f1, sizeof(data_in.f1)
     );
     spirv_sim_variable_associate_data(
-        &spirv_sim, VarKindInput, (VariableAccess) {VarAccessLocation, 2},
+        &spirv_sim, ClassInput, (VariableAccess) {VarAccessLocation, 2},
         (uint8_t *) &data_in.v0, sizeof(data_in.v0)
     );
 
     SimPointer *ptr = spirv_sim_retrieve_intf_pointer(
-        &spirv_sim, VarKindOutput,
+        &spirv_sim, ClassOutput,
         (VariableAccess) {VarAccessLocation, 0}
     );
     AggregateOut *data_out = ((AggregateOut *) (spirv_sim.memory + ptr->pointer));
@@ -878,24 +878,24 @@ MunitResult test_controlflow(const MunitParameter params[], void* user_data_or_f
     float in_2 = 3.0f;
 
     spirv_sim_variable_associate_data(
-        &spirv_sim, VarKindInput, (VariableAccess) {VarAccessLocation, 0},
+        &spirv_sim, ClassInput, (VariableAccess) {VarAccessLocation, 0},
         (uint8_t *) &in_1, sizeof(in_1)
     );
     spirv_sim_variable_associate_data(
-        &spirv_sim, VarKindInput, (VariableAccess) {VarAccessLocation, 1},
+        &spirv_sim, ClassInput, (VariableAccess) {VarAccessLocation, 1},
         (uint8_t *) &in_2, sizeof(in_2)
     );
 
     SimPointer *ptr_1 = spirv_sim_retrieve_intf_pointer(
-        &spirv_sim, VarKindOutput,
+        &spirv_sim, ClassOutput,
         (VariableAccess) {VarAccessLocation, 0}
     );
     SimPointer *ptr_2 = spirv_sim_retrieve_intf_pointer(
-        &spirv_sim, VarKindOutput,
+        &spirv_sim, ClassOutput,
         (VariableAccess) {VarAccessLocation, 1}
     );
     SimPointer *ptr_3 = spirv_sim_retrieve_intf_pointer(
-        &spirv_sim, VarKindOutput,
+        &spirv_sim, ClassOutput,
         (VariableAccess) {VarAccessLocation, 2}
     );
     float *out_1 = (float *) (spirv_sim.memory + ptr_1->pointer);

@@ -32,6 +32,22 @@ typedef enum MatrixKind {
     MatrixColMajor
 } MatrixKind;
 
+typedef enum StorageClass {
+    ClassUniformConstant = 0,
+    ClassInput,
+    ClassUniform,
+    ClassOutput,
+    ClassWorkgroup,
+    ClassCrossWorkgroup,
+    ClassPrivate,
+    ClassFunction,
+    ClassGeneric,
+    ClassPushConstant,
+    ClassAtomicCounter,
+    ClassImage,
+    ClassStorageBuffer,
+} StorageClass;
+
 typedef struct Type {
     uint32_t id;
     TypeKind kind;
@@ -75,22 +91,6 @@ typedef enum VariableInitializerKind {
     InitializerVariable
 } VariableInitializerKind;
 
-typedef enum VariableKind {
-    VarKindUniformConstant = 0,
-    VarKindInput,
-    VarKindUniform,
-    VarKindOutput,
-    VarKindWorkgroup,
-    VarKindCrossWorkgroup,
-    VarKindPrivate,
-    VarKindFunction,
-    VarKindGeneric,
-    VarKindPushConstant,
-    VarKindAtomicCounter,
-    VarKindImage,
-    VarKindStorageBuffer,
-} VariableKind;
-
 typedef enum VariableAccessKind {
     VarAccessNone = 0,
     VarAccessBuiltIn = 1,
@@ -112,7 +112,7 @@ typedef struct Variable {
         Constant *initializer_constant;
         struct Variable *initializer_variable;
     };
-    VariableKind kind; // spirv: storage class
+    StorageClass kind; // spirv: storage class
     VariableAccess access;
 
     VariableAccess *member_access;  // dyn_array
@@ -178,7 +178,7 @@ uint32_t spirv_module_variable_id(SPIRV_module *module, uint32_t index);
 Variable *spirv_module_variable_by_id(SPIRV_module *mpdule, uint32_t id);
 bool spirv_module_variable_by_access(
     SPIRV_module *module, 
-    VariableKind kind, 
+    StorageClass kind, 
     VariableAccess access,
     Variable **ret_var, 
     int32_t *ret_member); 

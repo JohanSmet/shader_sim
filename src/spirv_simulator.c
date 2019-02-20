@@ -48,8 +48,8 @@ static inline SimRegister *spirv_sim_clone_register(SPIRV_simulator *sim, SPIRV_
     return reg;
 }
 
-static inline uint64_t var_data_key(VariableKind kind, VariableAccess *access) {
-   return (uint64_t) kind << 48 | (uint64_t) access->kind << 32 | (uint32_t) access->index;
+static inline uint64_t var_data_key(StorageClass storage_class, VariableAccess *access) {
+   return (uint64_t) storage_class << 48 | (uint64_t) access->kind << 32 | (uint32_t) access->index;
 }
 
 static void spirv_add_interface_pointers(SPIRV_simulator *sim, Variable *var_desc, uint32_t pointer) {
@@ -231,7 +231,7 @@ void spirv_sim_init(SPIRV_simulator *sim, SPIRV_module *module, uint32_t entrypo
         uint32_t id = (int32_t) map_key_int(&module->variables, iter);
         Variable *var = map_val(&module->variables, iter);
 
-        if (var->kind == VarKindFunction) {
+        if (var->kind == ClassFunction) {
             continue;
         }
         
@@ -272,7 +272,7 @@ void spirv_sim_shutdown(SPIRV_simulator *sim) {
 
 void spirv_sim_variable_associate_data(
     SPIRV_simulator *sim, 
-    VariableKind kind,
+    StorageClass storage_class,
     VariableAccess access, 
     uint8_t *data,
     size_t data_size
@@ -280,7 +280,7 @@ void spirv_sim_variable_associate_data(
     assert(sim);
     assert(data);
 
-    SimPointer *ptr = map_int_ptr_get(&sim->intf_pointers, var_data_key(kind, &access));
+    SimPointer *ptr = map_int_ptr_get(&sim->intf_pointers, var_data_key(storage_class, &access));
     assert(ptr);
     assert(data_size <= (ptr->type->element_size * ptr->type->count));
     
@@ -302,10 +302,10 @@ SimRegister *spirv_sim_register_by_id(SPIRV_simulator *sim, uint32_t id) {
     return map_int_ptr_get(&sim->global_frame.regs, id);
 }
 
-SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, VariableKind kind, VariableAccess access) {
+SimPointer *spirv_sim_retrieve_intf_pointer(SPIRV_simulator *sim, StorageClass storage_class, VariableAccess access) {
     assert(sim);
     
-    SimPointer *result = map_int_ptr_get(&sim->intf_pointers, var_data_key(kind, &access));
+    SimPointer *result = map_int_ptr_get(&sim->intf_pointers, var_data_key(storage_class, &access));
     return result;
 }
 

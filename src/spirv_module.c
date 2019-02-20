@@ -91,7 +91,7 @@ Variable *spirv_module_variable_by_id(SPIRV_module *module, uint32_t id) {
 
 bool spirv_module_variable_by_access(
     SPIRV_module *module, 
-    VariableKind kind, 
+    StorageClass storage_class, 
     VariableAccess access,
     Variable **ret_var,
     int32_t *ret_member
@@ -100,7 +100,7 @@ bool spirv_module_variable_by_access(
     assert(ret_var != NULL);
     assert(ret_member != NULL);
 
-    Variable **vars = map_int_ptr_get(&module->variables_sc, kind);
+    Variable **vars = map_int_ptr_get(&module->variables_sc, storage_class);
     
     if (!vars) {
         return false;

@@ -27,7 +27,7 @@ RUNNER_FUNC_BEGIN(CmdAssociateData)
 
     spirv_sim_variable_associate_data(
         runner->spirv_sim,
-        cmd->var_kind,
+        cmd->storage_class,
         (VariableAccess) {cmd->var_if_type, cmd->var_if_index},
         cmd->data, cmd->data_size);
     return true;
@@ -75,7 +75,7 @@ RUNNER_FUNC_END
 RUNNER_FUNC_BEGIN(CmdCmpOutput)
 
     SimPointer *result = spirv_sim_retrieve_intf_pointer(
-        runner->spirv_sim, VarKindOutput,
+        runner->spirv_sim, ClassOutput,
         (VariableAccess) {cmd->var_if_type, cmd->var_if_index});
 
     char *error_msg = NULL;
@@ -218,13 +218,13 @@ static TypeKind parse_data_type(const char *data_type) {
     }
 }
 
-static VariableKind parse_var_kind(const char *kind_str) {
-    if (!strcmp(kind_str, "input")) {
-        return VarKindInput;
-    } else if (!strcmp(kind_str, "uniform")) {
-        return VarKindUniform;
-    } else if (!strcmp(kind_str, "uniform_constant")) {
-        return VarKindUniformConstant;
+static StorageClass parse_storage_class(const char *storage_class_str) {
+    if (!strcmp(storage_class_str, "input")) {
+        return ClassInput;
+    } else if (!strcmp(storage_class_str, "uniform")) {
+        return ClassUniform;
+    } else if (!strcmp(storage_class_str, "uniform_constant")) {
+        return ClassUniformConstant;
     } else {
         fatal_error("Unknown variable kind");
         return 0;
@@ -338,16 +338,16 @@ static RunnerCmd *parse_command(Runner *runner, const char *cmd, const cJSON *js
 
     if (!strcmp(cmd, "associate_data")) {
         RunnerCmdAssociateData *cmd = new_cmd_associate_data();
-        cmd->var_kind = parse_var_kind(json_string_value(json_data, "kind"));
+        cmd->storage_class = parse_storage_class(json_string_value(json_data, "kind"));
         cmd->var_if_type = parse_var_interface_type(json_string_value(json_data, "if_type"));
         cmd->var_if_index = parse_var_interface_index(cmd->var_if_type, json_data);
         
         if (!spirv_module_variable_by_access(
                 &runner->spirv_module,
-                cmd->var_kind, 
+                cmd->storage_class, 
                 (VariableAccess) {cmd->var_if_type, cmd->var_if_index},
                 &var, &var_member)) {
-            fatal_error("Unknown variable (%d/%d/%d)", cmd->var_kind, cmd->var_if_type, cmd->var_if_index);
+            fatal_error("Unknown variable (%d/%d/%d)", cmd->storage_class, cmd->var_if_type, cmd->var_if_index);
             return 0;
         }
         
@@ -373,7 +373,7 @@ static RunnerCmd *parse_command(Runner *runner, const char *cmd, const cJSON *js
         
         if (!spirv_module_variable_by_access(
                 &runner->spirv_module,
-                VarKindOutput, 
+                ClassOutput, 
                 (VariableAccess) {cmd->var_if_type, cmd->var_if_index},
                 &var, &var_member)) {
             fatal_error("Unknown output variable (%d/%d)", cmd->var_if_type, cmd->var_if_index);

@@ -43,7 +43,7 @@ typedef struct RunnerCmd {
 
 typedef struct RunnerCmdAssociateData {
     RunnerCmd base;
-    VariableKind var_kind;
+    StorageClass storage_class;
     VariableAccessKind var_if_type;
     uint32_t var_if_index;
     uint8_t *data;
