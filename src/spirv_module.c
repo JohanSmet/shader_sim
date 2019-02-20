@@ -493,6 +493,7 @@ void spirv_module_load(SPIRV_module *module, SPIRV_binary *binary) {
     
     mem_arena_init(&module->allocator, ARENA_DEFAULT_SIZE, 4);
     module->text = (SPIRV_text *) mem_arena_allocate(&module->allocator, sizeof(SPIRV_text));
+    memset(module->text, 0, sizeof(SPIRV_text));
 
     for (SPIRV_opcode *op = spirv_bin_opcode_rewind(binary); op != spirv_bin_opcode_end(binary); op = spirv_bin_opcode_next(binary)) {
 	

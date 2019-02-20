@@ -15,15 +15,37 @@
 
 static inline const char *spirv_text_format_id(SPIRV_module *spirv_mod, uint32_t id) {
     arr_clear(spirv_mod->text->scratch_buf);
-    /* TODO: use names as aliases for the ids */
-    arr_printf(spirv_mod->text->scratch_buf, "%%%d", id);
+
+    if (spirv_mod->text->use_id_names && arr_len(spirv_mod->text->scratch_buf) == 0) {
+        const char *name = spirv_module_name_by_id(spirv_mod, id, -1);
+        if (name) {
+            arr_printf(spirv_mod->text->scratch_buf, "%%%s", name);
+        }
+    } 
+
+    if (arr_len(spirv_mod->text->scratch_buf) == 0) {
+       arr_printf(spirv_mod->text->scratch_buf, "%%%d", id);
+    }
+
     return spirv_mod->text->scratch_buf;
 }
 
 static inline const char *spirv_text_format_type_id(SPIRV_module *spirv_mod, uint32_t id) {
     arr_clear(spirv_mod->text->scratch_buf);
+
+    /* prefer manually defined name */
+    if (spirv_mod->text->use_id_names && arr_len(spirv_mod->text->scratch_buf) == 0) {
+        const char *name = spirv_module_name_by_id(spirv_mod, id, -1);
+        if (name) {
+            arr_printf(spirv_mod->text->scratch_buf, "%%%s", name);
+        }
+    } 
+
     /* TODO: create/reuse abbreviations for the type instead of the numerical id */
-    arr_printf(spirv_mod->text->scratch_buf, "%%%d", id);
+    if (arr_len(spirv_mod->text->scratch_buf) == 0) {
+       arr_printf(spirv_mod->text->scratch_buf, "%%%d", id);
+    }
+
     return spirv_mod->text->scratch_buf;
 }
 
@@ -586,6 +608,14 @@ char *spirv_text_header_line(SPIRV_header *header, int line) {
     }
 
     return result;
+}
+
+void spirv_text_set_flag(struct SPIRV_module *module, SPIRV_text_flag flag, bool value) {
+    assert(module);
+
+    if (flag == SPIRV_TEXT_USE_ID_NAMES) {
+        module->text->use_id_names = value;
+    }
 }
 
 char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {

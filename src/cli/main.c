@@ -43,6 +43,8 @@ void disassemble_spirv_shader(const char *filename) {
     spirv_module_load(&spirv_mod, &spirv_bin);
     spirv_bin_opcode_rewind(&spirv_bin);
 
+    spirv_text_set_flag(&spirv_mod, SPIRV_TEXT_USE_ID_NAMES, true);
+
     char **output_lines = NULL;
 
     for (int idx = 0; idx < spirv_text_header_num_lines(spirv_bin_header(&spirv_bin)); ++idx) {
