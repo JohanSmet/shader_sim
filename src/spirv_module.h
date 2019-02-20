@@ -68,6 +68,9 @@ typedef struct Type {
         struct {
             struct Type **members;             // dyn_array
         } structure;
+        struct {
+            StorageClass storage_class;
+        } pointer;
     };
 } Type;
 

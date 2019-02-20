@@ -235,6 +235,7 @@ static void handle_opcode_type(SPIRV_module *module, SPIRV_opcode *op) {
         }
         case SpvOpTypePointer: 
             type = new_type(module, result_id, TypePointer);
+            type->pointer.storage_class = op->optional[1];
             type->base_type = spirv_module_type_by_id(module, op->optional[2]);
             type->element_size = sizeof(uint32_t);
             type->count = 1;
