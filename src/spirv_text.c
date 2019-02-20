@@ -8,6 +8,7 @@
 #include "dyn_array.h"
 
 #include <stdbool.h>
+#include <ctype.h>
 #include <assert.h>
 
 #define JS_SPIRV_NAMES_IMPLEMENTATION
@@ -50,8 +51,12 @@ static inline void spirv_text_create_type_alias(SPIRV_module *spirv_mod, Type *t
     }
 
     if (type->kind == TypePointer) {
-        arr_printf(spirv_mod->text->scratch_buf, "%%ptr_"
+        arr_printf(spirv_mod->text->scratch_buf, "%%ptr_%s_",
+            spirv_storage_class_name((SpvStorageClass) type->pointer.storage_class)
         );
+        for (char *s = spirv_mod->text->scratch_buf; *s; ++s) {
+            *s = (char) tolower(*s);
+        }
         spirv_text_create_type_alias(spirv_mod, type->base_type);
     }
 }
