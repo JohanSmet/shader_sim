@@ -6,6 +6,7 @@
 #define JS_SHADER_SIM_SPIRV_TEXT_H
 
 #include "types.h"
+#include "hash_map.h"
 
 // require forward declarations
 struct SPIRV_header;
@@ -17,11 +18,15 @@ typedef struct SPIRV_text {
     char *scratch_buf;
 
     bool use_id_names;
+    bool use_type_alias;
+
+    HashMap type_aliases;       // id (int) -> const char * (name)
+    HashMap type_aliases_rev;   // const char * (name) -> id (int)
 } SPIRV_text;
 
 typedef enum SPIRV_text_flag {
     SPIRV_TEXT_USE_ID_NAMES,
-    SPIRV_TEXT_USE_TYPE_ID_ALIAS,
+    SPIRV_TEXT_USE_TYPE_ALIAS,
 } SPIRV_text_flag;
 
 // interface functions

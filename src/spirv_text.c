@@ -13,6 +13,49 @@
 #define JS_SPIRV_NAMES_IMPLEMENTATION
 #include "spirv/spirv_names.h"
 
+static inline void spirv_text_create_type_alias(SPIRV_module *spirv_mod, Type *type) {
+    if (spirv_type_is_vector(type)) {
+        arr_printf(spirv_mod->text->scratch_buf, "%%vec%d%s",
+            type->count,
+            (spirv_type_is_float(type)) ? "f" : 
+                (spirv_type_is_signed_integer(type)) ? "i" : "u"
+        );
+    }
+
+    if (spirv_type_is_matrix(type)) {
+        arr_printf(spirv_mod->text->scratch_buf, "%%mat%dx%d%s",
+            type->matrix.num_rows,
+            type->matrix.num_cols,
+            (spirv_type_is_float(type)) ? "f" : 
+                (spirv_type_is_signed_integer(type)) ? "i" : "u"
+        );
+    }
+
+    if (spirv_type_is_float(type) && type->count == 1) {
+        arr_printf(spirv_mod->text->scratch_buf, "%%float");
+    }
+
+    if (spirv_type_is_integer(type) && type->count == 1) {
+        arr_printf(spirv_mod->text->scratch_buf, "%%%s",
+            (spirv_type_is_signed_integer(type)) ? "int" : "uint"
+        );
+    }
+
+    if (type->kind == TypeBool && type->count == 1) {
+        arr_strcat(spirv_mod->text->scratch_buf, "%bool");
+    }
+
+    if (type->kind == TypeVoid) {
+        arr_strcat(spirv_mod->text->scratch_buf, "%void");
+    }
+
+    if (type->kind == TypePointer) {
+        arr_printf(spirv_mod->text->scratch_buf, "%%ptr_"
+        );
+        spirv_text_create_type_alias(spirv_mod, type->base_type);
+    }
+}
+
 static inline const char *spirv_text_format_id(SPIRV_module *spirv_mod, uint32_t id) {
     arr_clear(spirv_mod->text->scratch_buf);
 
@@ -41,7 +84,33 @@ static inline const char *spirv_text_format_type_id(SPIRV_module *spirv_mod, uin
         }
     } 
 
-    /* TODO: create/reuse abbreviations for the type instead of the numerical id */
+    /* check if there's already an alias for this id */
+    if (spirv_mod->text->use_type_alias && arr_len(spirv_mod->text->scratch_buf) == 0) {
+        const char *alias = map_int_str_get(&spirv_mod->text->type_aliases, id);
+        if (alias) {
+            arr_printf(spirv_mod->text->scratch_buf, "%%%s", alias);
+        }
+    }
+
+    /* try to generate an alias */
+    if (spirv_mod->text->use_type_alias && arr_len(spirv_mod->text->scratch_buf) == 0) {
+        Type *type = spirv_module_type_by_id(spirv_mod, id);
+        spirv_text_create_type_alias(spirv_mod, type);
+
+        /* check for duplicates */
+        if (arr_len(spirv_mod->text->scratch_buf) > 0 && 
+            !map_str_int_has(&spirv_mod->text->type_aliases_rev, spirv_mod->text->scratch_buf)) {
+            char *alias = mem_arena_allocate(&spirv_mod->allocator, arr_len(spirv_mod->text->scratch_buf) + 1);
+            strncpy(alias, spirv_mod->text->scratch_buf, arr_len(spirv_mod->text->scratch_buf) + 1);
+
+            map_int_str_put(&spirv_mod->text->type_aliases, id, alias);
+            map_str_int_put(&spirv_mod->text->type_aliases_rev, alias, id);
+        } else {
+            arr_clear(&spirv_mod->text->scratch_buf);
+        }
+    }
+
+    /* fallback to numerical id */
     if (arr_len(spirv_mod->text->scratch_buf) == 0) {
        arr_printf(spirv_mod->text->scratch_buf, "%%%d", id);
     }
@@ -615,6 +684,8 @@ void spirv_text_set_flag(struct SPIRV_module *module, SPIRV_text_flag flag, bool
 
     if (flag == SPIRV_TEXT_USE_ID_NAMES) {
         module->text->use_id_names = value;
+    } else if (flag == SPIRV_TEXT_USE_TYPE_ALIAS) {
+        module->text->use_type_alias = value;
     }
 }
 
