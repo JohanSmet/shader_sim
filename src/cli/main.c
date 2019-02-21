@@ -54,7 +54,7 @@ void disassemble_spirv_shader(const char *filename) {
     }
 
     for (SPIRV_opcode *op = spirv_bin_opcode_current(&spirv_bin); op != spirv_bin_opcode_end(&spirv_bin); op = spirv_bin_opcode_next(&spirv_bin)) {
-        char *line = spirv_text_opcode(op, &spirv_mod);
+        char *line = spirv_text_opcode(op, &spirv_mod, NULL);
         arr_push(output_lines, line);
     }
 

@@ -93,7 +93,7 @@ static inline const char *spirv_text_format_type_id(SPIRV_module *spirv_mod, uin
     if (spirv_mod->text->use_type_alias && arr_len(spirv_mod->text->scratch_buf) == 0) {
         const char *alias = map_int_str_get(&spirv_mod->text->type_aliases, id);
         if (alias) {
-            arr_printf(spirv_mod->text->scratch_buf, "%%%s", alias);
+            arr_printf(spirv_mod->text->scratch_buf, "%s", alias);
         }
     }
 
@@ -129,6 +129,18 @@ static inline void spirv_text_append(char **result, const char **strings, size_t
     }
 }
 
+static inline void spirv_text_start_tag(SPIRV_module *module, char *result, SPIRV_text_kind kind) {
+    SPIRV_text_span span = (SPIRV_text_span) {
+        .start = arr_len(result),
+        .kind = kind
+    };
+    arr_push(module->text->spans, span);
+}
+
+static inline void spirv_text_end_tag(SPIRV_module *module, char *result) {
+    module->text->spans[arr_len(module->text->spans)-1].end = arr_len(result);
+}
+
 /*
  * macros to add semantic information to the output
  */
@@ -136,15 +148,18 @@ static inline void spirv_text_append(char **result, const char **strings, size_t
 
 #define APPEND_STR(...)     spirv_text_append(&result, (const char *[]){__VA_ARGS__}, sizeof((const char *[]) {__VA_ARGS__})/sizeof(const char *))
 #define APPEND_FMT(fmt,...) arr_printf(result, fmt, __VA_ARGS__)
+#define SPACER              arr_printf(result, " ")
+#define STAG(x)             spirv_text_start_tag(module, result, SPAN_##x)
+#define ETAG                spirv_text_end_tag(module, result)
 
-#define OP(op)              APPEND_STR(spirv_op_name((op)))
-#define KEYWORD(x)          APPEND_STR(" ", (x))            
-#define LITERAL_STRING(x)   APPEND_STR(" ", "\"", (x), "\"")
-#define LITERAL_INTEGER(x)  APPEND_FMT(" %d", (x))
-#define LITERAL_FLOAT(x)    APPEND_FMT(" %f", (double) (x))
-#define FORMATTED_ID(x)     APPEND_STR((x))
-#define ID(x)               APPEND_STR(" ", spirv_text_format_id(module, (x)))
-#define TYPE_ID(x)          APPEND_STR(" ", spirv_text_format_type_id(module, (x)))
+#define OP(op)              (STAG(OP), APPEND_STR(spirv_op_name((op))), ETAG)
+#define KEYWORD(x)          (SPACER, STAG(KEYWORD), APPEND_STR((x)), ETAG)
+#define LITERAL_STRING(x)   (SPACER, STAG(LITERAL_STRING), APPEND_STR("\"", (x), "\""), ETAG)
+#define LITERAL_INTEGER(x)  (SPACER, STAG(LITERAL_INTEGER), APPEND_FMT("%d", (x)), ETAG)
+#define LITERAL_FLOAT(x)    (SPACER, STAG(LITERAL_FLOAT), APPEND_FMT("%f", (double) (x)), ETAG)
+#define FORMATTED_ID(x)     (STAG(ID), APPEND_STR((x)), ETAG)
+#define ID(x)               (SPACER, STAG(ID), APPEND_STR(spirv_text_format_id(module, (x))), ETAG)
+#define TYPE_ID(x)          (SPACER, STAG(TYPE_ID), APPEND_STR(spirv_text_format_type_id(module, (x))), ETAG)
 
 static inline char *spirv_string_opcode_no_result(SPIRV_module *module, SpvOp op) {
     char *result = NULL;
@@ -694,7 +709,7 @@ void spirv_text_set_flag(struct SPIRV_module *module, SPIRV_text_flag flag, bool
     }
 }
 
-char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {
+char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module, SPIRV_text_span **spans) {
 #define OP_CASE_SPECIAL(op)                             \
     case op:                                            \
         line = spirv_text_##op(module, opcode);         \
@@ -709,6 +724,7 @@ char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {
         break;                      
 #define OP_DEFAULT(op)
 
+    arr_clear(module->text->spans);
     char *line = NULL;
 
     switch (opcode->op.kind) {
@@ -1066,6 +1082,10 @@ char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module) {
 
         default :
             line = spirv_string_opcode_no_result(module, opcode->op.kind);
+    }
+
+    if (spans) {
+        *spans = module->text->spans;
     }
 
     return line;
