@@ -159,6 +159,7 @@ static inline void spirv_text_end_tag(SPIRV_module *module, char *result) {
 #define LITERAL_FLOAT(x)    (SPACER, STAG(LITERAL_FLOAT), APPEND_FMT("%f", (double) (x)), ETAG)
 #define FORMATTED_ID(x)     (STAG(ID), APPEND_STR((x)), ETAG)
 #define ID(x)               (SPACER, STAG(ID), APPEND_STR(spirv_text_format_id(module, (x))), ETAG)
+#define FORMATTED_TYPE_ID(x)(STAG(TYPE_ID), APPEND_STR((x)), ETAG)
 #define TYPE_ID(x)          (SPACER, STAG(TYPE_ID), APPEND_STR(spirv_text_format_type_id(module, (x))), ETAG)
 
 static inline char *spirv_string_opcode_no_result(SPIRV_module *module, SpvOp op) {
@@ -194,7 +195,7 @@ static inline char *spirv_string_opcode_result_type_id(SPIRV_module *module, Spv
         APPEND_STR(" ");
     }
 
-    FORMATTED_ID(s_id);
+    FORMATTED_TYPE_ID(s_id);
     APPEND_STR(" = ");
     OP(op);
     return result;
