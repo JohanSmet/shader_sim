@@ -10,7 +10,7 @@
 void lut_init(void);
 const char *lut_lookup_builtin(int32_t builtin);
 const char *lut_lookup_type_kind(TypeKind kind);
-const char *lut_lookup_variable_kind(VariableKind kind);
+const char *lut_lookup_storage_class(StorageClass kind);
 const char *lut_lookup_variable_access(VariableAccessKind kind);
 
 #endif // JS_SHADER_SIM_EMSCRIPTEN_LUT_H

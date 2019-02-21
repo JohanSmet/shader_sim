@@ -125,33 +125,33 @@ const char *lut_lookup_type_kind(TypeKind kind) {
 	}
 }
 
-const char *lut_lookup_variable_kind(VariableKind kind) {
-	switch (kind) {
-		case VarKindUniformConstant:
+const char *lut_lookup_storage_class(StorageClass storage_class) {
+	switch (storage_class) {
+		case ClassUniformConstant:
 			return "UniformConstant";
-		case VarKindInput:
+		case ClassInput:
 			return "Input";
-		case VarKindUniform:
+		case ClassUniform:
 			return "Uniform";
-		case VarKindOutput:
+		case ClassOutput:
 			return "Output";
-		case VarKindWorkgroup:
+		case ClassWorkgroup:
 			return "Workgroup";
-		case VarKindCrossWorkgroup:
+		case ClassCrossWorkgroup:
 			return "CrossWorkgroup";
-		case VarKindPrivate:
+		case ClassPrivate:
 			return "Private";
-		case VarKindFunction:
+		case ClassFunction:
 			return "Function";
-		case VarKindGeneric:
+		case ClassGeneric:
 			return "Generic";
-		case VarKindPushConstant:
+		case ClassPushConstant:
 			return "PushConstant";
-		case VarKindAtomicCounter:
+		case ClassAtomicCounter:
 			return "AtomicCounter";
-		case VarKindImage:
+		case ClassImage:
 			return "Image";
-		case VarKindStorageBuffer:
+		case ClassStorageBuffer:
 			return "StorageBuffer";
 	}
 }

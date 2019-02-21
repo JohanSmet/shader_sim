@@ -90,7 +90,7 @@ size_t simapi_spirv_opcode_count(SimApiContext *context) {
 EMSCRIPTEN_KEEPALIVE
 const char *simapi_spirv_opcode_text(SimApiContext *context, uint32_t index) {
 	SPIRV_opcode *op = spirv_module_opcode_by_index(&context->spirv_module, index);
-	return spirv_text_opcode(op, &context->spirv_module);
+	return spirv_text_opcode(op, &context->spirv_module, NULL);
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -166,7 +166,7 @@ static inline void spirv_variable_to_json(SPIRV_module *spirv_module, Variable *
 	if (var->name) {
 		arr_printf(*output, ",\"name\": \"%s\"", var->name);
 	}
-	arr_printf(*output, ",\"kind\": \"%s\"", lut_lookup_variable_kind(var->kind));
+	arr_printf(*output, ",\"kind\": \"%s\"", lut_lookup_storage_class(var->kind));
 
 	arr_printf(*output, ",\"access\": ");
 	spirv_variable_access_to_json(&var->access, output);
