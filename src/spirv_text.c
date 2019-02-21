@@ -138,7 +138,7 @@ static inline void spirv_text_start_tag(SPIRV_module *module, char *result, SPIR
 }
 
 static inline void spirv_text_end_tag(SPIRV_module *module, char *result) {
-    module->text->spans[arr_len(module->text->spans)-1].end = arr_len(result);
+    module->text->spans[arr_len(module->text->spans)-1].end = (uint32_t) arr_len(result) - 1u;
 }
 
 /*
