@@ -166,3 +166,25 @@ const char *lut_lookup_variable_access(VariableAccessKind kind) {
 			return "Location";
 	}
 }
+
+const char *lut_lookup_text_span_kind(SPIRV_text_kind kind) {
+	switch (kind) {
+		case SPAN_OP:	
+			return "spv_op";
+		case SPAN_KEYWORD:
+			return "spv_keyword";
+		case SPAN_LITERAL_STRING:
+			return "spv_literal_string";
+		case SPAN_LITERAL_INTEGER:
+			return "spv_literal_integer";
+		case SPAN_LITERAL_FLOAT:
+			return "spv_literal_float";
+		case SPAN_ID:
+			return "spv_id";
+		case SPAN_TYPE_ID:
+			return "spv_type_id";
+		default:
+			return "unknown";
+
+	}
+}

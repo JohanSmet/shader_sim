@@ -16,6 +16,8 @@ typedef struct SimApiContext {
 	SPIRV_module spirv_module;
 	uint32_t entry_point;
     SPIRV_simulator spirv_sim;
+
+	SPIRV_text_span *text_spans;
 } SimApiContext;
 
 EMSCRIPTEN_KEEPALIVE
@@ -96,7 +98,36 @@ size_t simapi_spirv_opcode_count(SimApiContext *context) {
 EMSCRIPTEN_KEEPALIVE
 const char *simapi_spirv_opcode_text(SimApiContext *context, uint32_t index) {
 	SPIRV_opcode *op = spirv_module_opcode_by_index(&context->spirv_module, index);
-	return spirv_text_opcode(op, &context->spirv_module, NULL);
+	char *src = spirv_text_opcode(op, &context->spirv_module, &context->text_spans);
+
+	int src_idx = 0;
+	char *formatted = NULL;
+
+	for (int span_idx = 0; span_idx < arr_len(context->text_spans); ++span_idx) {
+		SPIRV_text_span *span = &context->text_spans[span_idx];
+
+		// preamble (src_idx -> span.start)
+		arr_push_buf(formatted, src + src_idx, span->start - src_idx);		// exclude span->start
+
+		// span header
+		arr_printf(formatted, "<span class=\"%s\">", lut_lookup_text_span_kind(span->kind));
+
+		// span text (span.start -> span.end)
+		arr_push_buf(formatted, src + span->start, span->end - span->start + 1);	// include span->end;
+
+		// span trailer
+		arr_printf(formatted, "</span>");
+
+		src_idx = span->end + 1;
+	}
+
+	if (src_idx + 1 < arr_len(src)) {
+		arr_push_buf(formatted, src + src_idx, arr_len(src) - src_idx);
+	}
+
+	arr_free(src);
+
+	return formatted;
 }
 
 EMSCRIPTEN_KEEPALIVE

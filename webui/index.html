@@ -53,6 +53,31 @@
 
 		div#shader div {
 			margin-left: 1em;
+			white-space: pre-wrap;
+		}
+
+		div#shader span.spv_id {
+			color: chocolate;
+		}
+
+		div#shader span.spv_type_id {
+			color: firebrick;
+		}
+
+		div#shader span.spv_literal_float {
+			color: blue;
+		}
+
+		div#shader span.spv_literal_integer {
+			color: blue;
+		}
+
+		div#shader span.spv_literal_string {
+			color: fuchsia;
+		}
+
+		div#shader span.spv_keyword {
+			font-weight: bold;
 		}
 
 		div#about {
@@ -540,7 +565,7 @@
 			var f_shader_ui = $("#shader");
 			var f_line_count = simapi_spirv_opcode_count(simapi_context);
 			for (var f_idx = 0; f_idx < f_line_count; ++f_idx) {
-				f_shader_ui.append($('<div />').text(simapi_spirv_opcode_text(simapi_context, f_idx)));
+				f_shader_ui.append($('<div />').html(simapi_spirv_opcode_text(simapi_context, f_idx)));
 			}
 
 			// input and output variables
