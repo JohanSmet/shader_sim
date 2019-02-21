@@ -190,7 +190,7 @@ Module['FS_createPath']('/', 'examples', true, true);
   }
 
  }
- loadPackage({"files": [{"start": 0, "audio": 0, "end": 448, "filename": "/examples/simple_frag.spv"}, {"start": 448, "audio": 0, "end": 1368, "filename": "/examples/vert_arith.spv"}, {"start": 1368, "audio": 0, "end": 2272, "filename": "/examples/test_aggregates.spv"}, {"start": 2272, "audio": 0, "end": 2904, "filename": "/examples/vert_arith_int.spv"}, {"start": 2904, "audio": 0, "end": 3436, "filename": "/examples/simple_vert.spv"}, {"start": 3436, "audio": 0, "end": 4224, "filename": "/examples/test_access_chain.spv"}, {"start": 4224, "audio": 0, "end": 4604, "filename": "/examples/fixed_color_frag.spv"}, {"start": 4604, "audio": 0, "end": 5652, "filename": "/examples/fixed_color_vert.spv"}], "remote_package_size": 5652, "package_uuid": "dca480a9-47be-4572-9247-5688cd59e571"});
+ loadPackage({"files": [{"start": 0, "audio": 0, "end": 448, "filename": "/examples/simple_frag.spv"}, {"start": 448, "audio": 0, "end": 1368, "filename": "/examples/vert_arith.spv"}, {"start": 1368, "audio": 0, "end": 2272, "filename": "/examples/test_aggregates.spv"}, {"start": 2272, "audio": 0, "end": 2904, "filename": "/examples/vert_arith_int.spv"}, {"start": 2904, "audio": 0, "end": 11700, "filename": "/examples/atmosphere_frag.spv"}, {"start": 11700, "audio": 0, "end": 12232, "filename": "/examples/simple_vert.spv"}, {"start": 12232, "audio": 0, "end": 13020, "filename": "/examples/test_access_chain.spv"}, {"start": 13020, "audio": 0, "end": 13400, "filename": "/examples/fixed_color_frag.spv"}, {"start": 13400, "audio": 0, "end": 14448, "filename": "/examples/fixed_color_vert.spv"}], "remote_package_size": 14448, "package_uuid": "5e962e43-d01b-4b1d-80e0-b4da9168ff39"});
 
 })();
 
@@ -1925,7 +1925,7 @@ var ASM_CONSTS = [];
 
 STATIC_BASE = GLOBAL_BASE;
 
-STATICTOP = STATIC_BASE + 133248;
+STATICTOP = STATIC_BASE + 137056;
 /* global initializers */  __ATINIT__.push();
 
 
@@ -1934,7 +1934,7 @@ STATICTOP = STATIC_BASE + 133248;
 
 
 
-var STATIC_BUMP = 133248;
+var STATIC_BUMP = 137056;
 Module["STATIC_BASE"] = STATIC_BASE;
 Module["STATIC_BUMP"] = STATIC_BUMP;
 
@@ -5266,7 +5266,33 @@ function copyTempDouble(ptr) {
 
    
 
+  var _llvm_ceil_f32=Math_ceil;
+
+  var _llvm_cos_f32=Math_cos;
+
+  function _llvm_exp2_f32(x) {
+      return Math.pow(2, x);
+    }
+
+  var _llvm_exp_f32=Math_exp;
+
+  var _llvm_fabs_f32=Math_abs;
+
   var _llvm_floor_f32=Math_floor;
+
+  function _llvm_log2_f32(x) {
+      return Math.log(x) / Math.LN2; // TODO: Math.log2, when browser support is there
+    }
+
+  var _llvm_log_f32=Math_log;
+
+  var _llvm_pow_f32=Math_pow;
+
+   
+
+  var _llvm_sin_f32=Math_sin;
+
+  var _llvm_sqrt_f32=Math_sqrt;
 
   var _llvm_trunc_f32=Math_trunc;
 
@@ -5329,11 +5355,13 @@ function nullFunc_ii(x) { err("Invalid function pointer called with signature 'i
 
 function nullFunc_iiii(x) { err("Invalid function pointer called with signature 'iiii'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)");  err("Build with ASSERTIONS=2 for more info.");abort(x) }
 
-function nullFunc_vijj(x) { err("Invalid function pointer called with signature 'vijj'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)");  err("Build with ASSERTIONS=2 for more info.");abort(x) }
+function nullFunc_vii(x) { err("Invalid function pointer called with signature 'vii'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)");  err("Build with ASSERTIONS=2 for more info.");abort(x) }
 
-Module['wasmTableSize'] = 18;
+function nullFunc_viii(x) { err("Invalid function pointer called with signature 'viii'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)");  err("Build with ASSERTIONS=2 for more info.");abort(x) }
 
-Module['wasmMaxTableSize'] = 18;
+Module['wasmTableSize'] = 34;
+
+Module['wasmMaxTableSize'] = 34;
 
 function invoke_ii(index,a1) {
   var sp = stackSave();
@@ -5357,10 +5385,21 @@ function invoke_iiii(index,a1,a2,a3) {
   }
 }
 
-function invoke_vijj(index,a1,a2,a3,a4,a5) {
+function invoke_vii(index,a1,a2) {
   var sp = stackSave();
   try {
-    Module["dynCall_vijj"](index,a1,a2,a3,a4,a5);
+    Module["dynCall_vii"](index,a1,a2);
+  } catch(e) {
+    stackRestore(sp);
+    if (typeof e !== 'number' && e !== 'longjmp') throw e;
+    Module["setThrew"](1, 0);
+  }
+}
+
+function invoke_viii(index,a1,a2,a3) {
+  var sp = stackSave();
+  try {
+    Module["dynCall_viii"](index,a1,a2,a3);
   } catch(e) {
     stackRestore(sp);
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
@@ -5370,7 +5409,7 @@ function invoke_vijj(index,a1,a2,a3,a4,a5) {
 
 Module.asmGlobalArg = {};
 
-Module.asmLibraryArg = { "abort": abort, "assert": assert, "enlargeMemory": enlargeMemory, "getTotalMemory": getTotalMemory, "abortOnCannotGrowMemory": abortOnCannotGrowMemory, "abortStackOverflow": abortStackOverflow, "nullFunc_ii": nullFunc_ii, "nullFunc_iiii": nullFunc_iiii, "nullFunc_vijj": nullFunc_vijj, "invoke_ii": invoke_ii, "invoke_iiii": invoke_iiii, "invoke_vijj": invoke_vijj, "___assert_fail": ___assert_fail, "___lock": ___lock, "___setErrNo": ___setErrNo, "___syscall140": ___syscall140, "___syscall145": ___syscall145, "___syscall146": ___syscall146, "___syscall221": ___syscall221, "___syscall5": ___syscall5, "___syscall54": ___syscall54, "___syscall6": ___syscall6, "___unlock": ___unlock, "__exit": __exit, "_emscripten_memcpy_big": _emscripten_memcpy_big, "_exit": _exit, "_llvm_floor_f32": _llvm_floor_f32, "_llvm_trunc_f32": _llvm_trunc_f32, "DYNAMICTOP_PTR": DYNAMICTOP_PTR, "tempDoublePtr": tempDoublePtr, "STACKTOP": STACKTOP, "STACK_MAX": STACK_MAX };
+Module.asmLibraryArg = { "abort": abort, "assert": assert, "enlargeMemory": enlargeMemory, "getTotalMemory": getTotalMemory, "abortOnCannotGrowMemory": abortOnCannotGrowMemory, "abortStackOverflow": abortStackOverflow, "nullFunc_ii": nullFunc_ii, "nullFunc_iiii": nullFunc_iiii, "nullFunc_vii": nullFunc_vii, "nullFunc_viii": nullFunc_viii, "invoke_ii": invoke_ii, "invoke_iiii": invoke_iiii, "invoke_vii": invoke_vii, "invoke_viii": invoke_viii, "___assert_fail": ___assert_fail, "___lock": ___lock, "___setErrNo": ___setErrNo, "___syscall140": ___syscall140, "___syscall145": ___syscall145, "___syscall146": ___syscall146, "___syscall221": ___syscall221, "___syscall5": ___syscall5, "___syscall54": ___syscall54, "___syscall6": ___syscall6, "___unlock": ___unlock, "__exit": __exit, "_emscripten_memcpy_big": _emscripten_memcpy_big, "_exit": _exit, "_llvm_ceil_f32": _llvm_ceil_f32, "_llvm_cos_f32": _llvm_cos_f32, "_llvm_exp2_f32": _llvm_exp2_f32, "_llvm_exp_f32": _llvm_exp_f32, "_llvm_fabs_f32": _llvm_fabs_f32, "_llvm_floor_f32": _llvm_floor_f32, "_llvm_log2_f32": _llvm_log2_f32, "_llvm_log_f32": _llvm_log_f32, "_llvm_pow_f32": _llvm_pow_f32, "_llvm_sin_f32": _llvm_sin_f32, "_llvm_sqrt_f32": _llvm_sqrt_f32, "_llvm_trunc_f32": _llvm_trunc_f32, "DYNAMICTOP_PTR": DYNAMICTOP_PTR, "tempDoublePtr": tempDoublePtr, "STACKTOP": STACKTOP, "STACK_MAX": STACK_MAX };
 // EMSCRIPTEN_START_ASM
 var asm =Module["asm"]// EMSCRIPTEN_END_ASM
 (Module.asmGlobalArg, Module.asmLibraryArg, buffer);
@@ -5397,6 +5436,12 @@ var real__llvm_bswap_i32 = asm["_llvm_bswap_i32"]; asm["_llvm_bswap_i32"] = func
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
   return real__llvm_bswap_i32.apply(null, arguments);
+};
+
+var real__llvm_round_f32 = asm["_llvm_round_f32"]; asm["_llvm_round_f32"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return real__llvm_round_f32.apply(null, arguments);
 };
 
 var real__malloc = asm["_malloc"]; asm["_malloc"] = function() {
@@ -5429,6 +5474,12 @@ var real__simapi_release_context = asm["_simapi_release_context"]; asm["_simapi_
   return real__simapi_release_context.apply(null, arguments);
 };
 
+var real__simapi_spirv_current_function_id = asm["_simapi_spirv_current_function_id"]; asm["_simapi_spirv_current_function_id"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return real__simapi_spirv_current_function_id.apply(null, arguments);
+};
+
 var real__simapi_spirv_current_line = asm["_simapi_spirv_current_line"]; asm["_simapi_spirv_current_line"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
@@ -5441,10 +5492,10 @@ var real__simapi_spirv_execution_finished = asm["_simapi_spirv_execution_finishe
   return real__simapi_spirv_execution_finished.apply(null, arguments);
 };
 
-var real__simapi_spirv_first_free_register = asm["_simapi_spirv_first_free_register"]; asm["_simapi_spirv_first_free_register"] = function() {
+var real__simapi_spirv_function_variables = asm["_simapi_spirv_function_variables"]; asm["_simapi_spirv_function_variables"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-  return real__simapi_spirv_first_free_register.apply(null, arguments);
+  return real__simapi_spirv_function_variables.apply(null, arguments);
 };
 
 var real__simapi_spirv_load_binary = asm["_simapi_spirv_load_binary"]; asm["_simapi_spirv_load_binary"] = function() {
@@ -5459,6 +5510,12 @@ var real__simapi_spirv_load_file = asm["_simapi_spirv_load_file"]; asm["_simapi_
   return real__simapi_spirv_load_file.apply(null, arguments);
 };
 
+var real__simapi_spirv_local_register_ids = asm["_simapi_spirv_local_register_ids"]; asm["_simapi_spirv_local_register_ids"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return real__simapi_spirv_local_register_ids.apply(null, arguments);
+};
+
 var real__simapi_spirv_opcode_count = asm["_simapi_spirv_opcode_count"]; asm["_simapi_spirv_opcode_count"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
@@ -5471,10 +5528,10 @@ var real__simapi_spirv_opcode_text = asm["_simapi_spirv_opcode_text"]; asm["_sim
   return real__simapi_spirv_opcode_text.apply(null, arguments);
 };
 
-var real__simapi_spirv_register = asm["_simapi_spirv_register"]; asm["_simapi_spirv_register"] = function() {
+var real__simapi_spirv_register_by_id = asm["_simapi_spirv_register_by_id"]; asm["_simapi_spirv_register_by_id"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-  return real__simapi_spirv_register.apply(null, arguments);
+  return real__simapi_spirv_register_by_id.apply(null, arguments);
 };
 
 var real__simapi_spirv_reset = asm["_simapi_spirv_reset"]; asm["_simapi_spirv_reset"] = function() {
@@ -5487,6 +5544,24 @@ var real__simapi_spirv_select_entry_point = asm["_simapi_spirv_select_entry_poin
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
   return real__simapi_spirv_select_entry_point.apply(null, arguments);
+};
+
+var real__simapi_spirv_simulator_memory_dump = asm["_simapi_spirv_simulator_memory_dump"]; asm["_simapi_spirv_simulator_memory_dump"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return real__simapi_spirv_simulator_memory_dump.apply(null, arguments);
+};
+
+var real__simapi_spirv_stackframe = asm["_simapi_spirv_stackframe"]; asm["_simapi_spirv_stackframe"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return real__simapi_spirv_stackframe.apply(null, arguments);
+};
+
+var real__simapi_spirv_stackframe_count = asm["_simapi_spirv_stackframe_count"]; asm["_simapi_spirv_stackframe_count"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return real__simapi_spirv_stackframe_count.apply(null, arguments);
 };
 
 var real__simapi_spirv_step = asm["_simapi_spirv_step"]; asm["_simapi_spirv_step"] = function() {
@@ -5589,6 +5664,10 @@ var _llvm_bswap_i32 = Module["_llvm_bswap_i32"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
   return Module["asm"]["_llvm_bswap_i32"].apply(null, arguments) };
+var _llvm_round_f32 = Module["_llvm_round_f32"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return Module["asm"]["_llvm_round_f32"].apply(null, arguments) };
 var _malloc = Module["_malloc"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
@@ -5617,6 +5696,10 @@ var _simapi_release_context = Module["_simapi_release_context"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
   return Module["asm"]["_simapi_release_context"].apply(null, arguments) };
+var _simapi_spirv_current_function_id = Module["_simapi_spirv_current_function_id"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return Module["asm"]["_simapi_spirv_current_function_id"].apply(null, arguments) };
 var _simapi_spirv_current_line = Module["_simapi_spirv_current_line"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
@@ -5625,10 +5708,10 @@ var _simapi_spirv_execution_finished = Module["_simapi_spirv_execution_finished"
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
   return Module["asm"]["_simapi_spirv_execution_finished"].apply(null, arguments) };
-var _simapi_spirv_first_free_register = Module["_simapi_spirv_first_free_register"] = function() {
+var _simapi_spirv_function_variables = Module["_simapi_spirv_function_variables"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-  return Module["asm"]["_simapi_spirv_first_free_register"].apply(null, arguments) };
+  return Module["asm"]["_simapi_spirv_function_variables"].apply(null, arguments) };
 var _simapi_spirv_load_binary = Module["_simapi_spirv_load_binary"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
@@ -5637,6 +5720,10 @@ var _simapi_spirv_load_file = Module["_simapi_spirv_load_file"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
   return Module["asm"]["_simapi_spirv_load_file"].apply(null, arguments) };
+var _simapi_spirv_local_register_ids = Module["_simapi_spirv_local_register_ids"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return Module["asm"]["_simapi_spirv_local_register_ids"].apply(null, arguments) };
 var _simapi_spirv_opcode_count = Module["_simapi_spirv_opcode_count"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
@@ -5645,10 +5732,10 @@ var _simapi_spirv_opcode_text = Module["_simapi_spirv_opcode_text"] = function()
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
   return Module["asm"]["_simapi_spirv_opcode_text"].apply(null, arguments) };
-var _simapi_spirv_register = Module["_simapi_spirv_register"] = function() {
+var _simapi_spirv_register_by_id = Module["_simapi_spirv_register_by_id"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-  return Module["asm"]["_simapi_spirv_register"].apply(null, arguments) };
+  return Module["asm"]["_simapi_spirv_register_by_id"].apply(null, arguments) };
 var _simapi_spirv_reset = Module["_simapi_spirv_reset"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
@@ -5657,6 +5744,18 @@ var _simapi_spirv_select_entry_point = Module["_simapi_spirv_select_entry_point"
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
   return Module["asm"]["_simapi_spirv_select_entry_point"].apply(null, arguments) };
+var _simapi_spirv_simulator_memory_dump = Module["_simapi_spirv_simulator_memory_dump"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return Module["asm"]["_simapi_spirv_simulator_memory_dump"].apply(null, arguments) };
+var _simapi_spirv_stackframe = Module["_simapi_spirv_stackframe"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return Module["asm"]["_simapi_spirv_stackframe"].apply(null, arguments) };
+var _simapi_spirv_stackframe_count = Module["_simapi_spirv_stackframe_count"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return Module["asm"]["_simapi_spirv_stackframe_count"].apply(null, arguments) };
 var _simapi_spirv_step = Module["_simapi_spirv_step"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
@@ -5725,10 +5824,14 @@ var dynCall_iiii = Module["dynCall_iiii"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
   return Module["asm"]["dynCall_iiii"].apply(null, arguments) };
-var dynCall_vijj = Module["dynCall_vijj"] = function() {
+var dynCall_vii = Module["dynCall_vii"] = function() {
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-  return Module["asm"]["dynCall_vijj"].apply(null, arguments) };
+  return Module["asm"]["dynCall_vii"].apply(null, arguments) };
+var dynCall_viii = Module["dynCall_viii"] = function() {
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+  return Module["asm"]["dynCall_viii"].apply(null, arguments) };
 ;
 
 

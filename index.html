@@ -53,6 +53,31 @@
 
 		div#shader div {
 			margin-left: 1em;
+			white-space: pre-wrap;
+		}
+
+		div#shader span.spv_id {
+			color: chocolate;
+		}
+
+		div#shader span.spv_type_id {
+			color: firebrick;
+		}
+
+		div#shader span.spv_literal_float {
+			color: blue;
+		}
+
+		div#shader span.spv_literal_integer {
+			color: blue;
+		}
+
+		div#shader span.spv_literal_string {
+			color: fuchsia;
+		}
+
+		div#shader span.spv_keyword {
+			font-weight: bold;
 		}
 
 		div#about {
@@ -203,6 +228,12 @@
 				<div id="output" class="data_window"> 
 					<h1>Output</h1>
 				</div>
+				<div id="function" class="data_window"> 
+					<h1>Function Variables</h1>
+				</div>
+				<div id="call_stack" class="data_window">
+					<h1>Call Stack</h1>
+				</div>
 			</div>
 		</div>
 		<div id="about" class="hidden">
@@ -241,13 +272,19 @@
 		var simapi_spirv_select_entry_point = null;
 		var simapi_spirv_step = null;
 		var simapi_spirv_execution_finished = null;
-		var simapi_spirv_first_free_register = null;
-		var simapi_spirv_register = null;
+		var simapi_spirv_register_by_id = null;
+		var simapi_spirv_local_register_ids = null;
+		var simapi_spirv_current_function_id = null;
+		var simapi_spirv_stackframe_count = null;
+		var simapi_spirv_stackframe = null;
+		var simapi_spirv_function_variables = null;
+		var simapi_spirv_simulator_memory_dump = null;
 
 		// global variables
 		var simapi_context = null;
 		var variable_windows = variable_windows_empty();
-		var register_next = 0;
+		var local_register_ids = [];
+		var current_function_id = -1;
 
 		// functions
 		function wasm_wrap_functions() {
@@ -269,8 +306,13 @@
 			simapi_spirv_select_entry_point = Module.cwrap('simapi_spirv_select_entry_point', 'number', ['number', 'number']);
 			simapi_spirv_step = Module.cwrap('simapi_spirv_step', 'number', ['number']);
 			simapi_spirv_execution_finished = Module.cwrap('simapi_spirv_execution_finished', 'number', ['number']);
-			simapi_spirv_first_free_register = Module.cwrap('simapi_spirv_first_free_register', 'number', ['number']);
-			simapi_spirv_register = Module.cwrap('simapi_spirv_register', 'string', ['number', 'number']);
+			simapi_spirv_register_by_id = Module.cwrap('simapi_spirv_register_by_id', 'string', ['number', 'number']);
+			simapi_spirv_local_register_ids = Module.cwrap('simapi_spirv_local_register_ids', 'string', ['number']);
+			simapi_spirv_current_function_id = Module.cwrap('simapi_spirv_current_function_id', 'number', ['number']);
+			simapi_spirv_stackframe_count = Module.cwrap('simapi_spirv_stackframe_count', 'number', ['number']);
+			simapi_spirv_stackframe = Module.cwrap('simapi_spirv_stackframe', 'string', ['number', 'number']);
+			simapi_spirv_function_variables = Module.cwrap('simapi_spirv_function_variables', 'string', ['number']);
+			simapi_spirv_simulator_memory_dump = Module.cwrap('simapi_spirv_simulator_memory_dump', 'string', ['number']);
 		}
 
 		function wasm_included_files() {
@@ -301,11 +343,11 @@
 				access = var_desc.members[member].access;
 			}
 
-			result = '';
+			result = '%' + var_desc.id;
 			if (access.hasOwnProperty('builtin')) {
-				result = access.kind + '.' + access.builtin;
-			} else {
-				result = access.kind + ' ' + access.location;
+				result = result + ' [' + access.kind + '.' + access.builtin + ']';
+			} else if (access.hasOwnProperty('location')) {
+				result = result + ' [' + access.kind + ' ' + access.location + ']';
 			}
 
 			if (member == -1 && var_desc.hasOwnProperty('name') && var_desc.name != '') {
@@ -337,7 +379,8 @@
 			return {
 				'Output': [],
 				'Input': [],
-				'UniformConstant': []
+				'UniformConstant': [],
+				'Function': []
 			};
 		}
 
@@ -418,7 +461,7 @@
 			ui_create_array_inputs(
 				type, 
 				data_div, 
-				(kind == "Output"),
+				(kind != "Input"),
 				{id: id, member: member}
 			);
 		}
@@ -470,8 +513,27 @@
 		}
 
 		function ui_update_current_line(lineno) {
+			var cur_line = $($("#shader div")[lineno]);
 			$("#shader div").removeClass("curop");
-			$($("#shader div")[lineno]) .addClass("curop");
+			cur_line.addClass("curop");
+			ui_scroll_shader_if_necessary(cur_line);
+		}
+
+		function ui_scroll_shader_if_necessary(cur_line) {
+			if ($("#shader").length == 0) {
+				return;
+			}
+
+			var container = $("#shader");
+			var view_top = container.offset().top;
+			var view_bottom = view_top + container.height();
+			var view_center = view_top + (container.height() / 2);
+			var line_top = cur_line.offset().top;
+			var line_bottom = line_top + cur_line.height();
+
+			if (line_top > view_bottom || line_bottom < view_top) {
+				container.scrollTop(container.scrollTop() + line_top - view_center);
+			}
 		}
 
 		function ui_data_window(kind) {
@@ -481,7 +543,9 @@
 				return "#output";
 			} else if (kind == "UniformConstant") {
 				return "#uniform";
-			}
+	 		} else if (kind == "Function") {
+	 			return "#function";
+	 		}
 		}
 
 		function ui_reset() {
@@ -491,7 +555,8 @@
 			if (simapi_context != null) {
 				simapi_release_context(simapi_context);
 				variable_windows = variable_windows_empty();
-				register_next = 0;
+				local_register_ids = [];
+				current_function_id = -1;
 			}
 		}
 
@@ -500,7 +565,7 @@
 			var f_shader_ui = $("#shader");
 			var f_line_count = simapi_spirv_opcode_count(simapi_context);
 			for (var f_idx = 0; f_idx < f_line_count; ++f_idx) {
-				f_shader_ui.append($('<div />').text(simapi_spirv_opcode_text(simapi_context, f_idx)));
+				f_shader_ui.append($('<div />').html(simapi_spirv_opcode_text(simapi_context, f_idx)));
 			}
 
 			// input and output variables
@@ -508,8 +573,13 @@
 			for (var f_idx = 0; f_idx < f_var_count; ++f_idx) {
 				var var_id = simapi_spirv_variable_id(simapi_context, f_idx);
 				var var_desc = parse_json(simapi_spirv_variable_desc(simapi_context, var_id));
-		 		ui_create_var_display(var_desc);
+				if (var_desc.kind != "Function") {
+		 			ui_create_var_display(var_desc);
+				}
 			}
+
+			// function variables (entrypoint)
+			ui_fill_function_variable_window();
 
 			ui_refresh_variables();
 
@@ -517,7 +587,9 @@
 			var f_curr_line = simapi_spirv_select_entry_point(simapi_context, 0);
 			ui_update_current_line(f_curr_line);
 
-			register_next = simapi_spirv_first_free_register(simapi_context);
+			// callstack
+			current_function_id = simapi_spirv_current_function_id(simapi_context);
+		 	ui_refresh_callstack();
 
 			// reset header
 			$("#btnStep").prop("disabled", simapi_spirv_execution_finished(simapi_context));
@@ -536,9 +608,37 @@
 			ui_refresh_variable_window("Output");
 		}
 
+		function ui_refresh_variables_function() {
+			ui_refresh_variable_window("Function");
+		}
+
 		function ui_refresh_variables() {
 			for (kind in variable_windows) {
 				ui_refresh_variable_window(kind);
+			}
+		}
+
+		function ui_fill_function_variable_window() {
+			$("#function div").remove();
+	 		variable_windows["Function"] = [];
+			var function_vars = parse_json(simapi_spirv_function_variables(simapi_context));
+			for (var f_idx = 0; f_idx < function_vars.length; ++f_idx) {
+				var var_desc = parse_json(simapi_spirv_variable_desc(simapi_context, function_vars[f_idx]));
+		 		ui_create_var_display(var_desc);
+			}
+		}
+
+		function ui_refresh_callstack() {
+			$("#call_stack div").remove();
+
+			var num_frames = simapi_spirv_stackframe_count(simapi_context);
+			for (var idx = 0; idx < num_frames; ++idx) {
+				var frame = parse_json(simapi_spirv_stackframe(simapi_context, idx));
+				var caption = "function %" + frame.func_id;
+				if (frame.hasOwnProperty('func_name')) {
+		 			caption = caption + ' (' + frame.func_name + ')';
+				}
+				$("#call_stack").append($('<div />').text(caption));
 			}
 		}
 
@@ -571,16 +671,35 @@
 			// update source display
 			ui_update_current_line(f_curr_line);
 
-			// update output variables
+			// did we jump to another function ?
+			var f_function_id = simapi_spirv_current_function_id(simapi_context);
+			if (f_function_id != current_function_id) {
+				current_function_id = f_function_id;
+
+				// clear register view
+				local_register_ids = [];
+				$("#regs div").remove();
+
+				// update callstack
+				ui_refresh_callstack();
+
+				ui_fill_function_variable_window();
+			}
+
+			// update variables
 			ui_refresh_variables_output();
+			ui_refresh_variables_function();
 
 			// update register view
-			var first_free = simapi_spirv_first_free_register(simapi_context);
-			while (register_next < first_free) {
-				var reg_info = parse_json(simapi_spirv_register(simapi_context, register_next));
-				$("#regs").append(ui_create_register_display(reg_info));
-				register_next = register_next + 1;
+	 		var all_regs = parse_json(simapi_spirv_local_register_ids(simapi_context));
+		 	var new_regs = all_regs.filter(x => !local_register_ids.includes(x));
+			for (var idx = 0; idx < new_regs.length; ++idx) {
+				var reg_info = parse_json(simapi_spirv_register_by_id(simapi_context, new_regs[idx]));
+				if (reg_info.type.type != "Pointer") {
+					$("#regs").append(ui_create_register_display(reg_info));
+				}
 			}
+		 	local_register_ids = all_regs;
 		});
 
 		$("#btnReset").on("click", function (event) {
@@ -588,15 +707,19 @@
 			$("#input input").blur();
 
 			// reset current line
-			var f_curr_line = simapi_spirv_select_entry_point(simapi_context, 0);
+			var f_curr_line = simapi_spirv_current_line(simapi_context);
 			ui_update_current_line(f_curr_line);
-			register_next = simapi_spirv_first_free_register(simapi_context);
 
 			// reset header
 			$("#btnStep").prop("disabled", simapi_spirv_execution_finished(simapi_context));
 
-			// clear register view
+			// clear register view 
 			$("#regs div").remove();
+		 	local_register_ids = [];
+			current_function_id = -1;
+
+			// function variables (entrypoint)
+			ui_fill_function_variable_window();
 		});
 
 	 	$("#btnAboutOpen").on("click", function (event) {
