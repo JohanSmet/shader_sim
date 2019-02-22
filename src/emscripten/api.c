@@ -110,7 +110,11 @@ const char *simapi_spirv_opcode_text(SimApiContext *context, uint32_t index) {
 		arr_push_buf(formatted, src + src_idx, span->start - src_idx);		// exclude span->start
 
 		// span header
-		arr_printf(formatted, "<span class=\"%s\">", lut_lookup_text_span_kind(span->kind));
+		arr_printf(formatted, "<span class=\"%s\"", lut_lookup_text_span_kind(span->kind));
+		if (span->id > 0) {
+			arr_printf(formatted, " name=\"id_%d\"", span->id);
+		}
+		arr_strcat(formatted, ">");
 
 		// span text (span.start -> span.end)
 		arr_push_buf(formatted, src + span->start, span->end - span->start + 1);	// include span->end;
