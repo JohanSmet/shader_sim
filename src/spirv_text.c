@@ -636,8 +636,8 @@ TEXT_FUNC_TYPE_NORES(id_list) {              /* OP %id+ */
     return result;
 } TEXT_FUNC_END
 
-TEXT_FUNC_TYPE_RESID(type_number_list) {     /* %id = OP %type_id number+ */
-    ID(opcode->optional[0]);
+TEXT_FUNC_TYPE_RESID(type_number_list) {     /* %id = OP %id number+ */
+    TYPE_ID(opcode->optional[0]);
     for (int idx=2; idx < opcode->op.length - 1; ++idx) {
         LITERAL_INTEGER(opcode->optional[idx]);
     }
