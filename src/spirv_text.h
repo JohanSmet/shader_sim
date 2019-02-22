@@ -28,6 +28,7 @@ typedef struct SPIRV_text_span {
     uint32_t        start;
     uint32_t        end;
     SPIRV_text_kind kind;
+    uint32_t        id;
 } SPIRV_text_span;
 
 typedef struct SPIRV_text {

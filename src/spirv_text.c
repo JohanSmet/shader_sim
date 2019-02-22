@@ -129,10 +129,11 @@ static inline void spirv_text_append(char **result, const char **strings, size_t
     }
 }
 
-static inline void spirv_text_start_tag(SPIRV_module *module, char *result, SPIRV_text_kind kind) {
+static inline void spirv_text_start_tag(SPIRV_module *module, char *result, SPIRV_text_kind kind, uint32_t id) {
     SPIRV_text_span span = (SPIRV_text_span) {
         .start = arr_len(result),
-        .kind = kind
+        .kind = kind,
+        .id = id
     };
     arr_push(module->text->spans, span);
 }
@@ -146,21 +147,22 @@ static inline void spirv_text_end_tag(SPIRV_module *module, char *result) {
  */
 
 
-#define APPEND_STR(...)     spirv_text_append(&result, (const char *[]){__VA_ARGS__}, sizeof((const char *[]) {__VA_ARGS__})/sizeof(const char *))
-#define APPEND_FMT(fmt,...) arr_printf(result, fmt, __VA_ARGS__)
-#define SPACER              arr_printf(result, " ")
-#define STAG(x)             spirv_text_start_tag(module, result, SPAN_##x)
-#define ETAG                spirv_text_end_tag(module, result)
+#define APPEND_STR(...)         spirv_text_append(&result, (const char *[]){__VA_ARGS__}, sizeof((const char *[]) {__VA_ARGS__})/sizeof(const char *))
+#define APPEND_FMT(fmt,...)     arr_printf(result, fmt, __VA_ARGS__)
+#define SPACER                  arr_printf(result, " ")
+#define STAG(x)                 spirv_text_start_tag(module, result, SPAN_##x, 0)
+#define STAG_ID(x,id)           spirv_text_start_tag(module, result, SPAN_##x, id)
+#define ETAG                    spirv_text_end_tag(module, result)
 
-#define OP(op)              (STAG(OP), APPEND_STR(spirv_op_name((op))), ETAG)
-#define KEYWORD(x)          (SPACER, STAG(KEYWORD), APPEND_STR((x)), ETAG)
-#define LITERAL_STRING(x)   (SPACER, STAG(LITERAL_STRING), APPEND_STR("\"", (x), "\""), ETAG)
-#define LITERAL_INTEGER(x)  (SPACER, STAG(LITERAL_INTEGER), APPEND_FMT("%d", (x)), ETAG)
-#define LITERAL_FLOAT(x)    (SPACER, STAG(LITERAL_FLOAT), APPEND_FMT("%f", (double) (x)), ETAG)
-#define FORMATTED_ID(x)     (STAG(ID), APPEND_STR((x)), ETAG)
-#define ID(x)               (SPACER, STAG(ID), APPEND_STR(spirv_text_format_id(module, (x))), ETAG)
-#define FORMATTED_TYPE_ID(x)(STAG(TYPE_ID), APPEND_STR((x)), ETAG)
-#define TYPE_ID(x)          (SPACER, STAG(TYPE_ID), APPEND_STR(spirv_text_format_type_id(module, (x))), ETAG)
+#define OP(op)                  (STAG(OP), APPEND_STR(spirv_op_name((op))), ETAG)
+#define KEYWORD(x)              (SPACER, STAG(KEYWORD), APPEND_STR((x)), ETAG)
+#define LITERAL_STRING(x)       (SPACER, STAG(LITERAL_STRING), APPEND_STR("\"", (x), "\""), ETAG)
+#define LITERAL_INTEGER(x)      (SPACER, STAG(LITERAL_INTEGER), APPEND_FMT("%d", (x)), ETAG)
+#define LITERAL_FLOAT(x)        (SPACER, STAG(LITERAL_FLOAT), APPEND_FMT("%f", (double) (x)), ETAG)
+#define FORMATTED_ID(x,id)      (STAG_ID(ID, (id)), APPEND_STR((x)), ETAG)
+#define ID(x)                   (SPACER, STAG_ID(ID, (x)), APPEND_STR(spirv_text_format_id(module, (x))), ETAG)
+#define FORMATTED_TYPE_ID(x,id) (STAG_ID(TYPE_ID, (id)), APPEND_STR((x)), ETAG)
+#define TYPE_ID(x)              (SPACER, STAG_ID(TYPE_ID, (x)), APPEND_STR(spirv_text_format_type_id(module, (x))), ETAG)
 
 static inline char *spirv_string_opcode_no_result(SPIRV_module *module, SpvOp op) {
     char *result = NULL;
@@ -179,7 +181,7 @@ static inline char *spirv_string_opcode_result_id(SPIRV_module *module, SpvOp op
         APPEND_STR(" ");
     }
 
-    FORMATTED_ID(s_id);
+    FORMATTED_ID(s_id, result_id);
     APPEND_STR(" = ");
     OP(op);
     return result;
@@ -195,7 +197,7 @@ static inline char *spirv_string_opcode_result_type_id(SPIRV_module *module, Spv
         APPEND_STR(" ");
     }
 
-    FORMATTED_TYPE_ID(s_id);
+    FORMATTED_TYPE_ID(s_id, type_id);
     APPEND_STR(" = ");
     OP(op);
     return result;
