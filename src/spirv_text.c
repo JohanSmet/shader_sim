@@ -349,7 +349,7 @@ TEXT_FUNC_SPECIAL_OP_RESTYPE(SpvOpTypeImage) {
 
 TEXT_FUNC_SPECIAL_OP_RESTYPE(SpvOpTypePointer) {
     KEYWORD(spirv_storage_class_name(opcode->optional[1]));
-    ID(opcode->optional[2]);
+    TYPE_ID(opcode->optional[2]);
     return result;
 } TEXT_FUNC_END
 
@@ -573,15 +573,15 @@ TEXT_FUNC_TYPE_RESID(number_list) {         /* %id = OP number* */
     return result;
 } TEXT_FUNC_END
 
-TEXT_FUNC_TYPE_RESTYPE(id_number_list) {      /* %id = OP %id number+ */   
-    ID(opcode->optional[1]);        
+TEXT_FUNC_TYPE_RESTYPE(type_number_list) {      /* %type_id = OP %type_id number+ */   
+    TYPE_ID(opcode->optional[1]);        
     for (int idx=2; idx < opcode->op.length - 1; ++idx) {
         LITERAL_INTEGER(opcode->optional[idx]);
     }
     return result;
 } TEXT_FUNC_END
 
-TEXT_FUNC_TYPE_RESTYPE(id_list) {             /* %id = OP %id+ */     // XXX: typeid?
+TEXT_FUNC_TYPE_RESTYPE(id_list) {             /* %type_id = OP %id+ */ 
     for (int idx=1; idx < opcode->op.length - 1; ++idx) {
         ID(opcode->optional[idx]);
     }
@@ -764,8 +764,8 @@ char *spirv_text_opcode(SPIRV_opcode *opcode, SPIRV_module *module, SPIRV_text_s
         OP_CASE_TYPE(SpvOpTypeBool, restype_number_list)
         OP_CASE_TYPE(SpvOpTypeInt, restype_number_list)
         OP_CASE_TYPE(SpvOpTypeFloat, restype_number_list)
-        OP_CASE_TYPE(SpvOpTypeVector, restype_id_number_list)
-        OP_CASE_TYPE(SpvOpTypeMatrix, restype_id_number_list)
+        OP_CASE_TYPE(SpvOpTypeVector, restype_type_number_list)
+        OP_CASE_TYPE(SpvOpTypeMatrix, restype_type_number_list)
         OP_CASE_SPECIAL(SpvOpTypeImage)
         OP_CASE_TYPE(SpvOpTypeSampler, restype_number_list)
         OP_CASE_TYPE(SpvOpTypeSampledImage, restype_id_list)
