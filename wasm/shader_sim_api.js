@@ -190,7 +190,7 @@ Module['FS_createPath']('/', 'examples', true, true);
   }
 
  }
- loadPackage({"files": [{"start": 0, "audio": 0, "end": 448, "filename": "/examples/simple_frag.spv"}, {"start": 448, "audio": 0, "end": 1368, "filename": "/examples/vert_arith.spv"}, {"start": 1368, "audio": 0, "end": 2272, "filename": "/examples/test_aggregates.spv"}, {"start": 2272, "audio": 0, "end": 2904, "filename": "/examples/vert_arith_int.spv"}, {"start": 2904, "audio": 0, "end": 11700, "filename": "/examples/atmosphere_frag.spv"}, {"start": 11700, "audio": 0, "end": 12232, "filename": "/examples/simple_vert.spv"}, {"start": 12232, "audio": 0, "end": 13020, "filename": "/examples/test_access_chain.spv"}, {"start": 13020, "audio": 0, "end": 13400, "filename": "/examples/fixed_color_frag.spv"}, {"start": 13400, "audio": 0, "end": 14448, "filename": "/examples/fixed_color_vert.spv"}], "remote_package_size": 14448, "package_uuid": "5e962e43-d01b-4b1d-80e0-b4da9168ff39"});
+ loadPackage({"files": [{"start": 0, "audio": 0, "end": 448, "filename": "/examples/simple_frag.spv"}, {"start": 448, "audio": 0, "end": 1368, "filename": "/examples/vert_arith.spv"}, {"start": 1368, "audio": 0, "end": 2272, "filename": "/examples/test_aggregates.spv"}, {"start": 2272, "audio": 0, "end": 2904, "filename": "/examples/vert_arith_int.spv"}, {"start": 2904, "audio": 0, "end": 11700, "filename": "/examples/atmosphere_frag.spv"}, {"start": 11700, "audio": 0, "end": 12232, "filename": "/examples/simple_vert.spv"}, {"start": 12232, "audio": 0, "end": 13020, "filename": "/examples/test_access_chain.spv"}, {"start": 13020, "audio": 0, "end": 13400, "filename": "/examples/fixed_color_frag.spv"}, {"start": 13400, "audio": 0, "end": 14448, "filename": "/examples/fixed_color_vert.spv"}], "remote_package_size": 14448, "package_uuid": "eb71f063-4161-40e3-bff6-5b5a8a42b519"});
 
 })();
 
@@ -1925,7 +1925,7 @@ var ASM_CONSTS = [];
 
 STATIC_BASE = GLOBAL_BASE;
 
-STATICTOP = STATIC_BASE + 137056;
+STATICTOP = STATIC_BASE + 137104;
 /* global initializers */  __ATINIT__.push();
 
 
@@ -1934,7 +1934,7 @@ STATICTOP = STATIC_BASE + 137056;
 
 
 
-var STATIC_BUMP = 137056;
+var STATIC_BUMP = 137104;
 Module["STATIC_BASE"] = STATIC_BASE;
 Module["STATIC_BUMP"] = STATIC_BUMP;
 

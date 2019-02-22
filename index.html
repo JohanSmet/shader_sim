@@ -80,6 +80,11 @@
 			font-weight: bold;
 		}
 
+		div#shader span.highlight {
+			font-weight: bold;
+			background-color: beige;
+		}
+
 		div#about {
 			z-index: 20;
 			position: fixed;
@@ -567,6 +572,15 @@
 			for (var f_idx = 0; f_idx < f_line_count; ++f_idx) {
 				f_shader_ui.append($('<div />').html(simapi_spirv_opcode_text(simapi_context, f_idx)));
 			}
+
+			$("#shader span").hover(
+				function() {
+					$("#shader span[name=" + $(this).attr("name") + "]").addClass("highlight");
+				}, 
+				function() {
+					$("#shader span[name=" + $(this).attr("name") + "]").removeClass("highlight");
+				}
+			);
 
 			// input and output variables
 			var f_var_count = simapi_spirv_variable_count(simapi_context);
