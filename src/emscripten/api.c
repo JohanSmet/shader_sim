@@ -51,6 +51,7 @@ bool simapi_spirv_load_binary(SimApiContext *context, const int8_t *binary_data,
 
 	spirv_text_set_flag(&context->spirv_module, SPIRV_TEXT_USE_ID_NAMES, true);
 	spirv_text_set_flag(&context->spirv_module, SPIRV_TEXT_USE_TYPE_ALIAS, true);
+	spirv_text_set_flag(&context->spirv_module, SPIRV_TEXT_USE_CONSTANT_ALIAS, true);
 
 	spirv_sim_init(&context->spirv_sim, &context->spirv_module, context->entry_point);
 	return true;
@@ -74,6 +75,7 @@ bool simapi_spirv_load_file(SimApiContext *context, const char *filename) {
 
 	spirv_text_set_flag(&context->spirv_module, SPIRV_TEXT_USE_ID_NAMES, true);
 	spirv_text_set_flag(&context->spirv_module, SPIRV_TEXT_USE_TYPE_ALIAS, true);
+	spirv_text_set_flag(&context->spirv_module, SPIRV_TEXT_USE_CONSTANT_ALIAS, true);
 
 	spirv_sim_init(&context->spirv_sim, &context->spirv_module, context->entry_point);
 	return true;
