@@ -64,15 +64,56 @@ static inline void spirv_text_create_type_alias(SPIRV_module *spirv_mod, Type *t
 static inline const char *spirv_text_format_id(SPIRV_module *spirv_mod, uint32_t id) {
     arr_clear(spirv_mod->text->scratch_buf);
 
-    if (spirv_mod->text->use_id_names && arr_len(spirv_mod->text->scratch_buf) == 0) {
+    bool done = false;
+
+    if (!done && spirv_mod->text->use_id_names) {
         const char *name = spirv_module_name_by_id(spirv_mod, id, -1);
         if (name) {
             arr_printf(spirv_mod->text->scratch_buf, "%%%s", name);
+            done = true;
         }
     } 
 
-    if (arr_len(spirv_mod->text->scratch_buf) == 0) {
+    /* if it's a constant: try to use / generate an alias */
+    if (!done && spirv_mod->text->use_constant_alias) {
+        Constant *constant = spirv_module_constant_by_id(spirv_mod, id);
+
+        if (!done && constant && spirv_type_is_scalar(constant->type)) {
+            const char *alias = map_int_str_get(&spirv_mod->text->id_aliases, id);
+            if (alias) {
+                arr_printf(spirv_mod->text->scratch_buf, "%s", alias);
+                done = true;
+            }
+        }
+
+        if (!done && constant && spirv_type_is_scalar(constant->type)) {
+            if (spirv_type_is_integer(constant->type)) {
+                arr_printf(spirv_mod->text->scratch_buf, "%%c%d", constant->value.as_int);
+                done = true;
+            } else if (spirv_type_is_float(constant->type)) {
+                arr_printf(spirv_mod->text->scratch_buf, "%%c%gf", constant->value.as_float);
+                done = true;
+            } else if (constant->type->kind == TypeBool) {
+                arr_printf(spirv_mod->text->scratch_buf, "%%c%s", (constant->value.as_int)? "True" : "False");
+                done = true;
+            }
+
+            if (done && !map_str_int_has(&spirv_mod->text->id_aliases_rev, spirv_mod->text->scratch_buf)) {
+                char *alias = mem_arena_allocate(&spirv_mod->allocator, arr_len(spirv_mod->text->scratch_buf) + 1);
+                strncpy(alias, spirv_mod->text->scratch_buf, arr_len(spirv_mod->text->scratch_buf) + 1);
+
+                map_int_str_put(&spirv_mod->text->id_aliases, id, alias);
+                map_str_int_put(&spirv_mod->text->id_aliases_rev, alias, id);
+            } else {
+                arr_clear(spirv_mod->text->scratch_buf);
+                done = false;
+            }
+        }
+    }
+
+    if (!done) {
        arr_printf(spirv_mod->text->scratch_buf, "%%%d", id);
+       done = true;
     }
 
     return spirv_mod->text->scratch_buf;
@@ -91,7 +132,7 @@ static inline const char *spirv_text_format_type_id(SPIRV_module *spirv_mod, uin
 
     /* check if there's already an alias for this id */
     if (spirv_mod->text->use_type_alias && arr_len(spirv_mod->text->scratch_buf) == 0) {
-        const char *alias = map_int_str_get(&spirv_mod->text->type_aliases, id);
+        const char *alias = map_int_str_get(&spirv_mod->text->id_aliases, id);
         if (alias) {
             arr_printf(spirv_mod->text->scratch_buf, "%s", alias);
         }
@@ -104,12 +145,12 @@ static inline const char *spirv_text_format_type_id(SPIRV_module *spirv_mod, uin
 
         /* check for duplicates */
         if (arr_len(spirv_mod->text->scratch_buf) > 0 && 
-            !map_str_int_has(&spirv_mod->text->type_aliases_rev, spirv_mod->text->scratch_buf)) {
+            !map_str_int_has(&spirv_mod->text->id_aliases_rev, spirv_mod->text->scratch_buf)) {
             char *alias = mem_arena_allocate(&spirv_mod->allocator, arr_len(spirv_mod->text->scratch_buf) + 1);
             strncpy(alias, spirv_mod->text->scratch_buf, arr_len(spirv_mod->text->scratch_buf) + 1);
 
-            map_int_str_put(&spirv_mod->text->type_aliases, id, alias);
-            map_str_int_put(&spirv_mod->text->type_aliases_rev, alias, id);
+            map_int_str_put(&spirv_mod->text->id_aliases, id, alias);
+            map_str_int_put(&spirv_mod->text->id_aliases_rev, alias, id);
         } else {
             arr_clear(&spirv_mod->text->scratch_buf);
         }
@@ -709,6 +750,8 @@ void spirv_text_set_flag(struct SPIRV_module *module, SPIRV_text_flag flag, bool
         module->text->use_id_names = value;
     } else if (flag == SPIRV_TEXT_USE_TYPE_ALIAS) {
         module->text->use_type_alias = value;
+    } else if (flag == SPIRV_TEXT_USE_CONSTANT_ALIAS) {
+        module->text->use_constant_alias = value;
     }
 }
 

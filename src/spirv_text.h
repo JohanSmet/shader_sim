@@ -36,16 +36,18 @@ typedef struct SPIRV_text {
 
     bool use_id_names;
     bool use_type_alias;
+    bool use_constant_alias;
 
     SPIRV_text_span *spans;     // dyn_array
 
-    HashMap type_aliases;       // id (int) -> const char * (name)
-    HashMap type_aliases_rev;   // const char * (name) -> id (int)
+    HashMap id_aliases;       // id (int) -> const char * (name)
+    HashMap id_aliases_rev;   // const char * (name) -> id (int)
 } SPIRV_text;
 
 typedef enum SPIRV_text_flag {
     SPIRV_TEXT_USE_ID_NAMES,
     SPIRV_TEXT_USE_TYPE_ALIAS,
+    SPIRV_TEXT_USE_CONSTANT_ALIAS
 } SPIRV_text_flag;
 
 // interface functions

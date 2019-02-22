@@ -45,6 +45,7 @@ void disassemble_spirv_shader(const char *filename) {
 
     spirv_text_set_flag(&spirv_mod, SPIRV_TEXT_USE_ID_NAMES, true);
     spirv_text_set_flag(&spirv_mod, SPIRV_TEXT_USE_TYPE_ALIAS, true);
+    spirv_text_set_flag(&spirv_mod, SPIRV_TEXT_USE_CONSTANT_ALIAS, true);
 
     char **output_lines = NULL;
 
